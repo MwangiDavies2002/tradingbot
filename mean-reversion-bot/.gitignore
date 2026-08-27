@@ -9,6 +9,10 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .venv/
+.venv*/
+.micromamba/
+micromamba.tar.bz2
+Library/
 
 # Node / builds
 node_modules/

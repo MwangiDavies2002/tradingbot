@@ -1,8 +1,0 @@
-#!/bin/sh
-'''exec' C:/Users/win/Desktop/mean-reversion-bot_2/mean-reversion-bot/backend/.micromamba/envs/mrbot/bin/python "$0" "$@"
-' '''
-import sys
-from idna.cli import main
-if __name__ == '__main__':
-    sys.argv[0] = sys.argv[0].removesuffix('.exe')
-    sys.exit(main())
