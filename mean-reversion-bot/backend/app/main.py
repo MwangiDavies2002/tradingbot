@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import logging
 import logging.config
+import os
 import time
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
@@ -45,6 +46,11 @@ from app.config import settings
 from app.database.session import check_connection, create_tables
 
 logger = logging.getLogger(__name__)
+RUNNING_ON_VERCEL = (
+    os.getenv("VERCEL") == "1"
+    or os.getenv("VERCEL_ENV") is not None
+    or os.getenv("VERCEL_SERVERLESS") == "1"
+)
 
 
 # ── Logging Setup ─────────────────────────────────────────────────────────────
@@ -182,14 +188,17 @@ def create_app() -> FastAPI:
 
     # ── Routers ───────────────────────────────────────────────────────────────
     # Import here to avoid circular imports at module level
-    from app.api.routes import bot_control, config, risk, signals, trades, backtest
+    from app.api.routes import bot_control, config, risk, signals, trades
 
     app.include_router(trades.router,      prefix="/api/trades",   tags=["Trades"])
     app.include_router(signals.router,     prefix="/api/signals",  tags=["Signals"])
     app.include_router(risk.router,        prefix="/api/risk",     tags=["Risk"])
     app.include_router(bot_control.router, prefix="/api/bot",      tags=["Bot Control"])
     app.include_router(config.router,      prefix="/api/config",   tags=["Config"])
-    app.include_router(backtest.router,    prefix="/api/backtest", tags=["Backtest"])
+    if not RUNNING_ON_VERCEL:
+        from app.api.routes import backtest
+
+        app.include_router(backtest.router, prefix="/api/backtest", tags=["Backtest"])
 
     # ── Health & Meta Endpoints ───────────────────────────────────────────────
 
