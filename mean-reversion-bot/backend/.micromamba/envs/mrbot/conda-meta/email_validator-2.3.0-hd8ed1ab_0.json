@@ -1,0 +1,35 @@
+{
+    "arch": null,
+    "build": "hd8ed1ab_0",
+    "build_number": 0,
+    "build_string": "hd8ed1ab_0",
+    "channel": "conda-forge",
+    "constrains": [],
+    "depends": [
+        "email-validator >=2.3.0,<2.3.1.0a0"
+    ],
+    "extracted_package_dir": "C:\\Users\\win\\AppData\\Roaming\\mamba\\pkgs\\https\\conda.anaconda.org\\conda-forge\\noarch\\email_validator-2.3.0-hd8ed1ab_0",
+    "files": [],
+    "fn": "email_validator-2.3.0-hd8ed1ab_0.conda",
+    "license": "Unlicense",
+    "link": {
+        "source": "C:\\Users\\win\\AppData\\Roaming\\mamba\\pkgs\\https\\conda.anaconda.org\\conda-forge\\noarch\\email_validator-2.3.0-hd8ed1ab_0",
+        "type": 1
+    },
+    "md5": "2452e434747a6b742adc5045f2182a8e",
+    "name": "email_validator",
+    "noarch": "generic",
+    "package_tarball_full_path": "C:\\Users\\win\\AppData\\Roaming\\mamba\\pkgs\\https\\conda.anaconda.org\\conda-forge\\noarch\\email_validator-2.3.0-hd8ed1ab_0.tar.bz2",
+    "paths_data": {
+        "paths": [],
+        "paths_version": 1
+    },
+    "platform": null,
+    "requested_spec": "",
+    "sha256": "6a518e00d040fcad016fb2dde29672aa3476cd9ae33ea5b7b257222e66037d89",
+    "size": 7077,
+    "subdir": "noarch",
+    "timestamp": 1756221480,
+    "url": "https://conda.anaconda.org/conda-forge/noarch/email_validator-2.3.0-hd8ed1ab_0.conda",
+    "version": "2.3.0"
+}

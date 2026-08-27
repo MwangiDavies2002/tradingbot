@@ -1,0 +1,967 @@
+{
+    "arch": "x86_64",
+    "build": "py311hf893f09_1",
+    "build_number": 1,
+    "build_string": "py311hf893f09_1",
+    "channel": "conda-forge",
+    "constrains": [],
+    "depends": [
+        "python",
+        "async-timeout >=4.0.3",
+        "vc >=14.3,<15",
+        "vc14_runtime >=14.44.35208",
+        "ucrt >=10.0.20348.0",
+        "python_abi 3.11.* *_cp311"
+    ],
+    "extracted_package_dir": "C:\\Users\\win\\AppData\\Roaming\\mamba\\pkgs\\https\\conda.anaconda.org\\conda-forge\\win-64\\asyncpg-0.31.0-py311hf893f09_1",
+    "files": [
+        "Lib/site-packages/asyncpg/__init__.py",
+        "Lib/site-packages/asyncpg/__pycache__/__init__.cpython-311.pyc",
+        "Lib/site-packages/asyncpg/__pycache__/_asyncio_compat.cpython-311.pyc",
+        "Lib/site-packages/asyncpg/__pycache__/_version.cpython-311.pyc",
+        "Lib/site-packages/asyncpg/__pycache__/cluster.cpython-311.pyc",
+        "Lib/site-packages/asyncpg/__pycache__/compat.cpython-311.pyc",
+        "Lib/site-packages/asyncpg/__pycache__/connect_utils.cpython-311.pyc",
+        "Lib/site-packages/asyncpg/__pycache__/connection.cpython-311.pyc",
+        "Lib/site-packages/asyncpg/__pycache__/connresource.cpython-311.pyc",
+        "Lib/site-packages/asyncpg/__pycache__/cursor.cpython-311.pyc",
+        "Lib/site-packages/asyncpg/__pycache__/introspection.cpython-311.pyc",
+        "Lib/site-packages/asyncpg/__pycache__/pool.cpython-311.pyc",
+        "Lib/site-packages/asyncpg/__pycache__/prepared_stmt.cpython-311.pyc",
+        "Lib/site-packages/asyncpg/__pycache__/serverversion.cpython-311.pyc",
+        "Lib/site-packages/asyncpg/__pycache__/transaction.cpython-311.pyc",
+        "Lib/site-packages/asyncpg/__pycache__/types.cpython-311.pyc",
+        "Lib/site-packages/asyncpg/__pycache__/utils.cpython-311.pyc",
+        "Lib/site-packages/asyncpg/_asyncio_compat.py",
+        "Lib/site-packages/asyncpg/_testbase/__init__.py",
+        "Lib/site-packages/asyncpg/_testbase/__pycache__/__init__.cpython-311.pyc",
+        "Lib/site-packages/asyncpg/_testbase/__pycache__/fuzzer.cpython-311.pyc",
+        "Lib/site-packages/asyncpg/_testbase/fuzzer.py",
+        "Lib/site-packages/asyncpg/_version.py",
+        "Lib/site-packages/asyncpg/cluster.py",
+        "Lib/site-packages/asyncpg/compat.py",
+        "Lib/site-packages/asyncpg/connect_utils.py",
+        "Lib/site-packages/asyncpg/connection.py",
+        "Lib/site-packages/asyncpg/connresource.py",
+        "Lib/site-packages/asyncpg/cursor.py",
+        "Lib/site-packages/asyncpg/exceptions/__init__.py",
+        "Lib/site-packages/asyncpg/exceptions/__pycache__/__init__.cpython-311.pyc",
+        "Lib/site-packages/asyncpg/exceptions/__pycache__/_base.cpython-311.pyc",
+        "Lib/site-packages/asyncpg/exceptions/_base.py",
+        "Lib/site-packages/asyncpg/introspection.py",
+        "Lib/site-packages/asyncpg/pgproto/__init__.pxd",
+        "Lib/site-packages/asyncpg/pgproto/__init__.py",
+        "Lib/site-packages/asyncpg/pgproto/__pycache__/__init__.cpython-311.pyc",
+        "Lib/site-packages/asyncpg/pgproto/__pycache__/types.cpython-311.pyc",
+        "Lib/site-packages/asyncpg/pgproto/buffer.pxd",
+        "Lib/site-packages/asyncpg/pgproto/buffer.pxi",
+        "Lib/site-packages/asyncpg/pgproto/buffer.pyx",
+        "Lib/site-packages/asyncpg/pgproto/codecs/__init__.pxd",
+        "Lib/site-packages/asyncpg/pgproto/codecs/bits.pyx",
+        "Lib/site-packages/asyncpg/pgproto/codecs/bytea.pyx",
+        "Lib/site-packages/asyncpg/pgproto/codecs/context.pyx",
+        "Lib/site-packages/asyncpg/pgproto/codecs/datetime.pyx",
+        "Lib/site-packages/asyncpg/pgproto/codecs/float.pyx",
+        "Lib/site-packages/asyncpg/pgproto/codecs/geometry.pyx",
+        "Lib/site-packages/asyncpg/pgproto/codecs/hstore.pyx",
+        "Lib/site-packages/asyncpg/pgproto/codecs/int.pyx",
+        "Lib/site-packages/asyncpg/pgproto/codecs/json.pyx",
+        "Lib/site-packages/asyncpg/pgproto/codecs/jsonpath.pyx",
+        "Lib/site-packages/asyncpg/pgproto/codecs/misc.pyx",
+        "Lib/site-packages/asyncpg/pgproto/codecs/network.pyx",
+        "Lib/site-packages/asyncpg/pgproto/codecs/numeric.pyx",
+        "Lib/site-packages/asyncpg/pgproto/codecs/pg_snapshot.pyx",
+        "Lib/site-packages/asyncpg/pgproto/codecs/text.pyx",
+        "Lib/site-packages/asyncpg/pgproto/codecs/tid.pyx",
+        "Lib/site-packages/asyncpg/pgproto/codecs/uuid.pyx",
+        "Lib/site-packages/asyncpg/pgproto/consts.pxi",
+        "Lib/site-packages/asyncpg/pgproto/cpythonx.pxd",
+        "Lib/site-packages/asyncpg/pgproto/debug.pxd",
+        "Lib/site-packages/asyncpg/pgproto/frb.pxd",
+        "Lib/site-packages/asyncpg/pgproto/frb.pyx",
+        "Lib/site-packages/asyncpg/pgproto/hton.pxd",
+        "Lib/site-packages/asyncpg/pgproto/pgproto.cp311-win_amd64.pyd",
+        "Lib/site-packages/asyncpg/pgproto/pgproto.pxd",
+        "Lib/site-packages/asyncpg/pgproto/pgproto.pyi",
+        "Lib/site-packages/asyncpg/pgproto/pgproto.pyx",
+        "Lib/site-packages/asyncpg/pgproto/tohex.pxd",
+        "Lib/site-packages/asyncpg/pgproto/types.py",
+        "Lib/site-packages/asyncpg/pgproto/uuid.pyx",
+        "Lib/site-packages/asyncpg/pool.py",
+        "Lib/site-packages/asyncpg/prepared_stmt.py",
+        "Lib/site-packages/asyncpg/protocol/__init__.py",
+        "Lib/site-packages/asyncpg/protocol/__pycache__/__init__.cpython-311.pyc",
+        "Lib/site-packages/asyncpg/protocol/codecs/__init__.py",
+        "Lib/site-packages/asyncpg/protocol/codecs/__pycache__/__init__.cpython-311.pyc",
+        "Lib/site-packages/asyncpg/protocol/codecs/array.pyx",
+        "Lib/site-packages/asyncpg/protocol/codecs/base.pxd",
+        "Lib/site-packages/asyncpg/protocol/codecs/base.pyx",
+        "Lib/site-packages/asyncpg/protocol/codecs/pgproto.pyx",
+        "Lib/site-packages/asyncpg/protocol/codecs/range.pyx",
+        "Lib/site-packages/asyncpg/protocol/codecs/record.pyx",
+        "Lib/site-packages/asyncpg/protocol/codecs/textutils.pyx",
+        "Lib/site-packages/asyncpg/protocol/consts.pxi",
+        "Lib/site-packages/asyncpg/protocol/coreproto.pxd",
+        "Lib/site-packages/asyncpg/protocol/coreproto.pyx",
+        "Lib/site-packages/asyncpg/protocol/cpythonx.pxd",
+        "Lib/site-packages/asyncpg/protocol/encodings.pyx",
+        "Lib/site-packages/asyncpg/protocol/pgtypes.pxi",
+        "Lib/site-packages/asyncpg/protocol/prepared_stmt.pxd",
+        "Lib/site-packages/asyncpg/protocol/prepared_stmt.pyx",
+        "Lib/site-packages/asyncpg/protocol/protocol.cp311-win_amd64.pyd",
+        "Lib/site-packages/asyncpg/protocol/protocol.pxd",
+        "Lib/site-packages/asyncpg/protocol/protocol.pyi",
+        "Lib/site-packages/asyncpg/protocol/protocol.pyx",
+        "Lib/site-packages/asyncpg/protocol/record.cp311-win_amd64.pyd",
+        "Lib/site-packages/asyncpg/protocol/record.pyi",
+        "Lib/site-packages/asyncpg/protocol/recordcapi.pxd",
+        "Lib/site-packages/asyncpg/protocol/scram.pxd",
+        "Lib/site-packages/asyncpg/protocol/scram.pyx",
+        "Lib/site-packages/asyncpg/protocol/settings.pxd",
+        "Lib/site-packages/asyncpg/protocol/settings.pyx",
+        "Lib/site-packages/asyncpg/serverversion.py",
+        "Lib/site-packages/asyncpg/transaction.py",
+        "Lib/site-packages/asyncpg/types.py",
+        "Lib/site-packages/asyncpg/utils.py",
+        "Lib/site-packages/asyncpg-0.31.0.dist-info/INSTALLER",
+        "Lib/site-packages/asyncpg-0.31.0.dist-info/METADATA",
+        "Lib/site-packages/asyncpg-0.31.0.dist-info/RECORD",
+        "Lib/site-packages/asyncpg-0.31.0.dist-info/REQUESTED",
+        "Lib/site-packages/asyncpg-0.31.0.dist-info/WHEEL",
+        "Lib/site-packages/asyncpg-0.31.0.dist-info/direct_url.json",
+        "Lib/site-packages/asyncpg-0.31.0.dist-info/licenses/LICENSE",
+        "Lib/site-packages/asyncpg-0.31.0.dist-info/top_level.txt"
+    ],
+    "fn": "asyncpg-0.31.0-py311hf893f09_1.conda",
+    "license": "Apache-2.0",
+    "link": {
+        "source": "C:\\Users\\win\\AppData\\Roaming\\mamba\\pkgs\\https\\conda.anaconda.org\\conda-forge\\win-64\\asyncpg-0.31.0-py311hf893f09_1",
+        "type": 1
+    },
+    "md5": "86bd1152c1ebf0134a994f2f376ffd5a",
+    "name": "asyncpg",
+    "package_tarball_full_path": "C:\\Users\\win\\AppData\\Roaming\\mamba\\pkgs\\https\\conda.anaconda.org\\conda-forge\\win-64\\asyncpg-0.31.0-py311hf893f09_1.tar.bz2",
+    "paths_data": {
+        "paths": [
+            {
+                "_path": "Lib/site-packages/asyncpg/__init__.py",
+                "path_type": "hardlink",
+                "sha256": "ccf048d136c5d09b35fa1399107c64538b011428c6bcbd871e4d2550849d7d54",
+                "sha256_in_prefix": "ccf048d136c5d09b35fa1399107c64538b011428c6bcbd871e4d2550849d7d54",
+                "size_in_bytes": 671
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/__pycache__/__init__.cpython-311.pyc",
+                "path_type": "hardlink",
+                "sha256": "13715802876478281020d85256929d8c3a5f397aceacd5988f3a915ffef9062c",
+                "sha256_in_prefix": "13715802876478281020d85256929d8c3a5f397aceacd5988f3a915ffef9062c",
+                "size_in_bytes": 799
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/__pycache__/_asyncio_compat.cpython-311.pyc",
+                "path_type": "hardlink",
+                "sha256": "a05bb7b952054637af9b9a2c5f2b62622ee1b6510f5bb4fad6e58eea68423512",
+                "sha256_in_prefix": "a05bb7b952054637af9b9a2c5f2b62622ee1b6510f5bb4fad6e58eea68423512",
+                "size_in_bytes": 3563
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/__pycache__/_version.cpython-311.pyc",
+                "path_type": "hardlink",
+                "sha256": "910c438a676bd1e6552fa1a7caccf77a130f841b83106fe55c4019a2bdb5af55",
+                "sha256_in_prefix": "910c438a676bd1e6552fa1a7caccf77a130f841b83106fe55c4019a2bdb5af55",
+                "size_in_bytes": 376
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/__pycache__/cluster.cpython-311.pyc",
+                "path_type": "hardlink",
+                "sha256": "d431a4629a0e67e5b62d2176459f39d8364a49815fafab0865db2d5a0b04a158",
+                "sha256_in_prefix": "d431a4629a0e67e5b62d2176459f39d8364a49815fafab0865db2d5a0b04a158",
+                "size_in_bytes": 36419
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/__pycache__/compat.cpython-311.pyc",
+                "path_type": "hardlink",
+                "sha256": "956c7297673c91944e91116ae1b67c77c344b5a87a59e282be67c78e9e20cd3c",
+                "sha256_in_prefix": "956c7297673c91944e91116ae1b67c77c344b5a87a59e282be67c78e9e20cd3c",
+                "size_in_bytes": 3305
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/__pycache__/connect_utils.cpython-311.pyc",
+                "path_type": "hardlink",
+                "sha256": "4053037ca714a3f08f912236e69b2579b7d6aff3d699e8f4993d0ba289f3c888",
+                "sha256_in_prefix": "4053037ca714a3f08f912236e69b2579b7d6aff3d699e8f4993d0ba289f3c888",
+                "size_in_bytes": 48380
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/__pycache__/connection.cpython-311.pyc",
+                "path_type": "hardlink",
+                "sha256": "9656980b650cbe6a275bb6cd7f2b619db06ada14ee79e11fbf52b87a3b349e83",
+                "sha256_in_prefix": "9656980b650cbe6a275bb6cd7f2b619db06ada14ee79e11fbf52b87a3b349e83",
+                "size_in_bytes": 114225
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/__pycache__/connresource.cpython-311.pyc",
+                "path_type": "hardlink",
+                "sha256": "38666a82b1e83ccdc19930a0c44fd01aa1df1afba902d8f2e413310597437f12",
+                "sha256_in_prefix": "38666a82b1e83ccdc19930a0c44fd01aa1df1afba902d8f2e413310597437f12",
+                "size_in_bytes": 2262
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/__pycache__/cursor.cpython-311.pyc",
+                "path_type": "hardlink",
+                "sha256": "2986b49754b2ca33658a0d2510d4ddd5b50d921a8644dd094ab1cac885a77fe6",
+                "sha256_in_prefix": "2986b49754b2ca33658a0d2510d4ddd5b50d921a8644dd094ab1cac885a77fe6",
+                "size_in_bytes": 13864
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/__pycache__/introspection.cpython-311.pyc",
+                "path_type": "hardlink",
+                "sha256": "25b299d4a657e44ed2405265701100d43e33b031df1188366135180093c2e30a",
+                "sha256_in_prefix": "25b299d4a657e44ed2405265701100d43e33b031df1188366135180093c2e30a",
+                "size_in_bytes": 8833
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/__pycache__/pool.cpython-311.pyc",
+                "path_type": "hardlink",
+                "sha256": "66ea292fa172f1a4744e4c0164b99decb3a487c6c434fc82eb690a5e9d378df1",
+                "sha256_in_prefix": "66ea292fa172f1a4744e4c0164b99decb3a487c6c434fc82eb690a5e9d378df1",
+                "size_in_bytes": 52708
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/__pycache__/prepared_stmt.cpython-311.pyc",
+                "path_type": "hardlink",
+                "sha256": "964326603e04e4c2ddd65ef7cf801e9ec58d5e06d2edc834cc43511efacc7b72",
+                "sha256_in_prefix": "964326603e04e4c2ddd65ef7cf801e9ec58d5e06d2edc834cc43511efacc7b72",
+                "size_in_bytes": 13371
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/__pycache__/serverversion.cpython-311.pyc",
+                "path_type": "hardlink",
+                "sha256": "0b79f60734b244bd4dd30d2cc3d231fbdb61759f037945a9c269e5fc8d5d620d",
+                "sha256_in_prefix": "0b79f60734b244bd4dd30d2cc3d231fbdb61759f037945a9c269e5fc8d5d620d",
+                "size_in_bytes": 2584
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/__pycache__/transaction.cpython-311.pyc",
+                "path_type": "hardlink",
+                "sha256": "dae2db4948cf0a6de47ef4f61d7bd0eb7f12978414dc94b425519ba1236668a0",
+                "sha256_in_prefix": "dae2db4948cf0a6de47ef4f61d7bd0eb7f12978414dc94b425519ba1236668a0",
+                "size_in_bytes": 11109
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/__pycache__/types.cpython-311.pyc",
+                "path_type": "hardlink",
+                "sha256": "3de0423cb6c589caf89f4f0c591edafec3ee054d3393c804279613d03d898ed0",
+                "sha256_in_prefix": "3de0423cb6c589caf89f4f0c591edafec3ee054d3393c804279613d03d898ed0",
+                "size_in_bytes": 8631
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/__pycache__/utils.cpython-311.pyc",
+                "path_type": "hardlink",
+                "sha256": "894fc47fcda598ece299dc9813134e6c1fdf21f0373081cf09e2c39d9b169f49",
+                "sha256_in_prefix": "894fc47fcda598ece299dc9813134e6c1fdf21f0373081cf09e2c39d9b169f49",
+                "size_in_bytes": 2732
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/_asyncio_compat.py",
+                "path_type": "hardlink",
+                "sha256": "a5717f685e28fc0ab136a974b0f9ee19da1ee6c492c10c47a4a585e928594dba",
+                "sha256_in_prefix": "a5717f685e28fc0ab136a974b0f9ee19da1ee6c492c10c47a4a585e928594dba",
+                "size_in_bytes": 2540
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/_testbase/__init__.py",
+                "path_type": "hardlink",
+                "sha256": "23332a7e023982d3b16a39dea1e5b2a08e0db66139b29ed2e5d5e6534830c01f",
+                "sha256_in_prefix": "23332a7e023982d3b16a39dea1e5b2a08e0db66139b29ed2e5d5e6534830c01f",
+                "size_in_bytes": 16499
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/_testbase/__pycache__/__init__.cpython-311.pyc",
+                "path_type": "hardlink",
+                "sha256": "5c3263801f55e66863c082f9ae5642a5c4406b7bac44d1c18cd8d64fac51c1d5",
+                "sha256_in_prefix": "5c3263801f55e66863c082f9ae5642a5c4406b7bac44d1c18cd8d64fac51c1d5",
+                "size_in_bytes": 28128
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/_testbase/__pycache__/fuzzer.cpython-311.pyc",
+                "path_type": "hardlink",
+                "sha256": "d2b3d6977d71ec2a3de469e97a71d27340878ff6fc79246d2972db393fd106ad",
+                "sha256_in_prefix": "d2b3d6977d71ec2a3de469e97a71d27340878ff6fc79246d2972db393fd106ad",
+                "size_in_bytes": 19898
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/_testbase/fuzzer.py",
+                "path_type": "hardlink",
+                "sha256": "dd4c5dbb46177a2fbb259302b822376f128c7676eea2cb15f8a0baf061be012e",
+                "sha256_in_prefix": "dd4c5dbb46177a2fbb259302b822376f128c7676eea2cb15f8a0baf061be012e",
+                "size_in_bytes": 9804
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/_version.py",
+                "path_type": "hardlink",
+                "sha256": "0c8c72f8e4b3db4df3275cfe9653346f46059ea42d3e03d1f633a3096972bad1",
+                "sha256_in_prefix": "0c8c72f8e4b3db4df3275cfe9653346f46059ea42d3e03d1f633a3096972bad1",
+                "size_in_bytes": 641
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/cluster.py",
+                "path_type": "hardlink",
+                "sha256": "b3f1e6b6210626a27a19059aebfce67ded757d9dbd3a93ad313e947dcbbe8348",
+                "sha256_in_prefix": "b3f1e6b6210626a27a19059aebfce67ded757d9dbd3a93ad313e947dcbbe8348",
+                "size_in_bytes": 24476
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/compat.py",
+                "path_type": "hardlink",
+                "sha256": "79bb3621e270f36ad8f66d190a639852aaf2ff69c5df3a938b7b6c58fe454f6a",
+                "sha256_in_prefix": "79bb3621e270f36ad8f66d190a639852aaf2ff69c5df3a938b7b6c58fe454f6a",
+                "size_in_bytes": 2459
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/connect_utils.py",
+                "path_type": "hardlink",
+                "sha256": "fa42ec6ca9faccee62c606ad1cddc0bf716f919acb2005c5fada5aa3f6e6cb9c",
+                "sha256_in_prefix": "fa42ec6ca9faccee62c606ad1cddc0bf716f919acb2005c5fada5aa3f6e6cb9c",
+                "size_in_bytes": 43438
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/connection.py",
+                "path_type": "hardlink",
+                "sha256": "e9abd5c153bc70cfadb61215f11140e90741c2fed5929e574b6548ef8092b48c",
+                "sha256_in_prefix": "e9abd5c153bc70cfadb61215f11140e90741c2fed5929e574b6548ef8092b48c",
+                "size_in_bytes": 99069
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/connresource.py",
+                "path_type": "hardlink",
+                "sha256": "b4102274da4485b0efacc38a41bc27dd936021502db15c404714e7c23e5f93e4",
+                "sha256_in_prefix": "b4102274da4485b0efacc38a41bc27dd936021502db15c404714e7c23e5f93e4",
+                "size_in_bytes": 1384
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/cursor.py",
+                "path_type": "hardlink",
+                "sha256": "aca792209316e66529bec89a9fa6b530bacba04c1b9184d9b2666d120c054fab",
+                "sha256_in_prefix": "aca792209316e66529bec89a9fa6b530bacba04c1b9184d9b2666d120c054fab",
+                "size_in_bytes": 9160
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/exceptions/__init__.py",
+                "path_type": "hardlink",
+                "sha256": "1575180c5430f60c44de6573f7d166b25758c62bcb50cb532215f3bb9b59ecf9",
+                "sha256_in_prefix": "1575180c5430f60c44de6573f7d166b25758c62bcb50cb532215f3bb9b59ecf9",
+                "size_in_bytes": 29157
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/exceptions/__pycache__/__init__.cpython-311.pyc",
+                "path_type": "hardlink",
+                "sha256": "563b3f2a920f739a619e35a932c33f78b786ae61521fd124fc78300b8c8d9fff",
+                "sha256_in_prefix": "563b3f2a920f739a619e35a932c33f78b786ae61521fd124fc78300b8c8d9fff",
+                "size_in_bytes": 57215
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/exceptions/__pycache__/_base.cpython-311.pyc",
+                "path_type": "hardlink",
+                "sha256": "92c5d4ccd2a29ae7b6aef03d02587e4f64396288e7b2c55c489058bd4674f5bc",
+                "sha256_in_prefix": "92c5d4ccd2a29ae7b6aef03d02587e4f64396288e7b2c55c489058bd4674f5bc",
+                "size_in_bytes": 15403
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/exceptions/_base.py",
+                "path_type": "hardlink",
+                "sha256": "bbadb1bfaf67e001ced71af7e458dd819858bea75e6ff9a440aca9fa2a7f0324",
+                "sha256_in_prefix": "bbadb1bfaf67e001ced71af7e458dd819858bea75e6ff9a440aca9fa2a7f0324",
+                "size_in_bytes": 9260
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/introspection.py",
+                "path_type": "hardlink",
+                "sha256": "d1e450b6dd2628f1aff15d9f9d34a2cc2fef2ee93c8db3b5570a2243948071de",
+                "sha256_in_prefix": "d1e450b6dd2628f1aff15d9f9d34a2cc2fef2ee93c8db3b5570a2243948071de",
+                "size_in_bytes": 9340
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/pgproto/__init__.pxd",
+                "path_type": "hardlink",
+                "sha256": "b942242ae23a2069d0e6d657b6b8ce0bfd77aa3a7d3193b07b02a5af1285ccf6",
+                "sha256_in_prefix": "b942242ae23a2069d0e6d657b6b8ce0bfd77aa3a7d3193b07b02a5af1285ccf6",
+                "size_in_bytes": 213
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/pgproto/__init__.py",
+                "path_type": "hardlink",
+                "sha256": "b942242ae23a2069d0e6d657b6b8ce0bfd77aa3a7d3193b07b02a5af1285ccf6",
+                "sha256_in_prefix": "b942242ae23a2069d0e6d657b6b8ce0bfd77aa3a7d3193b07b02a5af1285ccf6",
+                "size_in_bytes": 213
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/pgproto/__pycache__/__init__.cpython-311.pyc",
+                "path_type": "hardlink",
+                "sha256": "5013ea4b320f4abce31716b21e074e0015f78e915df32125cf11a7cbdd48402f",
+                "sha256_in_prefix": "5013ea4b320f4abce31716b21e074e0015f78e915df32125cf11a7cbdd48402f",
+                "size_in_bytes": 204
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/pgproto/__pycache__/types.cpython-311.pyc",
+                "path_type": "hardlink",
+                "sha256": "a4ff04bb29fc3a2a64a754f70b013d1cbb03e532ee1b5efcc6061bb3cc3380db",
+                "sha256_in_prefix": "a4ff04bb29fc3a2a64a754f70b013d1cbb03e532ee1b5efcc6061bb3cc3380db",
+                "size_in_bytes": 21121
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/pgproto/buffer.pxd",
+                "path_type": "hardlink",
+                "sha256": "77e86a8bcd5954b0f5ea54fe35a71a4174d8282b44f916315899998ac962655f",
+                "sha256_in_prefix": "77e86a8bcd5954b0f5ea54fe35a71a4174d8282b44f916315899998ac962655f",
+                "size_in_bytes": 4542
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/pgproto/buffer.pxi",
+                "path_type": "hardlink",
+                "sha256": "cdd939ace3a87a71e9c30617704a3e37251c2e052fdd0c40e342425daaca56c3",
+                "sha256_in_prefix": "cdd939ace3a87a71e9c30617704a3e37251c2e052fdd0c40e342425daaca56c3",
+                "size_in_bytes": 93
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/pgproto/buffer.pyx",
+                "path_type": "hardlink",
+                "sha256": "99c68d49caf58cf23c929c53f637e0fcd89ccbc24e8d0bfa58cda3e4934fa000",
+                "sha256_in_prefix": "99c68d49caf58cf23c929c53f637e0fcd89ccbc24e8d0bfa58cda3e4934fa000",
+                "size_in_bytes": 25710
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/pgproto/codecs/__init__.pxd",
+                "path_type": "hardlink",
+                "sha256": "cc7b457439c69fc78348f3933f0f09cc3f30fce089caa2f417ab3d751f15cf66",
+                "sha256_in_prefix": "cc7b457439c69fc78348f3933f0f09cc3f30fce089caa2f417ab3d751f15cf66",
+                "size_in_bytes": 6130
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/pgproto/codecs/bits.pyx",
+                "path_type": "hardlink",
+                "sha256": "c7830c5512e8b73f51f27f351344b7950424db702f2e53836f6a5efcd198a822",
+                "sha256_in_prefix": "c7830c5512e8b73f51f27f351344b7950424db702f2e53836f6a5efcd198a822",
+                "size_in_bytes": 1475
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/pgproto/codecs/bytea.pyx",
+                "path_type": "hardlink",
+                "sha256": "a2dfa8147fa1cd0f3d1145a778793940353197692b2a4a5813f9d69255475d65",
+                "sha256_in_prefix": "a2dfa8147fa1cd0f3d1145a778793940353197692b2a4a5813f9d69255475d65",
+                "size_in_bytes": 997
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/pgproto/codecs/context.pyx",
+                "path_type": "hardlink",
+                "sha256": "a18bab4e81e7a59cfe43c90fcd1391152fd1c95e071f992c70d2ac6583ede055",
+                "sha256_in_prefix": "a18bab4e81e7a59cfe43c90fcd1391152fd1c95e071f992c70d2ac6583ede055",
+                "size_in_bytes": 623
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/pgproto/codecs/datetime.pyx",
+                "path_type": "hardlink",
+                "sha256": "c0b70f54ea0f32c23b3fc548b9044eee8caa86bf15448aca32f0ed4aa8d8495a",
+                "sha256_in_prefix": "c0b70f54ea0f32c23b3fc548b9044eee8caa86bf15448aca32f0ed4aa8d8495a",
+                "size_in_bytes": 12855
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/pgproto/codecs/float.pyx",
+                "path_type": "hardlink",
+                "sha256": "03a5d703635d4bcd8410d8400c0df92c89f12dc26c4695ef17a25599effa1c27",
+                "sha256_in_prefix": "03a5d703635d4bcd8410d8400c0df92c89f12dc26c4695ef17a25599effa1c27",
+                "size_in_bytes": 1031
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/pgproto/codecs/geometry.pyx",
+                "path_type": "hardlink",
+                "sha256": "0ed4400f0b227dbcc0672002c5a9277b63150297143638bc1323a0b4aba811ac",
+                "sha256_in_prefix": "0ed4400f0b227dbcc0672002c5a9277b63150297143638bc1323a0b4aba811ac",
+                "size_in_bytes": 4665
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/pgproto/codecs/hstore.pyx",
+                "path_type": "hardlink",
+                "sha256": "b17c059f7bb3ca9bcf9182051f41729225bd454f2a4667b6374960f14a01ea48",
+                "sha256_in_prefix": "b17c059f7bb3ca9bcf9182051f41729225bd454f2a4667b6374960f14a01ea48",
+                "size_in_bytes": 2018
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/pgproto/codecs/int.pyx",
+                "path_type": "hardlink",
+                "sha256": "e11ba7b5397fe3e23b7a409238d2bdcb809616085499a14695d5cbeabb8b8313",
+                "sha256_in_prefix": "e11ba7b5397fe3e23b7a409238d2bdcb809616085499a14695d5cbeabb8b8313",
+                "size_in_bytes": 4527
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/pgproto/codecs/json.pyx",
+                "path_type": "hardlink",
+                "sha256": "7eceddd2cae8c8c33d5195be9a61a0bc7b551bb32205a73b2276ffc33d66311b",
+                "sha256_in_prefix": "7eceddd2cae8c8c33d5195be9a61a0bc7b551bb32205a73b2276ffc33d66311b",
+                "size_in_bytes": 1454
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/pgproto/codecs/jsonpath.pyx",
+                "path_type": "hardlink",
+                "sha256": "6c05e04ef3f34259097651c707de42365d3727658077f88adc9b04d4f5c8d8a5",
+                "sha256_in_prefix": "6c05e04ef3f34259097651c707de42365d3727658077f88adc9b04d4f5c8d8a5",
+                "size_in_bytes": 833
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/pgproto/codecs/misc.pyx",
+                "path_type": "hardlink",
+                "sha256": "ba5e471686d0d47dec84ee9386b4a59041ced65bf13a8a939d17a3dd469b2a24",
+                "sha256_in_prefix": "ba5e471686d0d47dec84ee9386b4a59041ced65bf13a8a939d17a3dd469b2a24",
+                "size_in_bytes": 484
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/pgproto/codecs/network.pyx",
+                "path_type": "hardlink",
+                "sha256": "d6814cfffc53e47de9219acbc91aa336aad1eb3d54365a8c3961931a7b1b3b2c",
+                "sha256_in_prefix": "d6814cfffc53e47de9219acbc91aa336aad1eb3d54365a8c3961931a7b1b3b2c",
+                "size_in_bytes": 3917
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/pgproto/codecs/numeric.pyx",
+                "path_type": "hardlink",
+                "sha256": "4c0379b2d157ce6122c8febd3031b5a17af23c0142c999b11dca8f73ebf2ecb3",
+                "sha256_in_prefix": "4c0379b2d157ce6122c8febd3031b5a17af23c0142c999b11dca8f73ebf2ecb3",
+                "size_in_bytes": 10373
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/pgproto/codecs/pg_snapshot.pyx",
+                "path_type": "hardlink",
+                "sha256": "58627e76fec95d5b9fc9b022b9272d87b2a55d72d174ca9229bb5f4f89295562",
+                "sha256_in_prefix": "58627e76fec95d5b9fc9b022b9272d87b2a55d72d174ca9229bb5f4f89295562",
+                "size_in_bytes": 1814
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/pgproto/codecs/text.pyx",
+                "path_type": "hardlink",
+                "sha256": "c87a49091c6b7f63e09b3d5a6d84a0bc540345c80224dd77eda9e2ca03a8fde7",
+                "sha256_in_prefix": "c87a49091c6b7f63e09b3d5a6d84a0bc540345c80224dd77eda9e2ca03a8fde7",
+                "size_in_bytes": 1516
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/pgproto/codecs/tid.pyx",
+                "path_type": "hardlink",
+                "sha256": "ffd2fc0bd3520d5e84864e3c555f3138b0cd2d5273d91f3c128ae765b1dcabcf",
+                "sha256_in_prefix": "ffd2fc0bd3520d5e84864e3c555f3138b0cd2d5273d91f3c128ae765b1dcabcf",
+                "size_in_bytes": 1549
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/pgproto/codecs/uuid.pyx",
+                "path_type": "hardlink",
+                "sha256": "5c8c9d40268f5257f3f4cbd50cebbfe414c77759122a6275af7901a6c7e37d81",
+                "sha256_in_prefix": "5c8c9d40268f5257f3f4cbd50cebbfe414c77759122a6275af7901a6c7e37d81",
+                "size_in_bytes": 855
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/pgproto/consts.pxi",
+                "path_type": "hardlink",
+                "sha256": "7a6ba2e64c37eb68afa361b5e65f1ea55000f26e5e0e571b72b467efde3f91ec",
+                "sha256_in_prefix": "7a6ba2e64c37eb68afa361b5e65f1ea55000f26e5e0e571b72b467efde3f91ec",
+                "size_in_bytes": 282
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/pgproto/cpythonx.pxd",
+                "path_type": "hardlink",
+                "sha256": "07d7c07dab1782858df99f924c60b16eed2c5be411f046e50886f19733e8d147",
+                "sha256_in_prefix": "07d7c07dab1782858df99f924c60b16eed2c5be411f046e50886f19733e8d147",
+                "size_in_bytes": 736
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/pgproto/debug.pxd",
+                "path_type": "hardlink",
+                "sha256": "4ae2c6dadb5e59eddc5e74b47334534cd9e79b6406806d3689ca7fe86fd7f58c",
+                "sha256_in_prefix": "4ae2c6dadb5e59eddc5e74b47334534cd9e79b6406806d3689ca7fe86fd7f58c",
+                "size_in_bytes": 263
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/pgproto/frb.pxd",
+                "path_type": "hardlink",
+                "sha256": "076b36770f929337ca59e2c45b354b4e48e36185b9de96b33dc54d1f7bcfc409",
+                "sha256_in_prefix": "076b36770f929337ca59e2c45b354b4e48e36185b9de96b33dc54d1f7bcfc409",
+                "size_in_bytes": 1212
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/pgproto/frb.pyx",
+                "path_type": "hardlink",
+                "sha256": "edb8a959205779bc1eab72411650af4b06b4ddf21918b90a3ea59b27c5455852",
+                "sha256_in_prefix": "edb8a959205779bc1eab72411650af4b06b4ddf21918b90a3ea59b27c5455852",
+                "size_in_bytes": 409
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/pgproto/hton.pxd",
+                "path_type": "hardlink",
+                "sha256": "4b0c79af2f3689660ef4e9387d16bf6fb70b4ab20fcb13589725e6fa7718c1ea",
+                "sha256_in_prefix": "4b0c79af2f3689660ef4e9387d16bf6fb70b4ab20fcb13589725e6fa7718c1ea",
+                "size_in_bytes": 953
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/pgproto/pgproto.cp311-win_amd64.pyd",
+                "path_type": "hardlink",
+                "sha256": "3b9044749eec4b68dfcab5b81e20245d1e274ef08fbc62c2b91bac906c82c269",
+                "sha256_in_prefix": "3b9044749eec4b68dfcab5b81e20245d1e274ef08fbc62c2b91bac906c82c269",
+                "size_in_bytes": 238080
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/pgproto/pgproto.pxd",
+                "path_type": "hardlink",
+                "sha256": "4145315a21ca74a7c5c5d0d3d1ccd2bce16c0386f9f4c25147a5a551b24580f8",
+                "sha256_in_prefix": "4145315a21ca74a7c5c5d0d3d1ccd2bce16c0386f9f4c25147a5a551b24580f8",
+                "size_in_bytes": 430
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/pgproto/pgproto.pyi",
+                "path_type": "hardlink",
+                "sha256": "bc3b27a3ddda9eee3808c6b44c64ce7104814fc9915d5fafbce1f4bfe906088d",
+                "sha256_in_prefix": "bc3b27a3ddda9eee3808c6b44c64ce7104814fc9915d5fafbce1f4bfe906088d",
+                "size_in_bytes": 411
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/pgproto/pgproto.pyx",
+                "path_type": "hardlink",
+                "sha256": "6caef9a9f4509687f33bc743cc9da61d4134c0b7974ac73948b7801afc9749e1",
+                "sha256_in_prefix": "6caef9a9f4509687f33bc743cc9da61d4134c0b7974ac73948b7801afc9749e1",
+                "size_in_bytes": 1249
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/pgproto/tohex.pxd",
+                "path_type": "hardlink",
+                "sha256": "7d055ac41bba741c363ff44e47c3123d50e555ea7431c2a2ebd7dd4012e189f2",
+                "sha256_in_prefix": "7d055ac41bba741c363ff44e47c3123d50e555ea7431c2a2ebd7dd4012e189f2",
+                "size_in_bytes": 361
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/pgproto/types.py",
+                "path_type": "hardlink",
+                "sha256": "ece9ead9dee2d353cb8d1d7df5376b699141eba09d80811762e1e84024f78ca5",
+                "sha256_in_prefix": "ece9ead9dee2d353cb8d1d7df5376b699141eba09d80811762e1e84024f78ca5",
+                "size_in_bytes": 12775
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/pgproto/uuid.pyx",
+                "path_type": "hardlink",
+                "sha256": "85e52daf42b125248d43dd96cfdc580876eecd2fee307cea989ac4b4a5bfd1c7",
+                "sha256_in_prefix": "85e52daf42b125248d43dd96cfdc580876eecd2fee307cea989ac4b4a5bfd1c7",
+                "size_in_bytes": 10243
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/pool.py",
+                "path_type": "hardlink",
+                "sha256": "abc7101d29db47ff31fbefa2b23aa4fe8fc59924bd2c80ae3622a42024af84cf",
+                "sha256_in_prefix": "abc7101d29db47ff31fbefa2b23aa4fe8fc59924bd2c80ae3622a42024af84cf",
+                "size_in_bytes": 42368
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/prepared_stmt.py",
+                "path_type": "hardlink",
+                "sha256": "acb592f98bc2b7112031610895b4a072e51c077f70cc2a317e4cc213cd3a31a7",
+                "sha256_in_prefix": "acb592f98bc2b7112031610895b4a072e51c077f70cc2a317e4cc213cd3a31a7",
+                "size_in_bytes": 9783
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/protocol/__init__.py",
+                "path_type": "hardlink",
+                "sha256": "7c35946a78a07df218cd171c41e0f69e14177a49746cd1af79f24370c88e13c2",
+                "sha256_in_prefix": "7c35946a78a07df218cd171c41e0f69e14177a49746cd1af79f24370c88e13c2",
+                "size_in_bytes": 359
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/protocol/__pycache__/__init__.cpython-311.pyc",
+                "path_type": "hardlink",
+                "sha256": "488b66444ebe3ef11fb8e891f99991fad42e77622a794894fd32e13ae93e0ae6",
+                "sha256_in_prefix": "488b66444ebe3ef11fb8e891f99991fad42e77622a794894fd32e13ae93e0ae6",
+                "size_in_bytes": 447
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/protocol/codecs/__init__.py",
+                "path_type": "hardlink",
+                "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "sha256_in_prefix": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/protocol/codecs/__pycache__/__init__.cpython-311.pyc",
+                "path_type": "hardlink",
+                "sha256": "89c6f79738aedf5a0512afb0609fb0c9242e924a77edb1d250f019dc94053654",
+                "sha256_in_prefix": "89c6f79738aedf5a0512afb0609fb0c9242e924a77edb1d250f019dc94053654",
+                "size_in_bytes": 212
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/protocol/codecs/array.pyx",
+                "path_type": "hardlink",
+                "sha256": "d52ffac5d8319651bcff52dbebc5dd3e41f542017ade00009a3874f7543b0f29",
+                "sha256_in_prefix": "d52ffac5d8319651bcff52dbebc5dd3e41f542017ade00009a3874f7543b0f29",
+                "size_in_bytes": 29486
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/protocol/codecs/base.pxd",
+                "path_type": "hardlink",
+                "sha256": "c1293f9a644623ee1e721abf17e6e3e409b7de477772e50e0c57b92a048b7cc1",
+                "sha256_in_prefix": "c1293f9a644623ee1e721abf17e6e3e409b7de477772e50e0c57b92a048b7cc1",
+                "size_in_bytes": 6614
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/protocol/codecs/base.pyx",
+                "path_type": "hardlink",
+                "sha256": "e7cbf0fec58104f2111cb040081529509d20780444183692e37e3e57f7813149",
+                "sha256_in_prefix": "e7cbf0fec58104f2111cb040081529509d20780444183692e37e3e57f7813149",
+                "size_in_bytes": 34460
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/protocol/codecs/pgproto.pyx",
+                "path_type": "hardlink",
+                "sha256": "e4f0efd494ff9d76c36c7b5856b1827193770b1cd0760c2a9574fc1a9c8c6a69",
+                "sha256_in_prefix": "e4f0efd494ff9d76c36c7b5856b1827193770b1cd0760c2a9574fc1a9c8c6a69",
+                "size_in_bytes": 17175
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/protocol/codecs/range.pyx",
+                "path_type": "hardlink",
+                "sha256": "f8ff9a7326367b94e512d8ea6e4787dbc3d893e0c62f1a9b9b32831462f905b2",
+                "sha256_in_prefix": "f8ff9a7326367b94e512d8ea6e4787dbc3d893e0c62f1a9b9b32831462f905b2",
+                "size_in_bytes": 6359
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/protocol/codecs/record.pyx",
+                "path_type": "hardlink",
+                "sha256": "975ec73efdd9799cef0cc5e687e15374e4342f1a9a42c81eff88659a719a7fab",
+                "sha256_in_prefix": "975ec73efdd9799cef0cc5e687e15374e4342f1a9a42c81eff88659a719a7fab",
+                "size_in_bytes": 2362
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/protocol/codecs/textutils.pyx",
+                "path_type": "hardlink",
+                "sha256": "5264edd59b39376a0b5433134a549ed73005b79ab8ff86a46d76684ba1d23cef",
+                "sha256_in_prefix": "5264edd59b39376a0b5433134a549ed73005b79ab8ff86a46d76684ba1d23cef",
+                "size_in_bytes": 2011
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/protocol/consts.pxi",
+                "path_type": "hardlink",
+                "sha256": "553ecd2c1a4b80f52f7146cf7e5ad7f3823bf49662160e3317304adbc9c2459a",
+                "sha256_in_prefix": "553ecd2c1a4b80f52f7146cf7e5ad7f3823bf49662160e3317304adbc9c2459a",
+                "size_in_bytes": 381
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/protocol/coreproto.pxd",
+                "path_type": "hardlink",
+                "sha256": "efbc89a9a04c1961e6c728a164815fc9581fcc8085f632f0292bedb82a04f2b3",
+                "sha256_in_prefix": "efbc89a9a04c1961e6c728a164815fc9581fcc8085f632f0292bedb82a04f2b3",
+                "size_in_bytes": 6215
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/protocol/coreproto.pyx",
+                "path_type": "hardlink",
+                "sha256": "1ba1e10b9b1bb0015536636fbe9f2016069e4da5434414647c1f17d035c76050",
+                "sha256_in_prefix": "1ba1e10b9b1bb0015536636fbe9f2016069e4da5434414647c1f17d035c76050",
+                "size_in_bytes": 41005
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/protocol/cpythonx.pxd",
+                "path_type": "hardlink",
+                "sha256": "557ef58383e2c175864d8f81cc13e6ed2f80897e72491ad8e34a808201fe0480",
+                "sha256_in_prefix": "557ef58383e2c175864d8f81cc13e6ed2f80897e72491ad8e34a808201fe0480",
+                "size_in_bytes": 613
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/protocol/encodings.pyx",
+                "path_type": "hardlink",
+                "sha256": "ad38d63e2fa732e9fbc7c5180a4c2c50dd7aa4be4ce4b3ce0d8588dbc9c828be",
+                "sha256_in_prefix": "ad38d63e2fa732e9fbc7c5180a4c2c50dd7aa4be4ce4b3ce0d8588dbc9c828be",
+                "size_in_bytes": 1634
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/protocol/pgtypes.pxi",
+                "path_type": "hardlink",
+                "sha256": "e1755e32bd58d3840e255f5fefa576f3cda74f5be670afbc278021170d1e14ec",
+                "sha256_in_prefix": "e1755e32bd58d3840e255f5fefa576f3cda74f5be670afbc278021170d1e14ec",
+                "size_in_bytes": 6918
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/protocol/prepared_stmt.pxd",
+                "path_type": "hardlink",
+                "sha256": "1a11f326040c7a1a568348b75d299b9091fa1b99e79e674d09fd8453f8178436",
+                "sha256_in_prefix": "1a11f326040c7a1a568348b75d299b9091fa1b99e79e674d09fd8453f8178436",
+                "size_in_bytes": 1115
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/protocol/prepared_stmt.pyx",
+                "path_type": "hardlink",
+                "sha256": "7fe610561579b6bc4d7679728c70a33a68bd6f23f999b3fffdea6cfc96a642db",
+                "sha256_in_prefix": "7fe610561579b6bc4d7679728c70a33a68bd6f23f999b3fffdea6cfc96a642db",
+                "size_in_bytes": 13036
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/protocol/protocol.cp311-win_amd64.pyd",
+                "path_type": "hardlink",
+                "sha256": "fdb71734e43ad4a785a3e54f65f1fe77f0814db22dcc98966ca544fa37a7888e",
+                "sha256_in_prefix": "fdb71734e43ad4a785a3e54f65f1fe77f0814db22dcc98966ca544fa37a7888e",
+                "size_in_bytes": 650240
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/protocol/protocol.pxd",
+                "path_type": "hardlink",
+                "sha256": "c8e5456e40fb980f152b9206209e1d193caf1ca5994d03857c214d7dd79474af",
+                "sha256_in_prefix": "c8e5456e40fb980f152b9206209e1d193caf1ca5994d03857c214d7dd79474af",
+                "size_in_bytes": 1927
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/protocol/protocol.pyi",
+                "path_type": "hardlink",
+                "sha256": "1772c5392504599179f972e90245289877e5413f484e6f7ce49f87b0dd5054ef",
+                "sha256_in_prefix": "1772c5392504599179f972e90245289877e5413f484e6f7ce49f87b0dd5054ef",
+                "size_in_bytes": 9108
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/protocol/protocol.pyx",
+                "path_type": "hardlink",
+                "sha256": "962e254213b73deba572f4b2ebf1a2e0f240529dc61c4f5efa7aa1eb1b50f905",
+                "sha256_in_prefix": "962e254213b73deba572f4b2ebf1a2e0f240529dc61c4f5efa7aa1eb1b50f905",
+                "size_in_bytes": 34473
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/protocol/record.cp311-win_amd64.pyd",
+                "path_type": "hardlink",
+                "sha256": "e11b548ed96f894936322b9b99382cd68a989c6b4277e827d7ed052c851e668f",
+                "sha256_in_prefix": "e11b548ed96f894936322b9b99382cd68a989c6b4277e827d7ed052c851e668f",
+                "size_in_bytes": 27136
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/protocol/record.pyi",
+                "path_type": "hardlink",
+                "sha256": "289ea717d01de6dcf867cc040327bfaf38c1360872097521f4f00ea96e778d6d",
+                "sha256_in_prefix": "289ea717d01de6dcf867cc040327bfaf38c1360872097521f4f00ea96e778d6d",
+                "size_in_bytes": 741
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/protocol/recordcapi.pxd",
+                "path_type": "hardlink",
+                "sha256": "024723851a4f026ba7d609a884a2f0bda95ca8e0ef0047548a39ec2bac18e8b8",
+                "sha256_in_prefix": "024723851a4f026ba7d609a884a2f0bda95ca8e0ef0047548a39ec2bac18e8b8",
+                "size_in_bytes": 360
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/protocol/scram.pxd",
+                "path_type": "hardlink",
+                "sha256": "b7f9e489c212ff8033c721e8abe69850dac536ff0ed16ec4d3dd077cc008ba7a",
+                "sha256_in_prefix": "b7f9e489c212ff8033c721e8abe69850dac536ff0ed16ec4d3dd077cc008ba7a",
+                "size_in_bytes": 1299
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/protocol/scram.pyx",
+                "path_type": "hardlink",
+                "sha256": "9d3fd16b083a8773ab4560c1c1637b963bb9fe19ce997a70585595adbde5fdd4",
+                "sha256_in_prefix": "9d3fd16b083a8773ab4560c1c1637b963bb9fe19ce997a70585595adbde5fdd4",
+                "size_in_bytes": 14594
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/protocol/settings.pxd",
+                "path_type": "hardlink",
+                "sha256": "f034f06799a2d1a014251584e92508443856146162b359a3f25700f213454cbd",
+                "sha256_in_prefix": "f034f06799a2d1a014251584e92508443856146162b359a3f25700f213454cbd",
+                "size_in_bytes": 1066
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/protocol/settings.pyx",
+                "path_type": "hardlink",
+                "sha256": "c880a3645e455f07e677140183ed6a3b45dba4bbd92f5d7e73768c6e2c0cee8a",
+                "sha256_in_prefix": "c880a3645e455f07e677140183ed6a3b45dba4bbd92f5d7e73768c6e2c0cee8a",
+                "size_in_bytes": 3777
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/serverversion.py",
+                "path_type": "hardlink",
+                "sha256": "5b096a049917647bef9c596eb9b0a33e8697ffb3aa8d1f1082239ef74c3a0bd1",
+                "sha256_in_prefix": "5b096a049917647bef9c596eb9b0a33e8697ffb3aa8d1f1082239ef74c3a0bd1",
+                "size_in_bytes": 2133
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/transaction.py",
+                "path_type": "hardlink",
+                "sha256": "b8026893a4a1c7bf8a76de65e0d5fe189b4bc552523d74ce254af219d6c8546f",
+                "sha256_in_prefix": "b8026893a4a1c7bf8a76de65e0d5fe189b4bc552523d74ce254af219d6c8546f",
+                "size_in_bytes": 8497
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/types.py",
+                "path_type": "hardlink",
+                "sha256": "aef5834edf99179e87ac08ed0e539eedaa1d95d126b534c20e8de5d77e151d53",
+                "sha256_in_prefix": "aef5834edf99179e87ac08ed0e539eedaa1d95d126b534c20e8de5d77e151d53",
+                "size_in_bytes": 5512
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg/utils.py",
+                "path_type": "hardlink",
+                "sha256": "634bc04dec68207164a5651196a9e551951a71ce05d62649f6b589dfae783a73",
+                "sha256_in_prefix": "634bc04dec68207164a5651196a9e551951a71ce05d62649f6b589dfae783a73",
+                "size_in_bytes": 1495
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg-0.31.0.dist-info/INSTALLER",
+                "path_type": "hardlink",
+                "sha256": "bc33022edcb7639ff53355b4e91dade50a0bbf0299efeb6171d1ec0ba5029cfc",
+                "sha256_in_prefix": "bc33022edcb7639ff53355b4e91dade50a0bbf0299efeb6171d1ec0ba5029cfc",
+                "size_in_bytes": 6
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg-0.31.0.dist-info/METADATA",
+                "path_type": "hardlink",
+                "sha256": "c450330c04cdcc643e7942d1642b9fc575ce491f0f4b7723e5d2595823a207d0",
+                "sha256_in_prefix": "c450330c04cdcc643e7942d1642b9fc575ce491f0f4b7723e5d2595823a207d0",
+                "size_in_bytes": 4543
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg-0.31.0.dist-info/RECORD",
+                "path_type": "hardlink",
+                "sha256": "60c50c01223d59b43cbaa2195c0bb824a4d671d9638db8ff07d28e00848e81ab",
+                "sha256_in_prefix": "60c50c01223d59b43cbaa2195c0bb824a4d671d9638db8ff07d28e00848e81ab",
+                "size_in_bytes": 9189
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg-0.31.0.dist-info/REQUESTED",
+                "path_type": "hardlink",
+                "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "sha256_in_prefix": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg-0.31.0.dist-info/WHEEL",
+                "path_type": "hardlink",
+                "sha256": "24b38cb0fec5e6ab6402420dc79527cdb160b9ff02a997ab695f28d386f423c2",
+                "sha256_in_prefix": "24b38cb0fec5e6ab6402420dc79527cdb160b9ff02a997ab695f28d386f423c2",
+                "size_in_bytes": 101
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg-0.31.0.dist-info/direct_url.json",
+                "path_type": "hardlink",
+                "sha256": "234b636336a361c3c6e9615c17b2196a8c81592ccff417407e65e52cc6ef655e",
+                "sha256_in_prefix": "234b636336a361c3c6e9615c17b2196a8c81592ccff417407e65e52cc6ef655e",
+                "size_in_bytes": 83
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg-0.31.0.dist-info/licenses/LICENSE",
+                "path_type": "hardlink",
+                "sha256": "d9222d73fdac50992174076efa04f44f6fbcd9d56155a7c7092e98757042a6f6",
+                "sha256_in_prefix": "d9222d73fdac50992174076efa04f44f6fbcd9d56155a7c7092e98757042a6f6",
+                "size_in_bytes": 11466
+            },
+            {
+                "_path": "Lib/site-packages/asyncpg-0.31.0.dist-info/top_level.txt",
+                "path_type": "hardlink",
+                "sha256": "0dd855869cc2ab8f66ca490735a83a8bdcee271d39fedc7808c67298cd45f1d5",
+                "sha256_in_prefix": "0dd855869cc2ab8f66ca490735a83a8bdcee271d39fedc7808c67298cd45f1d5",
+                "size_in_bytes": 8
+            }
+        ],
+        "paths_version": 1
+    },
+    "platform": "win",
+    "requested_spec": "asyncpg",
+    "sha256": "1b5aede11062fa13ee013b0161c099fd234cc8e298cfb2792ec58e7004e4733a",
+    "size": 621660,
+    "subdir": "win-64",
+    "timestamp": 1768733564,
+    "url": "https://conda.anaconda.org/conda-forge/win-64/asyncpg-0.31.0-py311hf893f09_1.conda",
+    "version": "0.31.0"
+}

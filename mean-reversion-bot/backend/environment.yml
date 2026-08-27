@@ -1,0 +1,23 @@
+name: mrbot
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+  - numpy=1.26.*
+  - pandas
+  - uvicorn
+  - fastapi
+  - httpx
+  - pydantic
+  - sqlalchemy
+  - pip:
+      - aiomysql==0.2.0
+  - redis
+  - websockets
+  - python-jose
+  - passlib
+  - python-multipart
+  - sentry-sdk
+  - pytest
+  - pytest-asyncio

@@ -1,0 +1,186 @@
+{
+    "arch": "x86_64",
+    "build": "py311hf0a8809_1",
+    "build_number": 1,
+    "build_string": "py311hf0a8809_1",
+    "channel": "conda-forge",
+    "constrains": [],
+    "depends": [
+        "gmp >=6.3.0,<7.0a0",
+        "mpc >=1.3.1,<2.0a0",
+        "mpfr >=4.2.1,<5.0a0",
+        "python >=3.11,<3.12.0a0",
+        "python_abi 3.11.* *_cp311",
+        "ucrt >=10.0.20348.0",
+        "vc >=14.3,<15",
+        "vc14_runtime >=14.44.35208"
+    ],
+    "extracted_package_dir": "C:\\Users\\win\\AppData\\Roaming\\mamba\\pkgs\\https\\conda.anaconda.org\\conda-forge\\win-64\\gmpy2-2.3.0-py311hf0a8809_1",
+    "files": [
+        "Lib/site-packages/gmpy2-2.3.0.dist-info/INSTALLER",
+        "Lib/site-packages/gmpy2-2.3.0.dist-info/METADATA",
+        "Lib/site-packages/gmpy2-2.3.0.dist-info/RECORD",
+        "Lib/site-packages/gmpy2-2.3.0.dist-info/REQUESTED",
+        "Lib/site-packages/gmpy2-2.3.0.dist-info/WHEEL",
+        "Lib/site-packages/gmpy2-2.3.0.dist-info/direct_url.json",
+        "Lib/site-packages/gmpy2-2.3.0.dist-info/licenses/COPYING",
+        "Lib/site-packages/gmpy2-2.3.0.dist-info/licenses/COPYING.LESSER",
+        "Lib/site-packages/gmpy2-2.3.0.dist-info/top_level.txt",
+        "Lib/site-packages/gmpy2/__init__.pxd",
+        "Lib/site-packages/gmpy2/__init__.py",
+        "Lib/site-packages/gmpy2/__pycache__/__init__.cpython-311.pyc",
+        "Lib/site-packages/gmpy2/gmp.h",
+        "Lib/site-packages/gmpy2/gmpy2.cp311-win_amd64.pyd",
+        "Lib/site-packages/gmpy2/gmpy2.h",
+        "Lib/site-packages/gmpy2/gmpy2.pxd",
+        "Lib/site-packages/gmpy2/mpc.h",
+        "Lib/site-packages/gmpy2/mpfr.h"
+    ],
+    "fn": "gmpy2-2.3.0-py311hf0a8809_1.conda",
+    "license": "LGPL-3.0-or-later",
+    "link": {
+        "source": "C:\\Users\\win\\AppData\\Roaming\\mamba\\pkgs\\https\\conda.anaconda.org\\conda-forge\\win-64\\gmpy2-2.3.0-py311hf0a8809_1",
+        "type": 1
+    },
+    "md5": "66d57641d4a2153e965d24b2089fe3d8",
+    "name": "gmpy2",
+    "package_tarball_full_path": "C:\\Users\\win\\AppData\\Roaming\\mamba\\pkgs\\https\\conda.anaconda.org\\conda-forge\\win-64\\gmpy2-2.3.0-py311hf0a8809_1.tar.bz2",
+    "paths_data": {
+        "paths": [
+            {
+                "_path": "Lib/site-packages/gmpy2-2.3.0.dist-info/INSTALLER",
+                "path_type": "hardlink",
+                "sha256": "d0edee15f91b406f3f99726e44eb990be6e34fd0345b52b910c568e0eef6a2a8",
+                "sha256_in_prefix": "d0edee15f91b406f3f99726e44eb990be6e34fd0345b52b910c568e0eef6a2a8",
+                "size_in_bytes": 5
+            },
+            {
+                "_path": "Lib/site-packages/gmpy2-2.3.0.dist-info/METADATA",
+                "path_type": "hardlink",
+                "sha256": "97ab2c87314b2c7861aeb6910c95de1439eea2cf261ce77901f13c1ba2046d5d",
+                "sha256_in_prefix": "97ab2c87314b2c7861aeb6910c95de1439eea2cf261ce77901f13c1ba2046d5d",
+                "size_in_bytes": 2548
+            },
+            {
+                "_path": "Lib/site-packages/gmpy2-2.3.0.dist-info/RECORD",
+                "path_type": "hardlink",
+                "sha256": "8c80ce05561664953b9f0db0420eb6f2d539c9c6cd960396258236fb0e1fa5f7",
+                "sha256_in_prefix": "8c80ce05561664953b9f0db0420eb6f2d539c9c6cd960396258236fb0e1fa5f7",
+                "size_in_bytes": 1400
+            },
+            {
+                "_path": "Lib/site-packages/gmpy2-2.3.0.dist-info/REQUESTED",
+                "path_type": "hardlink",
+                "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "sha256_in_prefix": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            {
+                "_path": "Lib/site-packages/gmpy2-2.3.0.dist-info/WHEEL",
+                "path_type": "hardlink",
+                "sha256": "5c75cc289537ca8561d596a70574c9e5b0c66faee8118b45d52e9b77c6b88b32",
+                "sha256_in_prefix": "5c75cc289537ca8561d596a70574c9e5b0c66faee8118b45d52e9b77c6b88b32",
+                "size_in_bytes": 101
+            },
+            {
+                "_path": "Lib/site-packages/gmpy2-2.3.0.dist-info/direct_url.json",
+                "path_type": "hardlink",
+                "sha256": "578f6387840ffc72017398f9adb74c4e127b2c65e13d71eb3c34c5820f3b23aa",
+                "sha256_in_prefix": "578f6387840ffc72017398f9adb74c4e127b2c65e13d71eb3c34c5820f3b23aa",
+                "size_in_bytes": 66
+            },
+            {
+                "_path": "Lib/site-packages/gmpy2-2.3.0.dist-info/licenses/COPYING",
+                "path_type": "hardlink",
+                "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+                "sha256_in_prefix": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+                "size_in_bytes": 35147
+            },
+            {
+                "_path": "Lib/site-packages/gmpy2-2.3.0.dist-info/licenses/COPYING.LESSER",
+                "path_type": "hardlink",
+                "sha256": "da7eabb7bafdf7d3ae5e9f223aa5bdc1eece45ac569dc21b3b037520b4464768",
+                "sha256_in_prefix": "da7eabb7bafdf7d3ae5e9f223aa5bdc1eece45ac569dc21b3b037520b4464768",
+                "size_in_bytes": 7651
+            },
+            {
+                "_path": "Lib/site-packages/gmpy2-2.3.0.dist-info/top_level.txt",
+                "path_type": "hardlink",
+                "sha256": "4a6e8660420bb413e4fe08f3d2c9e04e3c792669f879bb7179b7644153898114",
+                "sha256_in_prefix": "4a6e8660420bb413e4fe08f3d2c9e04e3c792669f879bb7179b7644153898114",
+                "size_in_bytes": 6
+            },
+            {
+                "_path": "Lib/site-packages/gmpy2/__init__.pxd",
+                "path_type": "hardlink",
+                "sha256": "de9ed5a04d31e6b5b1381d783bca4210e0a547a037dd543ed66cb068d78e7e53",
+                "sha256_in_prefix": "de9ed5a04d31e6b5b1381d783bca4210e0a547a037dd543ed66cb068d78e7e53",
+                "size_in_bytes": 27
+            },
+            {
+                "_path": "Lib/site-packages/gmpy2/__init__.py",
+                "path_type": "hardlink",
+                "sha256": "3d4f21a0e9d6d32c935e3d39ef4be23a9a7d0ea56344ebbb0b8dca4f5651e8a2",
+                "sha256_in_prefix": "3d4f21a0e9d6d32c935e3d39ef4be23a9a7d0ea56344ebbb0b8dca4f5651e8a2",
+                "size_in_bytes": 412
+            },
+            {
+                "_path": "Lib/site-packages/gmpy2/__pycache__/__init__.cpython-311.pyc",
+                "path_type": "hardlink",
+                "sha256": "6bb4d8f987249516aaa2e80768a8bd248b02a42a16101105dd46393b9d91ca3e",
+                "sha256_in_prefix": "6bb4d8f987249516aaa2e80768a8bd248b02a42a16101105dd46393b9d91ca3e",
+                "size_in_bytes": 478
+            },
+            {
+                "_path": "Lib/site-packages/gmpy2/gmp.h",
+                "path_type": "hardlink",
+                "sha256": "5ded6be61fad9ecf020dfc1f2a09fd2a2249627f696f31469fdcb9fd5164f3d8",
+                "sha256_in_prefix": "5ded6be61fad9ecf020dfc1f2a09fd2a2249627f696f31469fdcb9fd5164f3d8",
+                "size_in_bytes": 84221
+            },
+            {
+                "_path": "Lib/site-packages/gmpy2/gmpy2.cp311-win_amd64.pyd",
+                "path_type": "hardlink",
+                "sha256": "4228503cd36ae21c65c9112dd38bd97e8d362ce29a7e1369365aebef327e37a7",
+                "sha256_in_prefix": "4228503cd36ae21c65c9112dd38bd97e8d362ce29a7e1369365aebef327e37a7",
+                "size_in_bytes": 447488
+            },
+            {
+                "_path": "Lib/site-packages/gmpy2/gmpy2.h",
+                "path_type": "hardlink",
+                "sha256": "0f9c38e2c4983d14b05c802b9846831137452fd7e7e753006ca66a9ad987e7f6",
+                "sha256_in_prefix": "0f9c38e2c4983d14b05c802b9846831137452fd7e7e753006ca66a9ad987e7f6",
+                "size_in_bytes": 18669
+            },
+            {
+                "_path": "Lib/site-packages/gmpy2/gmpy2.pxd",
+                "path_type": "hardlink",
+                "sha256": "f36a87076d4fd08e64f11bc915fcefb66a3e17248b8c09f670f07702395eb8e2",
+                "sha256_in_prefix": "f36a87076d4fd08e64f11bc915fcefb66a3e17248b8c09f670f07702395eb8e2",
+                "size_in_bytes": 4681
+            },
+            {
+                "_path": "Lib/site-packages/gmpy2/mpc.h",
+                "path_type": "hardlink",
+                "sha256": "bca641f4c59f5303d3212650cc00fec0ee2659a220067535dee9029761e83849",
+                "sha256_in_prefix": "bca641f4c59f5303d3212650cc00fec0ee2659a220067535dee9029761e83849",
+                "size_in_bytes": 16949
+            },
+            {
+                "_path": "Lib/site-packages/gmpy2/mpfr.h",
+                "path_type": "hardlink",
+                "sha256": "588c2bd606cba060afb49cd024f9119e996089a341a99d1dc7e0367622335a13",
+                "sha256_in_prefix": "588c2bd606cba060afb49cd024f9119e996089a341a99d1dc7e0367622335a13",
+                "size_in_bytes": 57588
+            }
+        ],
+        "paths_version": 1
+    },
+    "platform": "win",
+    "requested_spec": "",
+    "sha256": "da1e5d84d84f965f0ffefdfc1edc385bed69b52cf702b99774bb981fe1715bad",
+    "size": 188456,
+    "subdir": "win-64",
+    "timestamp": 1773245194,
+    "url": "https://conda.anaconda.org/conda-forge/win-64/gmpy2-2.3.0-py311hf0a8809_1.conda",
+    "version": "2.3.0"
+}

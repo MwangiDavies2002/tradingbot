@@ -1,0 +1,97 @@
+version: "3.9"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Mean Reversion Bot — Docker Compose (Local Dev)
+#
+# Usage:
+#   make up          # Start all services
+#   make down        # Stop all services
+#   make logs        # Tail all logs
+#   make db-shell    # Open a MySQL shell
+#   make redis-cli   # Open redis-cli
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── Redis ───────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: mrbot_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ── FastAPI Backend ─────────────────────────────────────────────────────────
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: mrbot_api
+    restart: unless-stopped
+    env_file: ./backend/.env
+    environment:
+      DATABASE_URL: mysql+aiomysql://root:@host.docker.internal:3306/meanrevbot
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "8000:8000"
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app          # Hot-reload in dev
+    command: >
+      uvicorn app.main:app
+        --host 0.0.0.0
+        --port 8000
+        --reload
+        --log-level info
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── Bot Runner (separate process) ───────────────────────────────────────────
+  bot:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: mrbot_runner
+    restart: unless-stopped
+    env_file: ./backend/.env
+    environment:
+      DATABASE_URL: mysql+aiomysql://root:@host.docker.internal:3306/meanrevbot
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    command: python -m app.bot
+    profiles:
+      - bot      # Only start with: docker compose --profile bot up
+
+  # ── React Frontend (dev) ────────────────────────────────────────────────────
+  frontend:
+    image: node:20-alpine
+    container_name: mrbot_frontend
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    environment:
+      VITE_API_URL: http://localhost:8000
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    depends_on:
+      - api
+    profiles:
+      - frontend   # Only start with: docker compose --profile frontend up
+

@@ -1,0 +1,9 @@
+prefix=C:/Users/win/Desktop/mean-reversion-bot_2/mean-reversion-bot/backend/.micromamba/envs/mrbot/Library 
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: OpenSSL
+Description: Secure Sockets Layer and cryptography libraries and tools
+Requires: libssl libcrypto
+Version: 3.6.3 

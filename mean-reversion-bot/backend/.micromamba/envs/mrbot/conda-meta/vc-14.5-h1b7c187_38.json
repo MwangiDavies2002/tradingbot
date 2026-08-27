@@ -1,0 +1,36 @@
+{
+    "arch": "x86_64",
+    "build": "h1b7c187_38",
+    "build_number": 38,
+    "build_string": "h1b7c187_38",
+    "channel": "conda-forge",
+    "constrains": [],
+    "depends": [
+        "vc14_runtime >=14.51.36231"
+    ],
+    "extracted_package_dir": "C:\\Users\\win\\AppData\\Roaming\\mamba\\pkgs\\https\\conda.anaconda.org\\conda-forge\\win-64\\vc-14.5-h1b7c187_38",
+    "files": [],
+    "fn": "vc-14.5-h1b7c187_38.conda",
+    "license": "BSD-3-Clause",
+    "license_family": "BSD",
+    "link": {
+        "source": "C:\\Users\\win\\AppData\\Roaming\\mamba\\pkgs\\https\\conda.anaconda.org\\conda-forge\\win-64\\vc-14.5-h1b7c187_38",
+        "type": 1
+    },
+    "md5": "774568633f3b26d7a4a6dd4f9ea6d3e1",
+    "name": "vc",
+    "package_tarball_full_path": "C:\\Users\\win\\AppData\\Roaming\\mamba\\pkgs\\https\\conda.anaconda.org\\conda-forge\\win-64\\vc-14.5-h1b7c187_38.tar.bz2",
+    "paths_data": {
+        "paths": [],
+        "paths_version": 1
+    },
+    "platform": "win",
+    "requested_spec": "",
+    "sha256": "61b68e5a4fc71a17f8d64b12e013a2f971ad980bd08e9c389d5e68efe1a67de0",
+    "size": 20187,
+    "subdir": "win-64",
+    "timestamp": 1780005880,
+    "track_features": "vc14",
+    "url": "https://conda.anaconda.org/conda-forge/win-64/vc-14.5-h1b7c187_38.conda",
+    "version": "14.5"
+}

@@ -1,0 +1,48 @@
+{
+    "arch": "x86_64",
+    "build": "8_hf9ab0e9_mkl",
+    "build_number": 8,
+    "build_string": "8_hf9ab0e9_mkl",
+    "channel": "conda-forge",
+    "constrains": [
+        "libcblas 3.11.0 8*_mkl",
+        "liblapacke 3.11.0 8*_mkl",
+        "blas 2.308 mkl"
+    ],
+    "depends": [
+        "libblas 3.11.0 8_h8455456_mkl"
+    ],
+    "extracted_package_dir": "C:\\Users\\win\\AppData\\Roaming\\mamba\\pkgs\\https\\conda.anaconda.org\\conda-forge\\win-64\\liblapack-3.11.0-8_hf9ab0e9_mkl",
+    "files": [
+        "Library/bin/liblapack.dll"
+    ],
+    "fn": "liblapack-3.11.0-8_hf9ab0e9_mkl.conda",
+    "license": "BSD-3-Clause",
+    "link": {
+        "source": "C:\\Users\\win\\AppData\\Roaming\\mamba\\pkgs\\https\\conda.anaconda.org\\conda-forge\\win-64\\liblapack-3.11.0-8_hf9ab0e9_mkl",
+        "type": 1
+    },
+    "md5": "d584799b920ecae9b75a2b70743a3de7",
+    "name": "liblapack",
+    "package_tarball_full_path": "C:\\Users\\win\\AppData\\Roaming\\mamba\\pkgs\\https\\conda.anaconda.org\\conda-forge\\win-64\\liblapack-3.11.0-8_hf9ab0e9_mkl.tar.bz2",
+    "paths_data": {
+        "paths": [
+            {
+                "_path": "Library/bin/liblapack.dll",
+                "path_type": "hardlink",
+                "sha256": "8694b12962ddbec511e47d3e53d7a79e2cc5432f38c626a6870d5941bc8ed21e",
+                "sha256_in_prefix": "8694b12962ddbec511e47d3e53d7a79e2cc5432f38c626a6870d5941bc8ed21e",
+                "size_in_bytes": 181760
+            }
+        ],
+        "paths_version": 1
+    },
+    "platform": "win",
+    "requested_spec": "",
+    "sha256": "44999ed04bc0a56de44ee0ac8bd5b3702efd411a8b29491c0e3d3deb8619c94e",
+    "size": 81027,
+    "subdir": "win-64",
+    "timestamp": 1779859714,
+    "url": "https://conda.anaconda.org/conda-forge/win-64/liblapack-3.11.0-8_hf9ab0e9_mkl.conda",
+    "version": "3.11.0"
+}

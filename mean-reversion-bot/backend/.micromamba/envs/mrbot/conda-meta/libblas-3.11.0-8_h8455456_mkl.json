@@ -1,0 +1,49 @@
+{
+    "arch": "x86_64",
+    "build": "8_h8455456_mkl",
+    "build_number": 8,
+    "build_string": "8_h8455456_mkl",
+    "channel": "conda-forge",
+    "constrains": [
+        "libcblas 3.11.0 8*_mkl",
+        "liblapacke 3.11.0 8*_mkl",
+        "blas 2.308 mkl",
+        "liblapack 3.11.0 8*_mkl"
+    ],
+    "depends": [
+        "mkl >=2026.0.0,<2027.0a0"
+    ],
+    "extracted_package_dir": "C:\\Users\\win\\AppData\\Roaming\\mamba\\pkgs\\https\\conda.anaconda.org\\conda-forge\\win-64\\libblas-3.11.0-8_h8455456_mkl",
+    "files": [
+        "Library/bin/libblas.dll"
+    ],
+    "fn": "libblas-3.11.0-8_h8455456_mkl.conda",
+    "license": "BSD-3-Clause",
+    "link": {
+        "source": "C:\\Users\\win\\AppData\\Roaming\\mamba\\pkgs\\https\\conda.anaconda.org\\conda-forge\\win-64\\libblas-3.11.0-8_h8455456_mkl",
+        "type": 1
+    },
+    "md5": "4a0ce24b1a946ff77ae9eaa7ef015a33",
+    "name": "libblas",
+    "package_tarball_full_path": "C:\\Users\\win\\AppData\\Roaming\\mamba\\pkgs\\https\\conda.anaconda.org\\conda-forge\\win-64\\libblas-3.11.0-8_h8455456_mkl.tar.bz2",
+    "paths_data": {
+        "paths": [
+            {
+                "_path": "Library/bin/libblas.dll",
+                "path_type": "hardlink",
+                "sha256": "fcc0f39d3d7380379edfbd80e39ae523d068f2ffd0aa439ff4363a4324570c58",
+                "sha256_in_prefix": "fcc0f39d3d7380379edfbd80e39ae523d068f2ffd0aa439ff4363a4324570c58",
+                "size_in_bytes": 108544
+            }
+        ],
+        "paths_version": 1
+    },
+    "platform": "win",
+    "requested_spec": "",
+    "sha256": "43a87b59e6d4c68d80b2e4de487b1b54d66fe1f9a06636909b5a5ab9eae27269",
+    "size": 68103,
+    "subdir": "win-64",
+    "timestamp": 1779859688,
+    "url": "https://conda.anaconda.org/conda-forge/win-64/libblas-3.11.0-8_h8455456_mkl.conda",
+    "version": "3.11.0"
+}

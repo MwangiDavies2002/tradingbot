@@ -1,0 +1,204 @@
+{
+    "arch": null,
+    "build": "pyhd3eb1b0_0",
+    "build_number": 0,
+    "build_string": "pyhd3eb1b0_0",
+    "channel": "pkgs/main",
+    "constrains": [],
+    "depends": [
+        "python !=3.0,!=3.1,!=3.2,!=3.3,!=3.4"
+    ],
+    "extracted_package_dir": "C:\\Users\\win\\AppData\\Roaming\\mamba\\pkgs\\https\\repo.anaconda.com\\pkgs\\main\\noarch\\redis-3.5.3-pyhd3eb1b0_0",
+    "files": [
+        "Lib/site-packages/redis-3.5.3.dist-info/INSTALLER",
+        "Lib/site-packages/redis-3.5.3.dist-info/LICENSE",
+        "Lib/site-packages/redis-3.5.3.dist-info/METADATA",
+        "Lib/site-packages/redis-3.5.3.dist-info/RECORD",
+        "Lib/site-packages/redis-3.5.3.dist-info/REQUESTED",
+        "Lib/site-packages/redis-3.5.3.dist-info/WHEEL",
+        "Lib/site-packages/redis-3.5.3.dist-info/direct_url.json",
+        "Lib/site-packages/redis-3.5.3.dist-info/top_level.txt",
+        "Lib/site-packages/redis/__init__.py",
+        "Lib/site-packages/redis/_compat.py",
+        "Lib/site-packages/redis/client.py",
+        "Lib/site-packages/redis/connection.py",
+        "Lib/site-packages/redis/exceptions.py",
+        "Lib/site-packages/redis/lock.py",
+        "Lib/site-packages/redis/sentinel.py",
+        "Lib/site-packages/redis/utils.py",
+        "Lib/site-packages/redis/__pycache__/__init__.cpython-311.pyc",
+        "Lib/site-packages/redis/__pycache__/_compat.cpython-311.pyc",
+        "Lib/site-packages/redis/__pycache__/client.cpython-311.pyc",
+        "Lib/site-packages/redis/__pycache__/connection.cpython-311.pyc",
+        "Lib/site-packages/redis/__pycache__/exceptions.cpython-311.pyc",
+        "Lib/site-packages/redis/__pycache__/lock.cpython-311.pyc",
+        "Lib/site-packages/redis/__pycache__/sentinel.cpython-311.pyc",
+        "Lib/site-packages/redis/__pycache__/utils.cpython-311.pyc"
+    ],
+    "fn": "redis-3.5.3-pyhd3eb1b0_0.conda",
+    "license": "MIT",
+    "link": {
+        "source": "C:\\Users\\win\\AppData\\Roaming\\mamba\\pkgs\\https\\repo.anaconda.com\\pkgs\\main\\noarch\\redis-3.5.3-pyhd3eb1b0_0",
+        "type": 1
+    },
+    "md5": "0bf6f4bc9c4792087a73abd04d1acd2a",
+    "name": "redis",
+    "noarch": "python",
+    "package_tarball_full_path": "C:\\Users\\win\\AppData\\Roaming\\mamba\\pkgs\\https\\repo.anaconda.com\\pkgs\\main\\noarch\\redis-3.5.3-pyhd3eb1b0_0.tar.bz2",
+    "paths_data": {
+        "paths": [
+            {
+                "_path": "Lib/site-packages/redis-3.5.3.dist-info/INSTALLER",
+                "path_type": "hardlink",
+                "sha256": "d0edee15f91b406f3f99726e44eb990be6e34fd0345b52b910c568e0eef6a2a8",
+                "sha256_in_prefix": "d0edee15f91b406f3f99726e44eb990be6e34fd0345b52b910c568e0eef6a2a8",
+                "size_in_bytes": 5
+            },
+            {
+                "_path": "Lib/site-packages/redis-3.5.3.dist-info/LICENSE",
+                "path_type": "hardlink",
+                "sha256": "790148d8c12f8a38b2707a74be2343316bad126995ff54801a181b8b231ba124",
+                "sha256_in_prefix": "790148d8c12f8a38b2707a74be2343316bad126995ff54801a181b8b231ba124",
+                "size_in_bytes": 1074
+            },
+            {
+                "_path": "Lib/site-packages/redis-3.5.3.dist-info/METADATA",
+                "path_type": "hardlink",
+                "sha256": "0a943c5d39afd77a351f1b8ebd3ec91e22bd4e6f627afdbc6ab61a04b67347a4",
+                "sha256_in_prefix": "0a943c5d39afd77a351f1b8ebd3ec91e22bd4e6f627afdbc6ab61a04b67347a4",
+                "size_in_bytes": 36669
+            },
+            {
+                "_path": "Lib/site-packages/redis-3.5.3.dist-info/RECORD",
+                "path_type": "hardlink",
+                "sha256": "fc0b0a6bb7f9c735d098830b06effef8325462026ebbf4388434211406d5e146",
+                "sha256_in_prefix": "fc0b0a6bb7f9c735d098830b06effef8325462026ebbf4388434211406d5e146",
+                "size_in_bytes": 1599
+            },
+            {
+                "_path": "Lib/site-packages/redis-3.5.3.dist-info/REQUESTED",
+                "path_type": "hardlink",
+                "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "sha256_in_prefix": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            {
+                "_path": "Lib/site-packages/redis-3.5.3.dist-info/WHEEL",
+                "path_type": "hardlink",
+                "sha256": "5b367c7308e1f25d23b542cd8d8ab51e9afe582a824603ebfbe4d7e0fe48d56a",
+                "sha256_in_prefix": "5b367c7308e1f25d23b542cd8d8ab51e9afe582a824603ebfbe4d7e0fe48d56a",
+                "size_in_bytes": 110
+            },
+            {
+                "_path": "Lib/site-packages/redis-3.5.3.dist-info/direct_url.json",
+                "path_type": "hardlink",
+                "sha256": "742ce0d5a9c939c61b91e0a8e6673367d27a4a5ab94cccda6ad305d311a35a7e",
+                "sha256_in_prefix": "742ce0d5a9c939c61b91e0a8e6673367d27a4a5ab94cccda6ad305d311a35a7e",
+                "size_in_bytes": 91
+            },
+            {
+                "_path": "Lib/site-packages/redis-3.5.3.dist-info/top_level.txt",
+                "path_type": "hardlink",
+                "sha256": "38c01e7ecce575ee99a0eb65337e405b3a5122bc2d72a00c1c69518adfb0dbee",
+                "sha256_in_prefix": "38c01e7ecce575ee99a0eb65337e405b3a5122bc2d72a00c1c69518adfb0dbee",
+                "size_in_bytes": 6
+            },
+            {
+                "_path": "Lib/site-packages/redis/__init__.py",
+                "path_type": "hardlink",
+                "sha256": "c47784b367b9ba2030695d28c49fc381d395afc53c6393a548227dad16e22e41",
+                "sha256_in_prefix": "c47784b367b9ba2030695d28c49fc381d395afc53c6393a548227dad16e22e41",
+                "size_in_bytes": 1209
+            },
+            {
+                "_path": "Lib/site-packages/redis/_compat.py",
+                "path_type": "hardlink",
+                "sha256": "a2933bf03742cb80fcea9f5ca4dfcef35c8d82354353038918bb4c4b82cbf7ed",
+                "sha256_in_prefix": "a2933bf03742cb80fcea9f5ca4dfcef35c8d82354353038918bb4c4b82cbf7ed",
+                "size_in_bytes": 5698
+            },
+            {
+                "_path": "Lib/site-packages/redis/client.py",
+                "path_type": "hardlink",
+                "sha256": "86cd60c470cdf407293f2d42a5feb21eae080ad0d8a1f5bd5e28d7a520de486d",
+                "sha256_in_prefix": "86cd60c470cdf407293f2d42a5feb21eae080ad0d8a1f5bd5e28d7a520de486d",
+                "size_in_bytes": 159611
+            },
+            {
+                "_path": "Lib/site-packages/redis/connection.py",
+                "path_type": "hardlink",
+                "sha256": "0799f6ba7cb3e58852ce1b322bd59afc05d98d3ea0bb19ea1dd65c7db7b78eab",
+                "sha256_in_prefix": "0799f6ba7cb3e58852ce1b322bd59afc05d98d3ea0bb19ea1dd65c7db7b78eab",
+                "size_in_bytes": 55954
+            },
+            {
+                "_path": "Lib/site-packages/redis/exceptions.py",
+                "path_type": "hardlink",
+                "sha256": "a618e3c898e779baccf365c3cdf8edade1a791622848d7c3662ca85acdffcd01",
+                "sha256_in_prefix": "a618e3c898e779baccf365c3cdf8edade1a791622848d7c3662ca85acdffcd01",
+                "size_in_bytes": 1341
+            },
+            {
+                "_path": "Lib/site-packages/redis/lock.py",
+                "path_type": "hardlink",
+                "sha256": "54d7d634de3a141c2170f527166cc2f0df2e2eec42b2ed984f676b904cccebf5",
+                "sha256_in_prefix": "54d7d634de3a141c2170f527166cc2f0df2e2eec42b2ed984f676b904cccebf5",
+                "size_in_bytes": 11349
+            },
+            {
+                "_path": "Lib/site-packages/redis/sentinel.py",
+                "path_type": "hardlink",
+                "sha256": "121ca34ffb593162adc2e50c3002112b07c43cbd6a05fa2574b150f2d00dd438",
+                "sha256_in_prefix": "121ca34ffb593162adc2e50c3002112b07c43cbd6a05fa2574b150f2d00dd438",
+                "size_in_bytes": 11710
+            },
+            {
+                "_path": "Lib/site-packages/redis/utils.py",
+                "path_type": "hardlink",
+                "sha256": "c06d56b3bf7f1e02330002f06302b80ab54b2e5a154d13d1aa3a3583117853b5",
+                "sha256_in_prefix": "c06d56b3bf7f1e02330002f06302b80ab54b2e5a154d13d1aa3a3583117853b5",
+                "size_in_bytes": 674
+            },
+            {
+                "_path": "Lib/site-packages/redis/__pycache__/__init__.cpython-311.pyc",
+                "path_type": "pyc_file"
+            },
+            {
+                "_path": "Lib/site-packages/redis/__pycache__/_compat.cpython-311.pyc",
+                "path_type": "pyc_file"
+            },
+            {
+                "_path": "Lib/site-packages/redis/__pycache__/client.cpython-311.pyc",
+                "path_type": "pyc_file"
+            },
+            {
+                "_path": "Lib/site-packages/redis/__pycache__/connection.cpython-311.pyc",
+                "path_type": "pyc_file"
+            },
+            {
+                "_path": "Lib/site-packages/redis/__pycache__/exceptions.cpython-311.pyc",
+                "path_type": "pyc_file"
+            },
+            {
+                "_path": "Lib/site-packages/redis/__pycache__/lock.cpython-311.pyc",
+                "path_type": "pyc_file"
+            },
+            {
+                "_path": "Lib/site-packages/redis/__pycache__/sentinel.cpython-311.pyc",
+                "path_type": "pyc_file"
+            },
+            {
+                "_path": "Lib/site-packages/redis/__pycache__/utils.cpython-311.pyc",
+                "path_type": "pyc_file"
+            }
+        ],
+        "paths_version": 1
+    },
+    "platform": null,
+    "requested_spec": "redis",
+    "sha256": "8103810561da66266a0ffe9e513edfec9b3ef1ab2855b77d9f2888bbfce6dcca",
+    "size": 64545,
+    "subdir": "noarch",
+    "timestamp": 1629466515,
+    "url": "https://repo.anaconda.com/pkgs/main/noarch/redis-3.5.3-pyhd3eb1b0_0.conda",
+    "version": "3.5.3"
+}

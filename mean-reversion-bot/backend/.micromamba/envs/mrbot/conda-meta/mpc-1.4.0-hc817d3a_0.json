@@ -1,0 +1,88 @@
+{
+    "arch": "x86_64",
+    "build": "hc817d3a_0",
+    "build_number": 0,
+    "build_string": "hc817d3a_0",
+    "channel": "conda-forge",
+    "constrains": [],
+    "depends": [
+        "gmp >=6.3.0,<7.0a0",
+        "libgcc >=14",
+        "libwinpthread >=12.0.0.r4.gg4f2fc60ca",
+        "mpfr >=4.2.2,<5.0a0",
+        "ucrt >=10.0.20348.0"
+    ],
+    "extracted_package_dir": "C:\\Users\\win\\AppData\\Roaming\\mamba\\pkgs\\https\\conda.anaconda.org\\conda-forge\\win-64\\mpc-1.4.0-hc817d3a_0",
+    "files": [
+        "Library/bin/libmpc-3.dll",
+        "Library/include/mpc.h",
+        "Library/lib/libmpc.dll.a",
+        "Library/lib/mpc.lib",
+        "Library/lib/pkgconfig/mpc.pc",
+        "Library/share/info/mpc.info"
+    ],
+    "fn": "mpc-1.4.0-hc817d3a_0.conda",
+    "license": "LGPL-3.0-or-later",
+    "link": {
+        "source": "C:\\Users\\win\\AppData\\Roaming\\mamba\\pkgs\\https\\conda.anaconda.org\\conda-forge\\win-64\\mpc-1.4.0-hc817d3a_0",
+        "type": 1
+    },
+    "md5": "7e3aa9f9d9a91457e744b12f70ecff53",
+    "name": "mpc",
+    "package_tarball_full_path": "C:\\Users\\win\\AppData\\Roaming\\mamba\\pkgs\\https\\conda.anaconda.org\\conda-forge\\win-64\\mpc-1.4.0-hc817d3a_0.tar.bz2",
+    "paths_data": {
+        "paths": [
+            {
+                "_path": "Library/bin/libmpc-3.dll",
+                "path_type": "hardlink",
+                "sha256": "30b5e43c4e5375edfe769822f7e01ec2091209dd0578f27db67d01479e2c5964",
+                "sha256_in_prefix": "30b5e43c4e5375edfe769822f7e01ec2091209dd0578f27db67d01479e2c5964",
+                "size_in_bytes": 297667
+            },
+            {
+                "_path": "Library/include/mpc.h",
+                "path_type": "hardlink",
+                "sha256": "7d7fe9bd8b51ff9627a1652cf36a5d4c1986e365b9f9849d367d4aceaab67f6c",
+                "sha256_in_prefix": "7d7fe9bd8b51ff9627a1652cf36a5d4c1986e365b9f9849d367d4aceaab67f6c",
+                "size_in_bytes": 17692
+            },
+            {
+                "_path": "Library/lib/libmpc.dll.a",
+                "path_type": "hardlink",
+                "sha256": "8ad5a4116bdeaad299795739ec14c13e7cfabe1a1f6d018b1f6d2fc73292f705",
+                "sha256_in_prefix": "8ad5a4116bdeaad299795739ec14c13e7cfabe1a1f6d018b1f6d2fc73292f705",
+                "size_in_bytes": 101446
+            },
+            {
+                "_path": "Library/lib/mpc.lib",
+                "path_type": "hardlink",
+                "sha256": "8ad5a4116bdeaad299795739ec14c13e7cfabe1a1f6d018b1f6d2fc73292f705",
+                "sha256_in_prefix": "8ad5a4116bdeaad299795739ec14c13e7cfabe1a1f6d018b1f6d2fc73292f705",
+                "size_in_bytes": 101446
+            },
+            {
+                "_path": "Library/lib/pkgconfig/mpc.pc",
+                "path_type": "hardlink",
+                "sha256": "a646ac2a0ec56ac6dc6e12bcec8cd0feaabaa682d3fd0293fdc015c12c78d4ce",
+                "sha256_in_prefix": "d24b80cebce88788b14d78b0e3f29f080eeeb808917e2d86d8a0280043d3cc19",
+                "size_in_bytes": 355
+            },
+            {
+                "_path": "Library/share/info/mpc.info",
+                "path_type": "hardlink",
+                "sha256": "fe52662308bee3f4679dc7e1dc87cec54c93c1844ad0a29edeb1d5e9c5aa1773",
+                "sha256_in_prefix": "fe52662308bee3f4679dc7e1dc87cec54c93c1844ad0a29edeb1d5e9c5aa1773",
+                "size_in_bytes": 124426
+            }
+        ],
+        "paths_version": 1
+    },
+    "platform": "win",
+    "requested_spec": "",
+    "sha256": "8090faa10d16151aa70fdf365ffd456155e0e14a7f1061b24fa866e8adaa5bea",
+    "size": 141051,
+    "subdir": "win-64",
+    "timestamp": 1774472884,
+    "url": "https://conda.anaconda.org/conda-forge/win-64/mpc-1.4.0-hc817d3a_0.conda",
+    "version": "1.4.0"
+}

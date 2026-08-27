@@ -1,0 +1,42 @@
+{
+    "build": "h5ddb490_0",
+    "build_number": 0,
+    "build_string": "h5ddb490_0",
+    "channel": "conda-forge",
+    "constrains": [],
+    "depends": [
+        "fastapi-core ==0.136.3 pyhcf101f3_0",
+        "email_validator",
+        "fastapi-cli",
+        "fastar",
+        "httpx",
+        "jinja2",
+        "pydantic-extra-types",
+        "pydantic-settings",
+        "python-multipart",
+        "uvicorn-standard"
+    ],
+    "extracted_package_dir": "C:\\Users\\win\\AppData\\Roaming\\mamba\\pkgs\\https\\conda.anaconda.org\\conda-forge\\noarch\\fastapi-0.136.3-h5ddb490_0",
+    "files": [],
+    "fn": "fastapi-0.136.3-h5ddb490_0.conda",
+    "license": "MIT",
+    "link": {
+        "source": "C:\\Users\\win\\AppData\\Roaming\\mamba\\pkgs\\https\\conda.anaconda.org\\conda-forge\\noarch\\fastapi-0.136.3-h5ddb490_0",
+        "type": 1
+    },
+    "md5": "966cdb82bffe2677a8bc33a458c05675",
+    "name": "fastapi",
+    "noarch": "generic",
+    "package_tarball_full_path": "C:\\Users\\win\\AppData\\Roaming\\mamba\\pkgs\\https\\conda.anaconda.org\\conda-forge\\noarch\\fastapi-0.136.3-h5ddb490_0.tar.bz2",
+    "paths_data": {
+        "paths": [],
+        "paths_version": 1
+    },
+    "requested_spec": "fastapi",
+    "sha256": "5e3817e17e302f243c4b152d8202431731be0d8a629951e28348ec329d7a5957",
+    "size": 4840,
+    "subdir": "noarch",
+    "timestamp": 1779758767,
+    "url": "https://conda.anaconda.org/conda-forge/noarch/fastapi-0.136.3-h5ddb490_0.conda",
+    "version": "0.136.3"
+}

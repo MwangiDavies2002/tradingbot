@@ -1,0 +1,434 @@
+{
+    "build": "pyhcf101f3_0",
+    "build_number": 0,
+    "build_string": "pyhcf101f3_0",
+    "channel": "conda-forge",
+    "constrains": [],
+    "depends": [
+        "pytest >=8.4,<10",
+        "python >=3.10",
+        "typing_extensions >=4.12",
+        "backports.asyncio.runner >=1.1,<2",
+        "python"
+    ],
+    "extracted_package_dir": "C:\\Users\\win\\AppData\\Roaming\\mamba\\pkgs\\https\\conda.anaconda.org\\conda-forge\\noarch\\pytest-asyncio-1.4.0-pyhcf101f3_0",
+    "files": [
+        "etc/conda/test-files/pytest-asyncio/1/run_test.py",
+        "etc/conda/test-files/pytest-asyncio/1/tests/__init__.py",
+        "etc/conda/test-files/pytest-asyncio/1/tests/async_fixtures/__init__.py",
+        "etc/conda/test-files/pytest-asyncio/1/tests/async_fixtures/test_async_fixtures.py",
+        "etc/conda/test-files/pytest-asyncio/1/tests/async_fixtures/test_async_fixtures_contextvars.py",
+        "etc/conda/test-files/pytest-asyncio/1/tests/async_fixtures/test_nested.py",
+        "etc/conda/test-files/pytest-asyncio/1/tests/async_fixtures/test_shared_module_fixture.py",
+        "etc/conda/test-files/pytest-asyncio/1/tests/conftest.py",
+        "etc/conda/test-files/pytest-asyncio/1/tests/hypothesis/__init__.py",
+        "etc/conda/test-files/pytest-asyncio/1/tests/hypothesis/test_base.py",
+        "etc/conda/test-files/pytest-asyncio/1/tests/markers/__init__.py",
+        "etc/conda/test-files/pytest-asyncio/1/tests/markers/test_class_scope.py",
+        "etc/conda/test-files/pytest-asyncio/1/tests/markers/test_function_scope.py",
+        "etc/conda/test-files/pytest-asyncio/1/tests/markers/test_invalid_arguments.py",
+        "etc/conda/test-files/pytest-asyncio/1/tests/markers/test_mixed_scope.py",
+        "etc/conda/test-files/pytest-asyncio/1/tests/markers/test_module_scope.py",
+        "etc/conda/test-files/pytest-asyncio/1/tests/markers/test_package_scope.py",
+        "etc/conda/test-files/pytest-asyncio/1/tests/markers/test_session_scope.py",
+        "etc/conda/test-files/pytest-asyncio/1/tests/modes/__init__.py",
+        "etc/conda/test-files/pytest-asyncio/1/tests/modes/test_auto_mode.py",
+        "etc/conda/test-files/pytest-asyncio/1/tests/modes/test_strict_mode.py",
+        "etc/conda/test-files/pytest-asyncio/1/tests/test_asyncio_debug.py",
+        "etc/conda/test-files/pytest-asyncio/1/tests/test_asyncio_fixture.py",
+        "etc/conda/test-files/pytest-asyncio/1/tests/test_asyncio_mark.py",
+        "etc/conda/test-files/pytest-asyncio/1/tests/test_doctest.py",
+        "etc/conda/test-files/pytest-asyncio/1/tests/test_event_loop_fixture.py",
+        "etc/conda/test-files/pytest-asyncio/1/tests/test_fixture_loop_scopes.py",
+        "etc/conda/test-files/pytest-asyncio/1/tests/test_import.py",
+        "etc/conda/test-files/pytest-asyncio/1/tests/test_is_async_test.py",
+        "etc/conda/test-files/pytest-asyncio/1/tests/test_loop_factory_parametrization.py",
+        "etc/conda/test-files/pytest-asyncio/1/tests/test_package.py",
+        "etc/conda/test-files/pytest-asyncio/1/tests/test_port_factories.py",
+        "etc/conda/test-files/pytest-asyncio/1/tests/test_set_event_loop.py",
+        "etc/conda/test-files/pytest-asyncio/1/tests/test_simple.py",
+        "etc/conda/test-files/pytest-asyncio/1/tests/test_skips.py",
+        "etc/conda/test-files/pytest-asyncio/1/tests/test_subprocess.py",
+        "etc/conda/test-files/pytest-asyncio/1/tests/test_task_cleanup.py",
+        "Lib/site-packages/pytest_asyncio/__init__.py",
+        "Lib/site-packages/pytest_asyncio/plugin.py",
+        "Lib/site-packages/pytest_asyncio/py.typed",
+        "Lib/site-packages/pytest_asyncio-1.4.0.dist-info/INSTALLER",
+        "Lib/site-packages/pytest_asyncio-1.4.0.dist-info/METADATA",
+        "Lib/site-packages/pytest_asyncio-1.4.0.dist-info/RECORD",
+        "Lib/site-packages/pytest_asyncio-1.4.0.dist-info/REQUESTED",
+        "Lib/site-packages/pytest_asyncio-1.4.0.dist-info/WHEEL",
+        "Lib/site-packages/pytest_asyncio-1.4.0.dist-info/direct_url.json",
+        "Lib/site-packages/pytest_asyncio-1.4.0.dist-info/entry_points.txt",
+        "Lib/site-packages/pytest_asyncio-1.4.0.dist-info/licenses/LICENSE",
+        "Lib/site-packages/pytest_asyncio-1.4.0.dist-info/top_level.txt",
+        "Lib/site-packages/pytest_asyncio/__pycache__/__init__.cpython-311.pyc",
+        "Lib/site-packages/pytest_asyncio/__pycache__/plugin.cpython-311.pyc"
+    ],
+    "fn": "pytest-asyncio-1.4.0-pyhcf101f3_0.conda",
+    "license": "Apache-2.0",
+    "link": {
+        "source": "C:\\Users\\win\\AppData\\Roaming\\mamba\\pkgs\\https\\conda.anaconda.org\\conda-forge\\noarch\\pytest-asyncio-1.4.0-pyhcf101f3_0",
+        "type": 1
+    },
+    "md5": "787319c0ace4c39b7e883a86332db6a4",
+    "name": "pytest-asyncio",
+    "noarch": "python",
+    "package_tarball_full_path": "C:\\Users\\win\\AppData\\Roaming\\mamba\\pkgs\\https\\conda.anaconda.org\\conda-forge\\noarch\\pytest-asyncio-1.4.0-pyhcf101f3_0.tar.bz2",
+    "paths_data": {
+        "paths": [
+            {
+                "_path": "etc/conda/test-files/pytest-asyncio/1/run_test.py",
+                "path_type": "hardlink",
+                "sha256": "3f226a8ddee93bb3cd8dfec259112917e90cc261ae1b2d4fa3ffd91e2b325486",
+                "sha256_in_prefix": "3f226a8ddee93bb3cd8dfec259112917e90cc261ae1b2d4fa3ffd91e2b325486",
+                "size_in_bytes": 898
+            },
+            {
+                "_path": "etc/conda/test-files/pytest-asyncio/1/tests/__init__.py",
+                "path_type": "hardlink",
+                "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "sha256_in_prefix": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            {
+                "_path": "etc/conda/test-files/pytest-asyncio/1/tests/async_fixtures/__init__.py",
+                "path_type": "hardlink",
+                "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "sha256_in_prefix": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            {
+                "_path": "etc/conda/test-files/pytest-asyncio/1/tests/async_fixtures/test_async_fixtures.py",
+                "path_type": "hardlink",
+                "sha256": "ef31f9cf4511338b79995fab1270a31b45238d250d4f9ffce28336f882a002ea",
+                "sha256_in_prefix": "ef31f9cf4511338b79995fab1270a31b45238d250d4f9ffce28336f882a002ea",
+                "size_in_bytes": 814
+            },
+            {
+                "_path": "etc/conda/test-files/pytest-asyncio/1/tests/async_fixtures/test_async_fixtures_contextvars.py",
+                "path_type": "hardlink",
+                "sha256": "f6262cb9044f9fc1c3f45c40483aff45b41b58f84e1bff5c22c1707363374d44",
+                "sha256_in_prefix": "f6262cb9044f9fc1c3f45c40483aff45b41b58f84e1bff5c22c1707363374d44",
+                "size_in_bytes": 7552
+            },
+            {
+                "_path": "etc/conda/test-files/pytest-asyncio/1/tests/async_fixtures/test_nested.py",
+                "path_type": "hardlink",
+                "sha256": "3408c52e6072507544f067107b301e595b501957040c599c21ef5a7e035e9654",
+                "sha256_in_prefix": "3408c52e6072507544f067107b301e595b501957040c599c21ef5a7e035e9654",
+                "size_in_bytes": 563
+            },
+            {
+                "_path": "etc/conda/test-files/pytest-asyncio/1/tests/async_fixtures/test_shared_module_fixture.py",
+                "path_type": "hardlink",
+                "sha256": "eefef0e33cdd900c1b3724b95c087f1671d0c1c32f9baefe3344554ed58f7689",
+                "sha256_in_prefix": "eefef0e33cdd900c1b3724b95c087f1671d0c1c32f9baefe3344554ed58f7689",
+                "size_in_bytes": 1154
+            },
+            {
+                "_path": "etc/conda/test-files/pytest-asyncio/1/tests/conftest.py",
+                "path_type": "hardlink",
+                "sha256": "e0641c25d116c2ce2edb500d1bbe6bcd4709bd399fab2e3c4d498d70c9d68bca",
+                "sha256_in_prefix": "e0641c25d116c2ce2edb500d1bbe6bcd4709bd399fab2e3c4d498d70c9d68bca",
+                "size_in_bytes": 64
+            },
+            {
+                "_path": "etc/conda/test-files/pytest-asyncio/1/tests/hypothesis/__init__.py",
+                "path_type": "hardlink",
+                "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "sha256_in_prefix": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            {
+                "_path": "etc/conda/test-files/pytest-asyncio/1/tests/hypothesis/test_base.py",
+                "path_type": "hardlink",
+                "sha256": "c47abea7b8eced06a9cb0b46f6aacd50dcf4a6fb48b29c392ab3da9900e64199",
+                "sha256_in_prefix": "c47abea7b8eced06a9cb0b46f6aacd50dcf4a6fb48b29c392ab3da9900e64199",
+                "size_in_bytes": 2407
+            },
+            {
+                "_path": "etc/conda/test-files/pytest-asyncio/1/tests/markers/__init__.py",
+                "path_type": "hardlink",
+                "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "sha256_in_prefix": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            {
+                "_path": "etc/conda/test-files/pytest-asyncio/1/tests/markers/test_class_scope.py",
+                "path_type": "hardlink",
+                "sha256": "a8fc3ed7b5efa3e5ef76424528ae3bffe2b652d90de298904b2825c33bf22e48",
+                "sha256_in_prefix": "a8fc3ed7b5efa3e5ef76424528ae3bffe2b652d90de298904b2825c33bf22e48",
+                "size_in_bytes": 9578
+            },
+            {
+                "_path": "etc/conda/test-files/pytest-asyncio/1/tests/markers/test_function_scope.py",
+                "path_type": "hardlink",
+                "sha256": "f87e8f4d81062726516eaa3865f18ded27ffcb8c2bdfda3f9d99375295253fcb",
+                "sha256_in_prefix": "f87e8f4d81062726516eaa3865f18ded27ffcb8c2bdfda3f9d99375295253fcb",
+                "size_in_bytes": 9777
+            },
+            {
+                "_path": "etc/conda/test-files/pytest-asyncio/1/tests/markers/test_invalid_arguments.py",
+                "path_type": "hardlink",
+                "sha256": "d0da360c9b43b5f2d05ab42b5543715ef62853b693b4d9f6c45d01c4fda797b6",
+                "sha256_in_prefix": "d0da360c9b43b5f2d05ab42b5543715ef62853b693b4d9f6c45d01c4fda797b6",
+                "size_in_bytes": 3332
+            },
+            {
+                "_path": "etc/conda/test-files/pytest-asyncio/1/tests/markers/test_mixed_scope.py",
+                "path_type": "hardlink",
+                "sha256": "8bc80f4a69c94ab377ad032e16c078d526929ce8c34e8ff6efa99e77fdcc2f00",
+                "sha256_in_prefix": "8bc80f4a69c94ab377ad032e16c078d526929ce8c34e8ff6efa99e77fdcc2f00",
+                "size_in_bytes": 1037
+            },
+            {
+                "_path": "etc/conda/test-files/pytest-asyncio/1/tests/markers/test_module_scope.py",
+                "path_type": "hardlink",
+                "sha256": "cfc8c469bfbd17b8a7e952cd993759a0edfb5550f28a0e02225155c393c67610",
+                "sha256_in_prefix": "cfc8c469bfbd17b8a7e952cd993759a0edfb5550f28a0e02225155c393c67610",
+                "size_in_bytes": 9444
+            },
+            {
+                "_path": "etc/conda/test-files/pytest-asyncio/1/tests/markers/test_package_scope.py",
+                "path_type": "hardlink",
+                "sha256": "a824e4cd9cbb29eeedd43b46a66c353fd32497d86b2314db2eaa1295897de75b",
+                "sha256_in_prefix": "a824e4cd9cbb29eeedd43b46a66c353fd32497d86b2314db2eaa1295897de75b",
+                "size_in_bytes": 10538
+            },
+            {
+                "_path": "etc/conda/test-files/pytest-asyncio/1/tests/markers/test_session_scope.py",
+                "path_type": "hardlink",
+                "sha256": "8a597c4d654e9f30c522000ec6f55eef48eefde8bc0e186960957bb42899fcb1",
+                "sha256_in_prefix": "8a597c4d654e9f30c522000ec6f55eef48eefde8bc0e186960957bb42899fcb1",
+                "size_in_bytes": 12986
+            },
+            {
+                "_path": "etc/conda/test-files/pytest-asyncio/1/tests/modes/__init__.py",
+                "path_type": "hardlink",
+                "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "sha256_in_prefix": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            {
+                "_path": "etc/conda/test-files/pytest-asyncio/1/tests/modes/test_auto_mode.py",
+                "path_type": "hardlink",
+                "sha256": "047ddf5b3bd7b8c1ef42d851591fa6c80b7ad88d8e5740bca2f1092b8ab196cf",
+                "sha256_in_prefix": "047ddf5b3bd7b8c1ef42d851591fa6c80b7ad88d8e5740bca2f1092b8ab196cf",
+                "size_in_bytes": 3412
+            },
+            {
+                "_path": "etc/conda/test-files/pytest-asyncio/1/tests/modes/test_strict_mode.py",
+                "path_type": "hardlink",
+                "sha256": "880612cdd6dcad2bc349fd6d00d8a7be58fca18535fb694d6e5225ce5681602a",
+                "sha256_in_prefix": "880612cdd6dcad2bc349fd6d00d8a7be58fca18535fb694d6e5225ce5681602a",
+                "size_in_bytes": 6783
+            },
+            {
+                "_path": "etc/conda/test-files/pytest-asyncio/1/tests/test_asyncio_debug.py",
+                "path_type": "hardlink",
+                "sha256": "529a7a73d2531ea39af41e42161d44cc2237441a02eb1cd384639df7f0794569",
+                "sha256_in_prefix": "529a7a73d2531ea39af41e42161d44cc2237441a02eb1cd384639df7f0794569",
+                "size_in_bytes": 5737
+            },
+            {
+                "_path": "etc/conda/test-files/pytest-asyncio/1/tests/test_asyncio_fixture.py",
+                "path_type": "hardlink",
+                "sha256": "6698c9f3967e09348afb9033331edb73bf7a12783e31a4bb033b1071031111a6",
+                "sha256_in_prefix": "6698c9f3967e09348afb9033331edb73bf7a12783e31a4bb033b1071031111a6",
+                "size_in_bytes": 1553
+            },
+            {
+                "_path": "etc/conda/test-files/pytest-asyncio/1/tests/test_asyncio_mark.py",
+                "path_type": "hardlink",
+                "sha256": "c5e1f1a9e64c80f169bf2d202c16351b841d0087d5d1a119cfd9b4f2597937a4",
+                "sha256_in_prefix": "c5e1f1a9e64c80f169bf2d202c16351b841d0087d5d1a119cfd9b4f2597937a4",
+                "size_in_bytes": 6261
+            },
+            {
+                "_path": "etc/conda/test-files/pytest-asyncio/1/tests/test_doctest.py",
+                "path_type": "hardlink",
+                "sha256": "c65f5e3ae4825b9d4668d20ac3eed951293b826b8f7af0650f7421da371266d9",
+                "sha256_in_prefix": "c65f5e3ae4825b9d4668d20ac3eed951293b826b8f7af0650f7421da371266d9",
+                "size_in_bytes": 1178
+            },
+            {
+                "_path": "etc/conda/test-files/pytest-asyncio/1/tests/test_event_loop_fixture.py",
+                "path_type": "hardlink",
+                "sha256": "e9b3fdfd3de41c15d714d229ec97c90b9dd98ab753d0c14bbb0aa101f03ca9bc",
+                "sha256_in_prefix": "e9b3fdfd3de41c15d714d229ec97c90b9dd98ab753d0c14bbb0aa101f03ca9bc",
+                "size_in_bytes": 2584
+            },
+            {
+                "_path": "etc/conda/test-files/pytest-asyncio/1/tests/test_fixture_loop_scopes.py",
+                "path_type": "hardlink",
+                "sha256": "d139deb0fdd55153dd13539691981698b6f61c1ebee2239fe053c7bfdcc7769f",
+                "sha256_in_prefix": "d139deb0fdd55153dd13539691981698b6f61c1ebee2239fe053c7bfdcc7769f",
+                "size_in_bytes": 4152
+            },
+            {
+                "_path": "etc/conda/test-files/pytest-asyncio/1/tests/test_import.py",
+                "path_type": "hardlink",
+                "sha256": "c8de62babd568f9c31fd710aaeb462a8b719eeff1b5102e868d66b2d3c749a6f",
+                "sha256_in_prefix": "c8de62babd568f9c31fd710aaeb462a8b719eeff1b5102e868d66b2d3c749a6f",
+                "size_in_bytes": 1599
+            },
+            {
+                "_path": "etc/conda/test-files/pytest-asyncio/1/tests/test_is_async_test.py",
+                "path_type": "hardlink",
+                "sha256": "fdc87695d264411026794f32dc2391ce4a60a3a7fec6be7761f396d6a60c1676",
+                "sha256_in_prefix": "fdc87695d264411026794f32dc2391ce4a60a3a7fec6be7761f396d6a60c1676",
+                "size_in_bytes": 2903
+            },
+            {
+                "_path": "etc/conda/test-files/pytest-asyncio/1/tests/test_loop_factory_parametrization.py",
+                "path_type": "hardlink",
+                "sha256": "1d524e69e3cb0f48eb737fd1aee010ee8b9e260d2f9c4a298a4e18107beff6d0",
+                "sha256_in_prefix": "1d524e69e3cb0f48eb737fd1aee010ee8b9e260d2f9c4a298a4e18107beff6d0",
+                "size_in_bytes": 28668
+            },
+            {
+                "_path": "etc/conda/test-files/pytest-asyncio/1/tests/test_package.py",
+                "path_type": "hardlink",
+                "sha256": "89a8c3e9a34d04f5c88c5fde1d1182de73b12b1f548e0330246082edc44834f1",
+                "sha256_in_prefix": "89a8c3e9a34d04f5c88c5fde1d1182de73b12b1f548e0330246082edc44834f1",
+                "size_in_bytes": 98
+            },
+            {
+                "_path": "etc/conda/test-files/pytest-asyncio/1/tests/test_port_factories.py",
+                "path_type": "hardlink",
+                "sha256": "117b0cb31643dba68087f5c2e373c46e9b3e74d7b4e3fa677c8c9cb28830e480",
+                "sha256_in_prefix": "117b0cb31643dba68087f5c2e373c46e9b3e74d7b4e3fa677c8c9cb28830e480",
+                "size_in_bytes": 6132
+            },
+            {
+                "_path": "etc/conda/test-files/pytest-asyncio/1/tests/test_set_event_loop.py",
+                "path_type": "hardlink",
+                "sha256": "6f8e1a1906b71beee12bce5cce2d99ece769e3e4e04e4d8885b8deb7fc9a689a",
+                "sha256_in_prefix": "6f8e1a1906b71beee12bce5cce2d99ece769e3e4e04e4d8885b8deb7fc9a689a",
+                "size_in_bytes": 13578
+            },
+            {
+                "_path": "etc/conda/test-files/pytest-asyncio/1/tests/test_simple.py",
+                "path_type": "hardlink",
+                "sha256": "65d36a4a3bf18f65f55bb18f5387b2771dfcc30cec10cc2a8017dae2bc970d27",
+                "sha256_in_prefix": "65d36a4a3bf18f65f55bb18f5387b2771dfcc30cec10cc2a8017dae2bc970d27",
+                "size_in_bytes": 3047
+            },
+            {
+                "_path": "etc/conda/test-files/pytest-asyncio/1/tests/test_skips.py",
+                "path_type": "hardlink",
+                "sha256": "bae614ebd229423b0aa870a02799a3b0a5d089ca58005291e91f97c35bed261a",
+                "sha256_in_prefix": "bae614ebd229423b0aa870a02799a3b0a5d089ca58005291e91f97c35bed261a",
+                "size_in_bytes": 3738
+            },
+            {
+                "_path": "etc/conda/test-files/pytest-asyncio/1/tests/test_subprocess.py",
+                "path_type": "hardlink",
+                "sha256": "691d8036f0c1075a9080090410ca850e53bcbfea91057fbcfcd604d5a4960792",
+                "sha256_in_prefix": "691d8036f0c1075a9080090410ca850e53bcbfea91057fbcfcd604d5a4960792",
+                "size_in_bytes": 401
+            },
+            {
+                "_path": "etc/conda/test-files/pytest-asyncio/1/tests/test_task_cleanup.py",
+                "path_type": "hardlink",
+                "sha256": "db5989eeeaca6fd43a3f5e5c89bb01fa939b5e58ddad67f516b0af72b842fce2",
+                "sha256_in_prefix": "db5989eeeaca6fd43a3f5e5c89bb01fa939b5e58ddad67f516b0af72b842fce2",
+                "size_in_bytes": 795
+            },
+            {
+                "_path": "Lib/site-packages/pytest_asyncio/__init__.py",
+                "path_type": "hardlink",
+                "sha256": "932a980c5911992375e3feafff5dbc8388ea68ef49ae13277cc0cc8b093267c4",
+                "sha256_in_prefix": "932a980c5911992375e3feafff5dbc8388ea68ef49ae13277cc0cc8b093267c4",
+                "size_in_bytes": 250
+            },
+            {
+                "_path": "Lib/site-packages/pytest_asyncio/plugin.py",
+                "path_type": "hardlink",
+                "sha256": "ba47c25a4a22b117891e9214940729c41af936d3dafbb18b4284de8a88ed3375",
+                "sha256_in_prefix": "ba47c25a4a22b117891e9214940729c41af936d3dafbb18b4284de8a88ed3375",
+                "size_in_bytes": 38200
+            },
+            {
+                "_path": "Lib/site-packages/pytest_asyncio/py.typed",
+                "path_type": "hardlink",
+                "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "sha256_in_prefix": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            {
+                "_path": "Lib/site-packages/pytest_asyncio-1.4.0.dist-info/INSTALLER",
+                "path_type": "hardlink",
+                "sha256": "bc33022edcb7639ff53355b4e91dade50a0bbf0299efeb6171d1ec0ba5029cfc",
+                "sha256_in_prefix": "bc33022edcb7639ff53355b4e91dade50a0bbf0299efeb6171d1ec0ba5029cfc",
+                "size_in_bytes": 6
+            },
+            {
+                "_path": "Lib/site-packages/pytest_asyncio-1.4.0.dist-info/METADATA",
+                "path_type": "hardlink",
+                "sha256": "4e583f46befbdb780e30a98856ab46afb88da6e65b6c9fb94d3794746faa8516",
+                "sha256_in_prefix": "4e583f46befbdb780e30a98856ab46afb88da6e65b6c9fb94d3794746faa8516",
+                "size_in_bytes": 4137
+            },
+            {
+                "_path": "Lib/site-packages/pytest_asyncio-1.4.0.dist-info/RECORD",
+                "path_type": "hardlink",
+                "sha256": "c8719c02e5403e6af200db1a66e22a908ec9bc854afac7d5869a47806e8ada1d",
+                "sha256_in_prefix": "c8719c02e5403e6af200db1a66e22a908ec9bc854afac7d5869a47806e8ada1d",
+                "size_in_bytes": 1184
+            },
+            {
+                "_path": "Lib/site-packages/pytest_asyncio-1.4.0.dist-info/REQUESTED",
+                "path_type": "hardlink",
+                "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "sha256_in_prefix": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            {
+                "_path": "Lib/site-packages/pytest_asyncio-1.4.0.dist-info/WHEEL",
+                "path_type": "hardlink",
+                "sha256": "69e6228a0d35958183cc1812f07c565ce837b95eb51bd8a33acba9fa4f68d6c9",
+                "sha256_in_prefix": "69e6228a0d35958183cc1812f07c565ce837b95eb51bd8a33acba9fa4f68d6c9",
+                "size_in_bytes": 91
+            },
+            {
+                "_path": "Lib/site-packages/pytest_asyncio-1.4.0.dist-info/direct_url.json",
+                "path_type": "hardlink",
+                "sha256": "67d25a242d312236c8bbf634a131b3fde0b2c2e1635759070599ea7211c0b43d",
+                "sha256_in_prefix": "67d25a242d312236c8bbf634a131b3fde0b2c2e1635759070599ea7211c0b43d",
+                "size_in_bytes": 125
+            },
+            {
+                "_path": "Lib/site-packages/pytest_asyncio-1.4.0.dist-info/entry_points.txt",
+                "path_type": "hardlink",
+                "sha256": "ff94ec72213eee6228a54cb536b3c21231d54c323084d6f25ef3feb2ed7e3bbc",
+                "sha256_in_prefix": "ff94ec72213eee6228a54cb536b3c21231d54c323084d6f25ef3feb2ed7e3bbc",
+                "size_in_bytes": 43
+            },
+            {
+                "_path": "Lib/site-packages/pytest_asyncio-1.4.0.dist-info/licenses/LICENSE",
+                "path_type": "hardlink",
+                "sha256": "a8ad31b1c3f40dca5a84119351b8fa8ddc868edd77fad8a8ebf6d8f2d16fa4ae",
+                "sha256_in_prefix": "a8ad31b1c3f40dca5a84119351b8fa8ddc868edd77fad8a8ebf6d8f2d16fa4ae",
+                "size_in_bytes": 11324
+            },
+            {
+                "_path": "Lib/site-packages/pytest_asyncio-1.4.0.dist-info/top_level.txt",
+                "path_type": "hardlink",
+                "sha256": "2780538bd2196df8210ac895c9ba2dd72d0068b520c69dcd31a3691fd7e084d2",
+                "sha256_in_prefix": "2780538bd2196df8210ac895c9ba2dd72d0068b520c69dcd31a3691fd7e084d2",
+                "size_in_bytes": 15
+            },
+            {
+                "_path": "Lib/site-packages/pytest_asyncio/__pycache__/__init__.cpython-311.pyc",
+                "path_type": "pyc_file"
+            },
+            {
+                "_path": "Lib/site-packages/pytest_asyncio/__pycache__/plugin.cpython-311.pyc",
+                "path_type": "pyc_file"
+            }
+        ],
+        "paths_version": 1
+    },
+    "requested_spec": "pytest-asyncio",
+    "sha256": "1eddccab8f91f718f890a2aabfc25e68c37a6171fb120e4ec4df7a5a96a877e9",
+    "size": 43101,
+    "subdir": "noarch",
+    "timestamp": 1779802443,
+    "url": "https://conda.anaconda.org/conda-forge/noarch/pytest-asyncio-1.4.0-pyhcf101f3_0.conda",
+    "version": "1.4.0"
+}

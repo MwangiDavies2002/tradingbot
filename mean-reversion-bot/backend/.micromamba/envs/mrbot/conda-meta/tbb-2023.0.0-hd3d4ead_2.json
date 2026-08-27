@@ -1,0 +1,71 @@
+{
+    "arch": "x86_64",
+    "build": "hd3d4ead_2",
+    "build_number": 2,
+    "build_string": "hd3d4ead_2",
+    "channel": "conda-forge",
+    "constrains": [],
+    "depends": [
+        "libhwloc >=2.13.0,<2.13.1.0a0",
+        "ucrt >=10.0.20348.0",
+        "vc >=14.3,<15",
+        "vc14_runtime >=14.44.35208"
+    ],
+    "extracted_package_dir": "C:\\Users\\win\\AppData\\Roaming\\mamba\\pkgs\\https\\conda.anaconda.org\\conda-forge\\win-64\\tbb-2023.0.0-hd3d4ead_2",
+    "files": [
+        "Library/bin/tbb12.dll",
+        "Library/bin/tbbbind_2_5.dll",
+        "Library/bin/tbbmalloc.dll",
+        "Library/bin/tbbmalloc_proxy.dll"
+    ],
+    "fn": "tbb-2023.0.0-hd3d4ead_2.conda",
+    "license": "Apache-2.0",
+    "link": {
+        "source": "C:\\Users\\win\\AppData\\Roaming\\mamba\\pkgs\\https\\conda.anaconda.org\\conda-forge\\win-64\\tbb-2023.0.0-hd3d4ead_2",
+        "type": 1
+    },
+    "md5": "8ee01a693aecff5432069eaaf1183c45",
+    "name": "tbb",
+    "package_tarball_full_path": "C:\\Users\\win\\AppData\\Roaming\\mamba\\pkgs\\https\\conda.anaconda.org\\conda-forge\\win-64\\tbb-2023.0.0-hd3d4ead_2.tar.bz2",
+    "paths_data": {
+        "paths": [
+            {
+                "_path": "Library/bin/tbb12.dll",
+                "path_type": "hardlink",
+                "sha256": "e8aff3cfbcaa6dea3e0727ea0673715873273c6b0920b9eaf48a6faae0ff1f8f",
+                "sha256_in_prefix": "e8aff3cfbcaa6dea3e0727ea0673715873273c6b0920b9eaf48a6faae0ff1f8f",
+                "size_in_bytes": 347648
+            },
+            {
+                "_path": "Library/bin/tbbbind_2_5.dll",
+                "path_type": "hardlink",
+                "sha256": "6b1e431dbfc9bffe331430419812f70363d67e9b41f3e838294ff0d74ef846a8",
+                "sha256_in_prefix": "6b1e431dbfc9bffe331430419812f70363d67e9b41f3e838294ff0d74ef846a8",
+                "size_in_bytes": 25088
+            },
+            {
+                "_path": "Library/bin/tbbmalloc.dll",
+                "path_type": "hardlink",
+                "sha256": "75ff31b8548d5c6a70d33e6cd59099c743ad890a8806f957a9e19140c5cfb80d",
+                "sha256_in_prefix": "75ff31b8548d5c6a70d33e6cd59099c743ad890a8806f957a9e19140c5cfb80d",
+                "size_in_bytes": 114176
+            },
+            {
+                "_path": "Library/bin/tbbmalloc_proxy.dll",
+                "path_type": "hardlink",
+                "sha256": "49f793b771fbdd757e836c16fb7f8295960e45634072adba9df4145c728a0858",
+                "sha256_in_prefix": "49f793b771fbdd757e836c16fb7f8295960e45634072adba9df4145c728a0858",
+                "size_in_bytes": 30720
+            }
+        ],
+        "paths_version": 1
+    },
+    "platform": "win",
+    "requested_spec": "",
+    "sha256": "8a4053839b8e997a5965e2dff7d6cf3c77be62d82c0e48c8a04a5ed2d2e73035",
+    "size": 156515,
+    "subdir": "win-64",
+    "timestamp": 1778673901,
+    "url": "https://conda.anaconda.org/conda-forge/win-64/tbb-2023.0.0-hd3d4ead_2.conda",
+    "version": "2023.0.0"
+}

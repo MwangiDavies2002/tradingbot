@@ -1,0 +1,36 @@
+{
+    "build": "pyh5ded981_2",
+    "build_number": 2,
+    "build_string": "pyh5ded981_2",
+    "channel": "conda-forge",
+    "constrains": [
+        "python >=3.11"
+    ],
+    "depends": [
+        "python >=3.11",
+        "python"
+    ],
+    "extracted_package_dir": "C:\\Users\\win\\AppData\\Roaming\\mamba\\pkgs\\https\\conda.anaconda.org\\conda-forge\\noarch\\backports.asyncio.runner-1.2.0-pyh5ded981_2",
+    "files": [],
+    "fn": "backports.asyncio.runner-1.2.0-pyh5ded981_2.conda",
+    "license": "PSF-2.0",
+    "link": {
+        "source": "C:\\Users\\win\\AppData\\Roaming\\mamba\\pkgs\\https\\conda.anaconda.org\\conda-forge\\noarch\\backports.asyncio.runner-1.2.0-pyh5ded981_2",
+        "type": 1
+    },
+    "md5": "0fd7e45c862b3305226a992f9f7b204a",
+    "name": "backports.asyncio.runner",
+    "noarch": "python",
+    "package_tarball_full_path": "C:\\Users\\win\\AppData\\Roaming\\mamba\\pkgs\\https\\conda.anaconda.org\\conda-forge\\noarch\\backports.asyncio.runner-1.2.0-pyh5ded981_2.tar.bz2",
+    "paths_data": {
+        "paths": [],
+        "paths_version": 1
+    },
+    "requested_spec": "",
+    "sha256": "2ade43752e8494f110a2cfb9e4d5b1ea29e3dcb037fba63395442d00371e8bf9",
+    "size": 10186,
+    "subdir": "noarch",
+    "timestamp": 1753456386,
+    "url": "https://conda.anaconda.org/conda-forge/noarch/backports.asyncio.runner-1.2.0-pyh5ded981_2.conda",
+    "version": "1.2.0"
+}

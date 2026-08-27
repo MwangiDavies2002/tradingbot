@@ -1,0 +1,14 @@
+{
+  "libiconv": "1",
+  "c_stdlib": "vs",
+  "openssl": "3.5",
+  "libcurl": "8",
+  "c_compiler": "vs2022",
+  "channel_targets": "conda-forge main",
+  "fmt": "12.1",
+  "spdlog": "1.17",
+  "target_platform": "win-64",
+  "zlib": "1",
+  "cxx_compiler": "vs2022",
+  "CI": "azure"
+}

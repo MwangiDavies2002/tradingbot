@@ -1,0 +1,300 @@
+{
+    "arch": null,
+    "build": "pyhff2d567_0",
+    "build_number": 0,
+    "build_string": "pyhff2d567_0",
+    "channel": "conda-forge",
+    "constrains": [],
+    "depends": [
+        "cryptography >=3.4.0",
+        "ecdsa !=0.15",
+        "pyasn1 >=0.5.0",
+        "python >=3.9",
+        "rsa >=4.0,<5.0,!=4.4,!=4.1.1"
+    ],
+    "extracted_package_dir": "C:\\Users\\win\\AppData\\Roaming\\mamba\\pkgs\\https\\conda.anaconda.org\\conda-forge\\noarch\\python-jose-3.5.0-pyhff2d567_0",
+    "files": [
+        "Lib/site-packages/jose/__init__.py",
+        "Lib/site-packages/jose/backends/__init__.py",
+        "Lib/site-packages/jose/backends/_asn1.py",
+        "Lib/site-packages/jose/backends/base.py",
+        "Lib/site-packages/jose/backends/cryptography_backend.py",
+        "Lib/site-packages/jose/backends/ecdsa_backend.py",
+        "Lib/site-packages/jose/backends/native.py",
+        "Lib/site-packages/jose/backends/rsa_backend.py",
+        "Lib/site-packages/jose/constants.py",
+        "Lib/site-packages/jose/exceptions.py",
+        "Lib/site-packages/jose/jwe.py",
+        "Lib/site-packages/jose/jwk.py",
+        "Lib/site-packages/jose/jws.py",
+        "Lib/site-packages/jose/jwt.py",
+        "Lib/site-packages/jose/utils.py",
+        "Lib/site-packages/python_jose-3.5.0.dist-info/INSTALLER",
+        "Lib/site-packages/python_jose-3.5.0.dist-info/METADATA",
+        "Lib/site-packages/python_jose-3.5.0.dist-info/RECORD",
+        "Lib/site-packages/python_jose-3.5.0.dist-info/REQUESTED",
+        "Lib/site-packages/python_jose-3.5.0.dist-info/WHEEL",
+        "Lib/site-packages/python_jose-3.5.0.dist-info/direct_url.json",
+        "Lib/site-packages/python_jose-3.5.0.dist-info/licenses/LICENSE",
+        "Lib/site-packages/python_jose-3.5.0.dist-info/top_level.txt",
+        "Lib/site-packages/jose/__pycache__/__init__.cpython-311.pyc",
+        "Lib/site-packages/jose/backends/__pycache__/__init__.cpython-311.pyc",
+        "Lib/site-packages/jose/backends/__pycache__/_asn1.cpython-311.pyc",
+        "Lib/site-packages/jose/backends/__pycache__/base.cpython-311.pyc",
+        "Lib/site-packages/jose/backends/__pycache__/cryptography_backend.cpython-311.pyc",
+        "Lib/site-packages/jose/backends/__pycache__/ecdsa_backend.cpython-311.pyc",
+        "Lib/site-packages/jose/backends/__pycache__/native.cpython-311.pyc",
+        "Lib/site-packages/jose/backends/__pycache__/rsa_backend.cpython-311.pyc",
+        "Lib/site-packages/jose/__pycache__/constants.cpython-311.pyc",
+        "Lib/site-packages/jose/__pycache__/exceptions.cpython-311.pyc",
+        "Lib/site-packages/jose/__pycache__/jwe.cpython-311.pyc",
+        "Lib/site-packages/jose/__pycache__/jwk.cpython-311.pyc",
+        "Lib/site-packages/jose/__pycache__/jws.cpython-311.pyc",
+        "Lib/site-packages/jose/__pycache__/jwt.cpython-311.pyc",
+        "Lib/site-packages/jose/__pycache__/utils.cpython-311.pyc"
+    ],
+    "fn": "python-jose-3.5.0-pyhff2d567_0.conda",
+    "license": "MIT",
+    "license_family": "MIT",
+    "link": {
+        "source": "C:\\Users\\win\\AppData\\Roaming\\mamba\\pkgs\\https\\conda.anaconda.org\\conda-forge\\noarch\\python-jose-3.5.0-pyhff2d567_0",
+        "type": 1
+    },
+    "md5": "1b8523e5a0a5809e42c0f53a648efb28",
+    "name": "python-jose",
+    "noarch": "python",
+    "package_tarball_full_path": "C:\\Users\\win\\AppData\\Roaming\\mamba\\pkgs\\https\\conda.anaconda.org\\conda-forge\\noarch\\python-jose-3.5.0-pyhff2d567_0.tar.bz2",
+    "paths_data": {
+        "paths": [
+            {
+                "_path": "Lib/site-packages/jose/__init__.py",
+                "path_type": "hardlink",
+                "sha256": "c7cbd607476b06a89fc589edfa5a209dbad1b8a6fa5f7a91c40779974e77803c",
+                "sha256_in_prefix": "c7cbd607476b06a89fc589edfa5a209dbad1b8a6fa5f7a91c40779974e77803c",
+                "size_in_bytes": 322
+            },
+            {
+                "_path": "Lib/site-packages/jose/backends/__init__.py",
+                "path_type": "hardlink",
+                "sha256": "91a0ec3795e4b657c0f05ff7d3ad0f79775a2f804d76fa144f33cb0233ffbffb",
+                "sha256_in_prefix": "91a0ec3795e4b657c0f05ff7d3ad0f79775a2f804d76fa144f33cb0233ffbffb",
+                "size_in_bytes": 861
+            },
+            {
+                "_path": "Lib/site-packages/jose/backends/_asn1.py",
+                "path_type": "hardlink",
+                "sha256": "d82aa7441ecba234eb354e1dd470bd040d96909bf938e33a8329fa07eb55c249",
+                "sha256_in_prefix": "d82aa7441ecba234eb354e1dd470bd040d96909bf938e33a8329fa07eb55c249",
+                "size_in_bytes": 2656
+            },
+            {
+                "_path": "Lib/site-packages/jose/backends/base.py",
+                "path_type": "hardlink",
+                "sha256": "d24ba9a2c29f8b1011d96dde9cab9876a119a551b9e8e0ce40311d82afe99afb",
+                "sha256_in_prefix": "d24ba9a2c29f8b1011d96dde9cab9876a119a551b9e8e0ce40311d82afe99afb",
+                "size_in_bytes": 2224
+            },
+            {
+                "_path": "Lib/site-packages/jose/backends/cryptography_backend.py",
+                "path_type": "hardlink",
+                "sha256": "bf55ea3ba3c8529630c8002c3286f5143f43e2aeab3f07d7ec2195f8ac459405",
+                "sha256_in_prefix": "bf55ea3ba3c8529630c8002c3286f5143f43e2aeab3f07d7ec2195f8ac459405",
+                "size_in_bytes": 22175
+            },
+            {
+                "_path": "Lib/site-packages/jose/backends/ecdsa_backend.py",
+                "path_type": "hardlink",
+                "sha256": "3913917a9229212f43e2ce95b668658b919957d923dc2263dbf32fd0044a1aa1",
+                "sha256_in_prefix": "3913917a9229212f43e2ce95b668658b919957d923dc2263dbf32fd0044a1aa1",
+                "size_in_bytes": 5055
+            },
+            {
+                "_path": "Lib/site-packages/jose/backends/native.py",
+                "path_type": "hardlink",
+                "sha256": "b99b8ff04aa28403ec986771b25332861f831a87b5c972d7981fcffb6cd7c92f",
+                "sha256_in_prefix": "b99b8ff04aa28403ec986771b25332861f831a87b5c972d7981fcffb6cd7c92f",
+                "size_in_bytes": 2096
+            },
+            {
+                "_path": "Lib/site-packages/jose/backends/rsa_backend.py",
+                "path_type": "hardlink",
+                "sha256": "fad89017f1b6bf5e9ae4f2c22e3115c12a1869e072de1f938fa28a9ad62502e6",
+                "sha256_in_prefix": "fad89017f1b6bf5e9ae4f2c22e3115c12a1869e072de1f938fa28a9ad62502e6",
+                "size_in_bytes": 10941
+            },
+            {
+                "_path": "Lib/site-packages/jose/constants.py",
+                "path_type": "hardlink",
+                "sha256": "b4f64ba3aa08f267acc455ce0a2ba513ef86700356d55dfbc243b47f5bd5bea6",
+                "sha256_in_prefix": "b4f64ba3aa08f267acc455ce0a2ba513ef86700356d55dfbc243b47f5bd5bea6",
+                "size_in_bytes": 2625
+            },
+            {
+                "_path": "Lib/site-packages/jose/exceptions.py",
+                "path_type": "hardlink",
+                "sha256": "2bfb9e141b264f0432484d02534f6232d84e01d3da4d0fc7bf3473f65613d65b",
+                "sha256_in_prefix": "2bfb9e141b264f0432484d02534f6232d84e01d3da4d0fc7bf3473f65613d65b",
+                "size_in_bytes": 791
+            },
+            {
+                "_path": "Lib/site-packages/jose/jwe.py",
+                "path_type": "hardlink",
+                "sha256": "2fb199b0a9baa9cd80a43b4e9ccd180ecd8a84fd51de158ca12a082a2f1c4108",
+                "sha256_in_prefix": "2fb199b0a9baa9cd80a43b4e9ccd180ecd8a84fd51de158ca12a082a2f1c4108",
+                "size_in_bytes": 22700
+            },
+            {
+                "_path": "Lib/site-packages/jose/jwk.py",
+                "path_type": "hardlink",
+                "sha256": "4ee22b3e82a454565cc2b9e9fc873049d5092fbf7ea4018299ab80cb2b260a84",
+                "sha256_in_prefix": "4ee22b3e82a454565cc2b9e9fc873049d5092fbf7ea4018299ab80cb2b260a84",
+                "size_in_bytes": 1994
+            },
+            {
+                "_path": "Lib/site-packages/jose/jws.py",
+                "path_type": "hardlink",
+                "sha256": "3f64805213ba6718e15a4e971c5a6e960a5111f00727f92d020ccf83e389ff7c",
+                "sha256_in_prefix": "3f64805213ba6718e15a4e971c5a6e960a5111f00727f92d020ccf83e389ff7c",
+                "size_in_bytes": 7894
+            },
+            {
+                "_path": "Lib/site-packages/jose/jwt.py",
+                "path_type": "hardlink",
+                "sha256": "39756e1ce3fa834e6d1f2ce8f5e3f8b4b9fc473a9b7692ab11653a570b4d3ab0",
+                "sha256_in_prefix": "39756e1ce3fa834e6d1f2ce8f5e3f8b4b9fc473a9b7692ab11653a570b4d3ab0",
+                "size_in_bytes": 18158
+            },
+            {
+                "_path": "Lib/site-packages/jose/utils.py",
+                "path_type": "hardlink",
+                "sha256": "dd1e8456210fc1cd8dade3b59e352c69bf6b1ca9dce9fcdf449996a3d7f863dd",
+                "sha256_in_prefix": "dd1e8456210fc1cd8dade3b59e352c69bf6b1ca9dce9fcdf449996a3d7f863dd",
+                "size_in_bytes": 4824
+            },
+            {
+                "_path": "Lib/site-packages/python_jose-3.5.0.dist-info/INSTALLER",
+                "path_type": "hardlink",
+                "sha256": "d0edee15f91b406f3f99726e44eb990be6e34fd0345b52b910c568e0eef6a2a8",
+                "sha256_in_prefix": "d0edee15f91b406f3f99726e44eb990be6e34fd0345b52b910c568e0eef6a2a8",
+                "size_in_bytes": 5
+            },
+            {
+                "_path": "Lib/site-packages/python_jose-3.5.0.dist-info/METADATA",
+                "path_type": "hardlink",
+                "sha256": "140e0b86f93cf8167318d3946f3af8687f38ba3d32b631b948c2bda7ba102f06",
+                "sha256_in_prefix": "140e0b86f93cf8167318d3946f3af8687f38ba3d32b631b948c2bda7ba102f06",
+                "size_in_bytes": 5508
+            },
+            {
+                "_path": "Lib/site-packages/python_jose-3.5.0.dist-info/RECORD",
+                "path_type": "hardlink",
+                "sha256": "cf3b1fc8956a1b103027d7882a335526449fdbc2344cebab2073d1049de396d5",
+                "sha256_in_prefix": "cf3b1fc8956a1b103027d7882a335526449fdbc2344cebab2073d1049de396d5",
+                "size_in_bytes": 2583
+            },
+            {
+                "_path": "Lib/site-packages/python_jose-3.5.0.dist-info/REQUESTED",
+                "path_type": "hardlink",
+                "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "sha256_in_prefix": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            {
+                "_path": "Lib/site-packages/python_jose-3.5.0.dist-info/WHEEL",
+                "path_type": "hardlink",
+                "sha256": "7a02a6e5c29f13a3aa947c28758f098e9e32a990c15e0b23d3d52c579a2377f5",
+                "sha256_in_prefix": "7a02a6e5c29f13a3aa947c28758f098e9e32a990c15e0b23d3d52c579a2377f5",
+                "size_in_bytes": 109
+            },
+            {
+                "_path": "Lib/site-packages/python_jose-3.5.0.dist-info/direct_url.json",
+                "path_type": "hardlink",
+                "sha256": "8af0328791759f503c1ce943f180b7acac93fc1452dcd8302ee343e58c379940",
+                "sha256_in_prefix": "8af0328791759f503c1ce943f180b7acac93fc1452dcd8302ee343e58c379940",
+                "size_in_bytes": 107
+            },
+            {
+                "_path": "Lib/site-packages/python_jose-3.5.0.dist-info/licenses/LICENSE",
+                "path_type": "hardlink",
+                "sha256": "a5e618eee6d496f77ad8ae70fea6edf148159558e2d228787d9076c900a2f926",
+                "sha256_in_prefix": "a5e618eee6d496f77ad8ae70fea6edf148159558e2d228787d9076c900a2f926",
+                "size_in_bytes": 1081
+            },
+            {
+                "_path": "Lib/site-packages/python_jose-3.5.0.dist-info/top_level.txt",
+                "path_type": "hardlink",
+                "sha256": "b566665e14529b468036301d45b8e2ac232760e41d330a50a9d2544a600d8ed9",
+                "sha256_in_prefix": "b566665e14529b468036301d45b8e2ac232760e41d330a50a9d2544a600d8ed9",
+                "size_in_bytes": 5
+            },
+            {
+                "_path": "Lib/site-packages/jose/__pycache__/__init__.cpython-311.pyc",
+                "path_type": "pyc_file"
+            },
+            {
+                "_path": "Lib/site-packages/jose/backends/__pycache__/__init__.cpython-311.pyc",
+                "path_type": "pyc_file"
+            },
+            {
+                "_path": "Lib/site-packages/jose/backends/__pycache__/_asn1.cpython-311.pyc",
+                "path_type": "pyc_file"
+            },
+            {
+                "_path": "Lib/site-packages/jose/backends/__pycache__/base.cpython-311.pyc",
+                "path_type": "pyc_file"
+            },
+            {
+                "_path": "Lib/site-packages/jose/backends/__pycache__/cryptography_backend.cpython-311.pyc",
+                "path_type": "pyc_file"
+            },
+            {
+                "_path": "Lib/site-packages/jose/backends/__pycache__/ecdsa_backend.cpython-311.pyc",
+                "path_type": "pyc_file"
+            },
+            {
+                "_path": "Lib/site-packages/jose/backends/__pycache__/native.cpython-311.pyc",
+                "path_type": "pyc_file"
+            },
+            {
+                "_path": "Lib/site-packages/jose/backends/__pycache__/rsa_backend.cpython-311.pyc",
+                "path_type": "pyc_file"
+            },
+            {
+                "_path": "Lib/site-packages/jose/__pycache__/constants.cpython-311.pyc",
+                "path_type": "pyc_file"
+            },
+            {
+                "_path": "Lib/site-packages/jose/__pycache__/exceptions.cpython-311.pyc",
+                "path_type": "pyc_file"
+            },
+            {
+                "_path": "Lib/site-packages/jose/__pycache__/jwe.cpython-311.pyc",
+                "path_type": "pyc_file"
+            },
+            {
+                "_path": "Lib/site-packages/jose/__pycache__/jwk.cpython-311.pyc",
+                "path_type": "pyc_file"
+            },
+            {
+                "_path": "Lib/site-packages/jose/__pycache__/jws.cpython-311.pyc",
+                "path_type": "pyc_file"
+            },
+            {
+                "_path": "Lib/site-packages/jose/__pycache__/jwt.cpython-311.pyc",
+                "path_type": "pyc_file"
+            },
+            {
+                "_path": "Lib/site-packages/jose/__pycache__/utils.cpython-311.pyc",
+                "path_type": "pyc_file"
+            }
+        ],
+        "paths_version": 1
+    },
+    "platform": null,
+    "requested_spec": "python-jose",
+    "sha256": "785a3be2b9ce6d2f2f480bf1805c737f17e84c7e6382162eb83aea7d19089b87",
+    "size": 76008,
+    "subdir": "noarch",
+    "timestamp": 1748530600,
+    "url": "https://conda.anaconda.org/conda-forge/noarch/python-jose-3.5.0-pyhff2d567_0.conda",
+    "version": "3.5.0"
+}

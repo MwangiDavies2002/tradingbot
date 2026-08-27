@@ -1,0 +1,18 @@
+{
+  "recommendations": [
+    "ms-python.python",
+    "ms-python.black-formatter",
+    "charliermarsh.ruff",
+    "ms-python.pylance",
+    "ms-toolsai.jupyter",
+    "njpwerner.autodocstring",
+    "eamodio.gitlens",
+    "mhutchie.git-graph",
+    "pkief.material-icon-theme",
+    "zhuangtongfa.material-theme",
+    "streetsidesoftware.code-spell-checker",
+    "mechatroner.rainbow-csv",
+    "ms-azuretools.vscode-docker",
+    "tamasfe.even-better-toml"
+  ]
+}
