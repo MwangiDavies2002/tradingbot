@@ -42,7 +42,7 @@ export default function Backtest() {
 
   const fetchRecentRuns = async () => {
     try {
-      const data = await api.get('/backtest/results') as any[];
+      const data = await api.get('/api/backtest/results') as any[];
       setRecentRuns(data);
     } catch (err) {
       console.error('Failed to fetch recent runs', err);
@@ -70,7 +70,7 @@ export default function Backtest() {
         min_confluence: minConfluence,
         ...selectedStrategies
       };
-      const data = await api.post('/backtest/run', payload) as any[];
+      const data = await api.post('/api/backtest/run', payload) as any[];
       setResults(data);
       fetchRecentRuns();
     } catch (err) {
