@@ -246,6 +246,8 @@ class BotRunner:
         while self._running:
             await asyncio.sleep(60)   # Check every 60 seconds
 
+            await self._apply_control_events()
+
             # Reconnect check
             if not self.client.state.connected:
                 logger.warning("Deriv connection lost — waiting for reconnect...")
@@ -263,6 +265,26 @@ class BotRunner:
 
             if self._shutdown_event.is_set():
                 self._running = False
+
+    async def _apply_control_events(self) -> None:
+        """Apply the latest dashboard control event written to the database."""
+        from sqlalchemy import desc, select
+        from app.database.models import BotEvent
+        from app.database.session import AsyncSessionLocal
+
+        async with AsyncSessionLocal() as db:
+            stmt = (
+                select(BotEvent)
+                .where(BotEvent.event_type.in_(("bot_start_manual", "bot_stop_manual")))
+                .order_by(desc(BotEvent.ts))
+                .limit(1)
+            )
+            result = await db.execute(stmt)
+            event = result.scalar_one_or_none()
+
+        if event and event.event_type == "bot_stop_manual":
+            logger.warning("Dashboard stop requested")
+            self.request_shutdown()
 
     # ── Shutdown ──────────────────────────────────────────────────────────────
 

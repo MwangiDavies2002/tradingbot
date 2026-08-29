@@ -50,13 +50,22 @@ async def bot_status(db: AsyncSession = Depends(get_db)):
     result = await db.execute(stmt)
     cb_event = result.scalar_one_or_none()
 
+    bot_stmt = (
+        select(BotEvent)
+        .where(BotEvent.event_type.in_(("bot_start_manual", "bot_stop_manual")))
+        .order_by(desc(BotEvent.ts))
+        .limit(1)
+    )
+    bot_result = await db.execute(bot_stmt)
+    bot_event = bot_result.scalar_one_or_none()
+
     # Latest equity snapshot
     eq_stmt = select(EquitySnapshot).order_by(desc(EquitySnapshot.ts)).limit(1)
     eq_result = await db.execute(eq_stmt)
     latest_eq = eq_result.scalar_one_or_none()
 
     return {
-        "bot_running":     True,   # Placeholder — replace with live bot.state
+        "bot_running":     bot_event.event_type != "bot_stop_manual" if bot_event else False,
         "circuit_breaker": {
             "state":       cb_event.details_json.get("state", "active") if cb_event else "active",
             "last_trigger": cb_event.event_type if cb_event else None,
