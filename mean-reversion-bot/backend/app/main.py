@@ -196,10 +196,9 @@ def create_app() -> FastAPI:
     app.include_router(bot_control.router, prefix="/api/bot",      tags=["Bot Control"])
     app.include_router(config.router,      prefix="/api/config",   tags=["Config"])
     app.include_router(test.router,        prefix="/api",          tags=["Diagnostics"])
-    if not RUNNING_ON_VERCEL:
-        from app.api.routes import backtest
+    from app.api.routes import backtest
 
-        app.include_router(backtest.router, prefix="/api/backtest", tags=["Backtest"])
+    app.include_router(backtest.router, prefix="/api/backtest", tags=["Backtest"])
 
     # ── Health & Meta Endpoints ───────────────────────────────────────────────
 
