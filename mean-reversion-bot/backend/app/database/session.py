@@ -40,8 +40,12 @@ logger = logging.getLogger(__name__)
 
 # ── Engine ────────────────────────────────────────────────────────────────────
 
+database_url = settings.DATABASE_URL
+if database_url.startswith("postgresql://"):
+    database_url = "postgresql+asyncpg://" + database_url[len("postgresql://"):]
+
 engine = create_async_engine(
-    settings.DATABASE_URL,
+    database_url,
     echo=settings.DB_ECHO,            # Log SQL in debug mode only
     pool_size=10,                     # Connections kept open
     max_overflow=20,                  # Extra connections allowed under load
