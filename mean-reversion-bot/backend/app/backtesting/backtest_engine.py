@@ -444,8 +444,9 @@ class BacktestEngine:
         report.winning_trades  = len(wins)
         report.losing_trades   = len(losses)
         report.win_rate        = len(wins) / len(trades) if trades else 0.0
+        # JSON and PostgreSQL JSONB cannot represent Infinity.
         report.profit_factor   = (gross_profit / gross_loss
-                                  if gross_loss > 0 else float("inf"))
+                      if gross_loss > 0 else 0.0)
         report.total_pnl       = sum(pnls)
         report.total_pnl_pct   = report.total_pnl / report.initial_balance
         report.avg_win         = float(np.mean(wins))   if wins   else 0.0
