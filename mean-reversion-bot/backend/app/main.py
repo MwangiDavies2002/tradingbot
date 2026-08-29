@@ -118,9 +118,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
     db_ok = await check_connection()
     if not db_ok:
         logger.error("Database connection FAILED — check DATABASE_URL in .env")
-    else:
+    elif not RUNNING_ON_VERCEL:
         await create_tables()
         logger.info("Database connected ✓")
+    else:
+        logger.info("Database connected ✓ (schema managed externally on Vercel)")
 
     # Redis
     try:
