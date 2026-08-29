@@ -30,7 +30,6 @@ WHAT THIS DOES:
 """
 
 from __future__ import annotations
-
 import logging
 import logging.config
 import os
@@ -41,7 +40,6 @@ from typing import AsyncGenerator
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-
 from app.config import settings
 from app.database.session import check_connection, create_tables
 
