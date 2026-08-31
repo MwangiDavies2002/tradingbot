@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Play, FlaskConical, Check, X, Info, 
-  TrendingUp, BarChart3, History, Layers
+  TrendingUp, BarChart3, History, Layers, Upload, ChevronDown
 } from 'lucide-react';
 import { api } from '../api/client';
+import { CandlestickChart, type Candle } from '../components/CandlestickChart';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, 
   Tooltip, ResponsiveContainer, AreaChart, Area
@@ -35,6 +36,8 @@ export default function Backtest() {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<any[]>([]);
   const [recentRuns, setRecentRuns] = useState<any[]>([]);
+  const [selectedRun, setSelectedRun] = useState<any | null>(null);
+  const [expandedTrades, setExpandedTrades] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     fetchRecentRuns();
@@ -59,7 +62,7 @@ export default function Backtest() {
     );
   };
 
-  const runBacktest = async () => {
+  const runBacktest = async (csvText?: string) => {
     if (selectedSymbols.length === 0) return;
     setLoading(true);
     try {
@@ -68,16 +71,31 @@ export default function Backtest() {
         timeframe,
         days,
         min_confluence: minConfluence,
+        csv_data: csvText || null,
         ...selectedStrategies
       };
       const data = await api.post('/api/backtest/run', payload) as any[];
       setResults(data);
-      fetchRecentRuns();
+      setSelectedRun(null);
+      await fetchRecentRuns();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error'
       alert(`Backtest failed: ${message}`)
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCsvUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const csvText = await file.text();
+      await runBacktest(csvText);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      alert(`CSV import failed: ${message}`);
     }
   };
 
@@ -93,22 +111,29 @@ export default function Backtest() {
             Test combinations of strategies against historical data to identify optimal setups.
           </p>
         </div>
-        <button
-          onClick={runBacktest}
-          disabled={loading || selectedSymbols.length === 0}
-          className={`flex items-center gap-2 px-6 py-2.5 rounded-lg font-semibold transition-all ${
-            loading || selectedSymbols.length === 0
-              ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
-              : 'bg-cyan-500 hover:bg-cyan-400 text-slate-900 shadow-lg shadow-cyan-500/20'
-          }`}
-        >
-          {loading ? (
-            <div className="w-5 h-5 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
-          ) : (
-            <Play className="w-5 h-5 fill-current" />
-          )}
-          {loading ? 'Running Test...' : 'Run Combined Test'}
-        </button>
+        <div className="flex items-center gap-3">
+          <label className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700 cursor-pointer">
+            <Upload className="w-4 h-4" />
+            Import CSV
+            <input type="file" accept=".csv" className="hidden" onChange={handleCsvUpload} />
+          </label>
+          <button
+            onClick={() => runBacktest()}
+            disabled={loading || selectedSymbols.length === 0}
+            className={`flex items-center gap-2 px-6 py-2.5 rounded-lg font-semibold transition-all ${
+              loading || selectedSymbols.length === 0
+                ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                : 'bg-cyan-500 hover:bg-cyan-400 text-slate-900 shadow-lg shadow-cyan-500/20'
+            }`}
+          >
+            {loading ? (
+              <div className="w-5 h-5 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Play className="w-5 h-5 fill-current" />
+            )}
+            {loading ? 'Running Test...' : 'Run Combined Test'}
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -293,7 +318,11 @@ export default function Backtest() {
             <div className="divide-y divide-slate-700">
               {recentRuns.length > 0 ? (
                 recentRuns.map((run, i) => (
-                  <div key={i} className="px-5 py-3 flex items-center justify-between hover:bg-slate-700/30 transition-colors">
+                  <button
+                    key={i}
+                    onClick={() => setSelectedRun(run)}
+                    className={`w-full px-5 py-3 flex items-center justify-between hover:bg-slate-700/30 transition-colors text-left ${selectedRun?.run_id === run.run_id ? 'bg-cyan-500/10' : ''}`}
+                  >
                     <div className="flex items-center gap-4">
                       <span className="text-xs font-mono text-slate-500">#{run.run_id}</span>
                       <div>
@@ -313,13 +342,62 @@ export default function Backtest() {
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </button>
                 ))
               ) : (
                 <div className="p-8 text-center text-slate-500 text-sm italic">No recent experiments found.</div>
               )}
             </div>
           </div>
+
+          {selectedRun && (
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider text-slate-500">Selected Experiment</div>
+                  <h3 className="text-lg font-bold text-white">{selectedRun.symbol} · {selectedRun.timeframe}</h3>
+                </div>
+                <div className="text-right">
+                  <div className="text-[10px] text-slate-500 uppercase font-bold">Sharpe</div>
+                  <div className="text-xl font-black text-cyan-400">{Number(selectedRun.sharpe_ratio || 0).toFixed(2)}</div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                <div className="bg-slate-900 border border-slate-700 rounded-lg p-3"><div className="text-slate-500">P&L</div><div className={`font-bold ${selectedRun.total_pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>{selectedRun.total_pnl >= 0 ? '+' : ''}{Number(selectedRun.total_pnl || 0).toFixed(2)}</div></div>
+                <div className="bg-slate-900 border border-slate-700 rounded-lg p-3"><div className="text-slate-500">Win rate</div><div className="font-bold text-white">{Number(selectedRun.win_rate || 0).toFixed(1)}%</div></div>
+                <div className="bg-slate-900 border border-slate-700 rounded-lg p-3"><div className="text-slate-500">Trades</div><div className="font-bold text-white">{selectedRun.total_trades}</div></div>
+                <div className="bg-slate-900 border border-slate-700 rounded-lg p-3"><div className="text-slate-500">Max DD</div><div className="font-bold text-red-400">{Number(selectedRun.max_drawdown || 0).toFixed(1)}%</div></div>
+              </div>
+              {selectedRun.candles && selectedRun.candles.length > 0 && (
+                <div className="bg-slate-900 border border-slate-700 rounded-lg p-4">
+                  <h4 className="text-sm font-bold text-white mb-3 flex items-center gap-2"><BarChart3 className="w-4 h-4 text-cyan-400" /> Price Action</h4>
+                  <CandlestickChart candles={selectedRun.candles as Candle[]} width={750} height={250} />
+                </div>
+              )}
+              {selectedRun.trades && selectedRun.trades.length > 0 && (
+                <div className="bg-slate-900 border border-slate-700 rounded-lg overflow-hidden">
+                  <div className="p-4 border-b border-slate-700"><h4 className="text-sm font-bold text-white">Trades ({selectedRun.trades.length})</h4></div>
+                  <div className="divide-y divide-slate-700">
+                    {selectedRun.trades.map((trade: any, idx: number) => (
+                      <div key={idx} className="p-4">
+                        <button onClick={() => setExpandedTrades(prev => ({ ...prev, [idx]: !prev[idx] }))} className="w-full flex items-center justify-between hover:text-cyan-400 transition-colors text-left">
+                          <div className="flex items-center gap-3">
+                            <div className={`px-2 py-1 rounded text-xs font-bold ${trade.direction === 'buy' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>{trade.direction.toUpperCase()}</div>
+                            <div><div className="text-sm font-mono">{trade.id.slice(0, 8)}</div><div className="text-xs text-slate-500">{trade.reason || 'manual'}</div></div>
+                          </div>
+                          <div className="flex items-center gap-6">
+                            <div className="text-right"><div className={`text-sm font-bold ${(trade.pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>{(trade.pnl || 0) >= 0 ? '+' : ''}{trade.pnl?.toFixed(2)}</div><div className="text-xs text-slate-500">{trade.pnl_pct?.toFixed(1)}%</div></div>
+                            <ChevronDown className={`w-4 h-4 transition-transform ${expandedTrades[idx] ? 'rotate-180' : ''}`} />
+                          </div>
+                        </button>
+                        {expandedTrades[idx] && (<div className="mt-3 pt-3 border-t border-slate-600 text-xs grid grid-cols-2 gap-2"><div><span className="text-slate-500">Entry:</span> <span className="text-white font-mono">{trade.entry?.toFixed(4)}</span></div><div><span className="text-slate-500">Exit:</span> <span className="text-white font-mono">{trade.exit?.toFixed(4)}</span></div></div>)}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
