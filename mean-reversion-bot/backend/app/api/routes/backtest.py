@@ -18,6 +18,7 @@ from app.database.models import BacktestResult, Candle as DbCandle
 from app.core.engine.signal_engine import SignalEngine, EngineConfig
 from app.backtesting.backtest_engine import BacktestEngine
 from app.core.lsl.lsl_detector import Candle as DetectorCandle
+from app.data.historical_fetcher import ensure_candles_for_symbols
 
 logger = logging.getLogger(__name__)
 
@@ -247,6 +248,11 @@ async def run_backtest(req: BacktestRequest, db: AsyncSession = Depends(get_db))
     results = []
 
     try:
+        # Fetch real historical data from Deriv and cache it, unless CSV was provided
+        if not req.csv_data:
+            tf_seconds = timeframe_to_seconds(req.timeframe)
+            await ensure_candles_for_symbols(req.symbols, tf_seconds, req.days)
+
         for symbol in req.symbols:
             candles = await load_candles_for_symbol(db, symbol, req.timeframe, req.days, req.csv_data)
             config = EngineConfig(
