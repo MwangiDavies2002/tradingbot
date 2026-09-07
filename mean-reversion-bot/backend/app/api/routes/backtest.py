@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 from typing import Any, List, Optional, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -228,7 +228,7 @@ class BacktestRequest(BaseModel):
     use_volume: bool = True
     use_hurst: bool = True
 
-    min_confluence: int = 6
+    min_confluence: int = Field(6, ge=1, le=20)
 
 
 class BacktestReportResponse(BaseModel):

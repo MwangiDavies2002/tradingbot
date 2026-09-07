@@ -387,6 +387,22 @@ class SignalEngine:
         direction = self._determine_direction(
             lsl_signal, structure, zs_result, rsi_result, htf_bias
         )
+        if direction is None:
+            # A single enabled directional indicator may qualify at a low threshold.
+            # Context-only conditions (volume/Hurst) must never invent a direction.
+            directional = dict(
+                z_score=zs_result.value if zs_result else None,
+                rsi=rsi_result.value if rsi_result else None,
+                bb_position=bb_result.position if bb_result else None,
+                vwap_dev=vwap_result.deviation_atr if vwap_result else None,
+                stoch_k=stoch_result.k if stoch_result else None,
+            )
+            buy_score = self.scorer.score(direction="buy", **directional).score
+            sell_score = self.scorer.score(direction="sell", **directional).score
+            if buy_score > sell_score:
+                direction = "buy"
+            elif sell_score > buy_score:
+                direction = "sell"
 
         if direction is None:
             return _no_trade(

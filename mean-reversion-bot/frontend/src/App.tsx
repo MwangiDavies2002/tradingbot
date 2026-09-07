@@ -90,7 +90,7 @@ export default function App() {
         {/* ── Main Content ─────────────────────────────────────── */}
         <main className="flex-1 overflow-y-auto">
           <Routes>
-            <Route path="/" element={<div className="p-6 space-y-4"><h1 className="text-2xl font-bold">V75 1s MT5 Dashboard</h1><NavLink className="inline-block text-cyan-300" to="/backtest">Open Strategy Lab to select and test your confluences →</NavLink><MT5Panel /></div>} />
+            <Route path="/" element={<Backtest />} />
             <Route path="/trades"   element={<Trades />} />
             <Route path="/signals"  element={<Signals />} />
             <Route path="/backtest" element={<Backtest />} />

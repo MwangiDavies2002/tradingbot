@@ -1,0 +1,90 @@
+export const TV_SYMBOL = 'DERIV:VOLATILITY_75_1S_INDEX'
+export const TV_URL = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(TV_SYMBOL)}`
+export const TV_SUPPORTED = ['use_zscore', 'use_rsi', 'use_bb', 'use_vwap', 'use_stoch', 'use_volume']
+export type Selection = Record<string, boolean>
+export const DEFAULT_SELECTION: Selection = {
+  use_zscore: true, use_rsi: true, use_bb: true, use_vwap: false,
+  use_stoch: false, use_volume: false, use_lsl: false, use_smc: false, use_hurst: false,
+}
+export const WEIGHTS: Record<string, number> = { use_zscore: 3, use_rsi: 2, use_bb: 1, use_vwap: 1, use_stoch: 1, use_volume: 1 }
+
+export function selectionError(selection: Selection, threshold: number): string | null {
+  const unsupported = Object.keys(selection).filter(key => selection[key] && !TV_SUPPORTED.includes(key))
+  if (unsupported.length) return `TradingView export does not implement ${unsupported.map(k => k.slice(4).toUpperCase()).join(', ')}. Deselect them or use the Python/MT5 mode.`
+  if (!TV_SUPPORTED.slice(0, 5).some(key => selection[key])) return 'Select at least one directional indicator. Volume alone cannot determine buy or sell.'
+  const maximum = Object.entries(WEIGHTS).reduce((sum, [key, weight]) => sum + (selection[key] ? weight : 0), 0)
+  if (!Number.isInteger(threshold) || threshold < 1 || threshold > maximum) return `Choose a threshold from 1 to ${maximum} for this selection.`
+  return null
+}
+
+export function buildPineStrategy(selection: Selection, threshold: number): string {
+  const error = selectionError(selection, threshold)
+  if (error) throw new Error(error)
+  const flag = (key: string) => selection[key] ? 'true' : 'false'
+  return `//@version=6
+// Strategy Lab TradingView companion: simulated orders, never broker execution.
+// Uses Pine's indicator calculations. Not a byte-for-byte port of the Python engine.
+// Recreate TradingView alerts after changing any inputs; alerts retain old settings.
+strategy("V75 1s - Dynamic Confluence Lab", overlay=true, pyramiding=0, initial_capital=10000, default_qty_type=strategy.fixed, default_qty_value=1, calc_on_every_tick=false, process_orders_on_close=false)
+
+threshold = input.int(${threshold}, "Minimum weighted score", minval=1, maxval=20, group="Confluence")
+useZ = input.bool(${flag('use_zscore')}, "Z-Score (2 points; 3 if extreme)", group="Indicators")
+useRsi = input.bool(${flag('use_rsi')}, "RSI (2 points)", group="Indicators")
+useBb = input.bool(${flag('use_bb')}, "Bollinger Bands (1 point)", group="Indicators")
+useVwap = input.bool(${flag('use_vwap')}, "UTC daily VWAP (1 point; requires volume)", group="Indicators")
+useStoch = input.bool(${flag('use_stoch')}, "Stochastic (1 point)", group="Indicators")
+useVol = input.bool(${flag('use_volume')}, "Volume spike (1 context point)", group="Indicators")
+quantity = input.float(1, "Simulated quantity (units, not MT5 lots)", minval=0.001, group="Simulation")
+slMult = input.float(1.5, "Stop distance in ATR", minval=0.1, group="Simulation")
+rr = input.float(2, "Target / stop ratio", minval=0.1, group="Simulation")
+
+if syminfo.tickerid != "${TV_SYMBOL}"
+    runtime.error("Use DERIV:VOLATILITY_75_1S_INDEX only")
+maxScore = (useZ ? 3 : 0) + (useRsi ? 2 : 0) + (useBb ? 1 : 0) + (useVwap ? 1 : 0) + (useStoch ? 1 : 0) + (useVol ? 1 : 0)
+if not (useZ or useRsi or useBb or useVwap or useStoch) or threshold > maxScore
+    runtime.error("Enable a directional indicator and reduce the threshold to the selected maximum")
+
+basis = ta.sma(close, 20)
+sd = ta.stdev(close, 20)
+z = sd > 0 ? (close - basis) / sd : 0.0
+rsi = ta.rsi(close, 14)
+atr = ta.atr(14)
+upper = basis + 2 * sd
+lower = basis - 2 * sd
+k = ta.sma(ta.stoch(close, high, low, 14), 3)
+utcDay = time("1D", "0000-0000", "UTC")
+newDay = ta.change(utcDay) != 0
+vwap = ta.vwap(hlc3, newDay or barstate.isfirst)
+vwapDev = atr > 0 ? (close - vwap) / atr : na
+averageVolume = ta.sma(volume, 20)
+volumePoint = useVol and not na(volume) and averageVolume > 0 and volume >= 1.5 * averageVolume ? 1 : 0
+
+buyDirectional = (useZ and z <= -2 ? (z <= -3 ? 3 : 2) : 0) + (useRsi and rsi < 25 ? 2 : 0) + (useBb and close < lower ? 1 : 0) + (useVwap and vwapDev <= -1.5 ? 1 : 0) + (useStoch and k < 15 ? 1 : 0)
+sellDirectional = (useZ and z >= 2 ? (z >= 3 ? 3 : 2) : 0) + (useRsi and rsi > 75 ? 2 : 0) + (useBb and close > upper ? 1 : 0) + (useVwap and vwapDev >= 1.5 ? 1 : 0) + (useStoch and k > 85 ? 1 : 0)
+buyScore = buyDirectional + volumePoint
+sellScore = sellDirectional + volumePoint
+ready = barstate.isconfirmed and bar_index >= 60 and atr > 0
+longSignal = ready and buyDirectional > sellDirectional and buyScore >= threshold
+shortSignal = ready and sellDirectional > buyDirectional and sellScore >= threshold
+
+// Stop/target ticks are fixed at the signal, relative to the emulator's actual entry fill.
+if strategy.position_size == 0
+    stopTicks = math.max(1, math.round(atr * slMult / syminfo.mintick))
+    targetTicks = math.max(1, math.round(stopTicks * rr))
+    if longSignal
+        strategy.entry("Long", strategy.long, qty=quantity, alert_message="V751S simulated long entry")
+        strategy.exit("Long exit", "Long", loss=stopTicks, profit=targetTicks, alert_message="V751S simulated long exit")
+    else if shortSignal
+        strategy.entry("Short", strategy.short, qty=quantity, alert_message="V751S simulated short entry")
+        strategy.exit("Short exit", "Short", loss=stopTicks, profit=targetTicks, alert_message="V751S simulated short exit")
+
+plot(useBb ? upper : na, "Upper BB", color=color.new(color.blue, 50))
+plot(useBb ? lower : na, "Lower BB", color=color.new(color.blue, 50))
+plot(useVwap ? vwap : na, "UTC VWAP", color=color.orange)
+plot(buyScore, "Buy score", display=display.data_window)
+plot(sellScore, "Sell score", display=display.data_window)
+plot(threshold, "Selected threshold", display=display.data_window)
+// Strategy Tester > List of trades contains all simulated entries and exits.
+// Set realistic commission/slippage in Strategy Properties before interpreting P&L.
+`
+}

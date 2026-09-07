@@ -5,6 +5,7 @@ type Selection = { timeframe: string; min_confluence: number; [key: string]: str
 type Props = { selection?: Selection; onLoad?: (config: any) => void }
 
 export default function MT5Panel({ selection, onLoad }: Props) {
+  const local = ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname)
   const [status, setStatus] = useState<any>(null)
   const [journal, setJournal] = useState<any[]>([])
   const [error, setError] = useState('')
@@ -17,6 +18,7 @@ export default function MT5Panel({ selection, onLoad }: Props) {
     return state as any
   }
   useEffect(() => {
+    if (!local) return
     let active = true
     const poll = async () => {
       try { if (active) await refresh() } catch (e) { if (active) setError(String(e)) }
@@ -41,6 +43,7 @@ export default function MT5Panel({ selection, onLoad }: Props) {
   const dirty = !!selection && (!saved || Object.entries(selection).some(([key, value]) => saved[key] !== value)
     || saved.risk_pct !== risk / 100 || saved.daily_loss_pct !== lossLimit / 100)
   const button = 'px-3 py-2 rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed text-sm'
+  if (!local) return <section className="p-5 rounded-xl bg-slate-800 border border-slate-700 space-y-3"><h2 className="font-bold">MT5 is available on your Windows PC</h2><p className="text-slate-300">This hosted site cannot connect to a desktop MT5 terminal. Use TradingView in Strategy Lab, or open the local app with the backend running.</p><a className="text-cyan-300" href="http://localhost:3000/backtest">Open local Strategy Lab ↗</a></section>
   return <section className="bg-slate-800 border border-cyan-800 rounded-xl p-5 space-y-4">
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div>
@@ -63,7 +66,7 @@ export default function MT5Panel({ selection, onLoad }: Props) {
         <button className={button} disabled={!saved || busy} onClick={() => { onLoad?.(saved); setRisk(saved.risk_pct * 100); setLossLimit(saved.daily_loss_pct * 100) }}>Load saved selection</button>
         {dirty && <span className="text-amber-300">Save these changes before starting.</span>}
       </div>
-      <p className="text-xs text-slate-400">The lab uses a weighted confluence score: 6 points does not mean six indicators all agree. Saved toggles and the threshold are used by the same signal engine for backtests and demo entries. MT5 uses tick volume and broker lot sizing.</p>
+      <p className="text-xs text-slate-400">Choose any threshold from 1 upward. Points are weighted, so the threshold is not a count of indicators. Save changes before starting. MT5 uses tick volume and broker lot sizing.</p>
     </>}
     {saved && <p className="text-xs text-slate-400">Saved: {saved.timeframe} · minimum {saved.min_confluence} points · risk {saved.risk_pct * 100}% · daily limit {saved.daily_loss_pct * 100}% · {Object.entries(saved).filter(([key, value]) => key.startsWith('use_') && value).map(([key]) => key.slice(4).toUpperCase()).join(', ')}</p>}
     <p className="text-xs text-slate-400">Log into your Deriv demo account in MT5, enable Algo Trading, and allow external Python trading under Options → Expert Advisors. Keep this backend and MT5 running on this PC. Stop entries leaves existing broker SL/TP orders active.</p>

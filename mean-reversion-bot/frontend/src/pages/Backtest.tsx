@@ -5,6 +5,8 @@ import {
 } from 'lucide-react';
 import { api } from '../api/client';
 import MT5Panel from '../components/MT5Panel';
+import TradingViewPanel from '../components/TradingViewPanel';
+import { DEFAULT_SELECTION, TV_SUPPORTED, TV_URL } from '../tradingview/strategy';
 import { CandlestickChart, type Candle } from '../components/CandlestickChart';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, 
@@ -26,14 +28,16 @@ const STRATEGIES = [
 const SYMBOLS = ['1HZ75V'];
 
 export default function Backtest() {
-  const [selectedStrategies, setSelectedStrategies] = useState<Record<string, boolean>>({
-    use_zscore: true, use_rsi: true, use_bb: true, use_vwap: true,
-    use_stoch: true, use_lsl: true, use_smc: true, use_volume: true, use_hurst: true
+  const [savedLab] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('v751s-strategy-lab-v2') || '{}') || {} } catch { return {} }
   });
+  const [platform, setPlatform] = useState<'tradingview' | 'mt5'>('tradingview');
+  const [selectedStrategies, setSelectedStrategies] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(STRATEGIES.map(s => [s.id, typeof savedLab.selection?.[s.id] === 'boolean' ? savedLab.selection[s.id] : DEFAULT_SELECTION[s.id]])));
   const [selectedSymbols, setSelectedSymbols] = useState<string[]>(['1HZ75V']);
-  const [timeframe, setTimeframe] = useState('M5');
+  const [timeframe, setTimeframe] = useState(['M1', 'M5', 'M15', 'M30', 'H1', 'H4'].includes(savedLab.timeframe) ? savedLab.timeframe : 'M5');
   const [days, setDays] = useState(7);
-  const [minConfluence, setMinConfluence] = useState(6);
+  const [minConfluence, setMinConfluence] = useState(Number.isInteger(savedLab.threshold) && savedLab.threshold >= 1 && savedLab.threshold <= 20 ? savedLab.threshold : 3);
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<any[]>([]);
   const [recentRuns, setRecentRuns] = useState<any[]>([]);
@@ -41,8 +45,12 @@ export default function Backtest() {
   const [expandedTrades, setExpandedTrades] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    fetchRecentRuns();
-  }, []);
+    if (platform === 'mt5') fetchRecentRuns();
+  }, [platform]);
+
+  useEffect(() => {
+    try { localStorage.setItem('v751s-strategy-lab-v2', JSON.stringify({ selection: selectedStrategies, threshold: minConfluence, timeframe })) } catch { /* Download still works without browser storage. */ }
+  }, [selectedStrategies, minConfluence, timeframe]);
 
   const fetchRecentRuns = async () => {
     try {
@@ -108,10 +116,10 @@ export default function Backtest() {
             Strategy Lab
           </h1>
           <p className="text-slate-400 text-sm mt-1">
-            Test your selection on V75 1s candles from MT5, then run it on a demo account.
+            Choose your own threshold — 1, 2, 3 or more — and test V75 1s on TradingView.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        {platform === 'mt5' && <div className="flex items-center gap-3">
           <label className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700 cursor-pointer">
             <Upload className="w-4 h-4" />
             Import CSV
@@ -133,14 +141,26 @@ export default function Backtest() {
             )}
             {loading ? 'Running Test...' : 'Run Combined Test'}
           </button>
-        </div>
+        </div>}
       </div>
 
+      <div className="flex flex-wrap items-center gap-3">
+        <label className="text-sm">Platform <select aria-label="Platform" value={platform} onChange={e => setPlatform(e.target.value as 'tradingview' | 'mt5')} className="ml-2 bg-slate-800 border border-slate-600 rounded p-2">
+          <option value="tradingview">TradingView</option><option value="mt5">MT5 / Python</option>
+        </select></label>
+        <label className="text-sm">Timeframe <select aria-label="Timeframe" value={timeframe} onChange={e => setTimeframe(e.target.value)} className="ml-2 bg-slate-800 border border-slate-600 rounded p-2">
+          {['M1', 'M5', 'M15', 'M30', 'H1', 'H4'].map(tf => <option key={tf}>{tf}</option>)}
+        </select></label>
+        <span className="text-sm text-cyan-300">V75 1s only · {minConfluence} points required</span>
+        <label className="text-sm">Minimum score <input aria-label="Minimum weighted score" type="number" min="1" max="20" step="1" value={minConfluence} onChange={e => { const value = Number(e.target.value); if (Number.isInteger(value) && value >= 1 && value <= 20) setMinConfluence(value) }} className="ml-2 w-20 bg-slate-800 border border-slate-600 rounded p-2" /></label>
+        {[1, 2, 3, 6].map(score => <button key={score} onClick={() => setMinConfluence(score)} aria-pressed={minConfluence === score} className={`px-3 py-2 rounded ${minConfluence === score ? 'bg-cyan-600' : 'bg-slate-800'}`}>{score} points</button>)}
+      </div>
+      {platform === 'tradingview' ? <TradingViewPanel selection={selectedStrategies} threshold={minConfluence} timeframe={timeframe} /> :
       <MT5Panel selection={{ timeframe, min_confluence: minConfluence, ...selectedStrategies }}
         onLoad={config => {
           setTimeframe(config.timeframe); setMinConfluence(config.min_confluence);
           setSelectedStrategies(Object.fromEntries(STRATEGIES.map(s => [s.id, config[s.id]])));
-        }} />
+        }} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Sidebar: Controls */}
@@ -155,6 +175,8 @@ export default function Backtest() {
               {STRATEGIES.map(s => (
                 <button
                   key={s.id}
+                  aria-pressed={selectedStrategies[s.id]}
+                  disabled={platform === 'tradingview' && !TV_SUPPORTED.includes(s.id) && !selectedStrategies[s.id]}
                   onClick={() => toggleStrategy(s.id)}
                   className={`flex items-center justify-between px-3 py-2.5 rounded-lg border transition-all text-left group ${
                     selectedStrategies[s.id]
@@ -164,6 +186,7 @@ export default function Backtest() {
                 >
                   <div>
                     <div className="text-sm font-medium">{s.label}</div>
+                    {platform === 'tradingview' && !TV_SUPPORTED.includes(s.id) && <div className="text-xs text-amber-300">Python / MT5 only</div>}
                     <div className="text-[10px] opacity-60 leading-tight mt-0.5">{s.description}</div>
                   </div>
                   {selectedStrategies[s.id] ? (
@@ -218,7 +241,7 @@ export default function Backtest() {
             <div>
               <label className="text-xs text-slate-500 block mb-1.5">Min. Confluence Score ({minConfluence})</label>
               <input 
-                type="range" min="4" max="12" step="1"
+                type="range" min="1" max="20" step="1"
                 value={minConfluence}
                 onChange={e => setMinConfluence(Number(e.target.value))}
                 className="w-full accent-cyan-500"
@@ -229,7 +252,15 @@ export default function Backtest() {
 
         {/* Main Result Area */}
         <div className="lg:col-span-2 space-y-6">
-          {results.length > 0 ? (
+          {platform === 'tradingview' ? (
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 space-y-3">
+              <h3 className="text-lg font-semibold">Your selection: {minConfluence} weighted points</h3>
+              <p className="text-slate-300">{STRATEGIES.filter(s => selectedStrategies[s.id]).map(s => s.label).join(', ') || 'Select an indicator to begin.'}</p>
+              <p className="text-sm text-slate-400">There is no required six-point minimum. A one-point Bollinger setup is allowed. Lower thresholds admit more setups; they do not guarantee profitable trades.</p>
+              <p className="text-sm text-slate-400">Download or copy your Pine strategy above. Run the test in TradingView, where the script can access this instrument's price history and draw its simulated trades.</p>
+              <a className="inline-block text-cyan-300" href={TV_URL} target="_blank" rel="noopener noreferrer">Open TradingView chart and Strategy Tester ↗</a>
+            </div>
+          ) : results.length > 0 ? (
             results.map((res, idx) => (
               <div key={idx} className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden shadow-sm">
                 <div className="p-5 border-b border-slate-700 flex items-center justify-between">

@@ -54,7 +54,8 @@ def decision():
 
 def test_only_v751s_and_bounded_risk_are_accepted():
     for value in ({'symbol': 'R_75'}, {'risk_pct': 0.2}, {'timeframe': 'M2'},
-                  {'use_zscore': False, 'use_lsl': False, 'use_smc': False}):
+                  {'use_zscore': False, 'use_lsl': False, 'use_smc': False,
+                   'use_rsi': False, 'use_bb': False, 'use_vwap': False, 'use_stoch': False}):
         with pytest.raises(ValidationError):
             DemoConfig(**value)
 
@@ -198,3 +199,22 @@ def test_shared_signal_engine_and_backtest_evaluate_fixture_candles():
     report = BacktestEngine(signal_engine=engine, initial_balance=10000).run(
         candles, symbol='1HZ75V', timeframe='M5')
     assert isinstance(report.trades, list)
+
+
+@pytest.mark.parametrize('threshold,expected', [(1, True), (2, False), (3, False)])
+def test_single_bollinger_signal_respects_dynamic_threshold(threshold, expected):
+    from app.core.engine.signal_engine import EngineConfig, SignalEngine
+    from app.core.lsl.lsl_detector import Candle
+    values = {key: False for key in DemoConfig.model_fields if key.startswith('use_')}
+    values['use_bb'] = True
+    assert DemoConfig(**values, min_confluence=threshold).min_confluence == threshold
+    engine = SignalEngine(EngineConfig(**values, min_confluence=threshold))
+    engine.initialise(10000)
+    engine.atr_ind.compute = Mock(return_value=NS(value=1, is_spike=False))
+    engine.bollinger.compute = Mock(return_value=NS(position='below_lower'))
+    candles = [Candle(timestamp=1700000000 + i * 300, open=100, high=101,
+                      low=99, close=100, volume=100) for i in range(100)]
+    result = engine.evaluate(candles, symbol='1HZ75V', timeframe='M5')
+    assert result.direction == 'buy'
+    assert result.confluence_score == 1
+    assert result.should_trade is expected

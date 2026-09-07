@@ -45,8 +45,9 @@ class DemoConfig(BaseModel):
 
     @model_validator(mode="after")
     def validate_selection(self):
-        if not any((self.use_zscore, self.use_lsl, self.use_smc)):
-            raise ValueError("Select Z-Score, LSL or SMC so the engine can determine a direction")
+        if not any((self.use_zscore, self.use_rsi, self.use_bb, self.use_vwap,
+                    self.use_stoch, self.use_lsl, self.use_smc)):
+            raise ValueError("Select at least one directional indicator; volume and Hurst alone cannot determine a direction")
         return self
 
 
