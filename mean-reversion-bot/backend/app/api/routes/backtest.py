@@ -1,14 +1,15 @@
 from __future__ import annotations
 
 import csv
+import asyncio
 import io
 import json
 import logging
 import uuid
 from datetime import datetime, timedelta
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Literal
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -209,6 +210,7 @@ async def load_candles_for_symbol(
 
 
 class BacktestRequest(BaseModel):
+    data_source: Literal['deriv', 'mt5'] = 'deriv'
     symbols: List[str]
     timeframe: str = "M5"
     days: int = 7
@@ -243,18 +245,25 @@ class BacktestReportResponse(BaseModel):
 
 
 @router.post("/run")
-async def run_backtest(req: BacktestRequest, db: AsyncSession = Depends(get_db)):
+async def run_backtest(req: BacktestRequest, request: Request, db: AsyncSession = Depends(get_db)):
     """Run a backtest for the selected symbols and strategy configuration."""
     results = []
 
     try:
         # Fetch real historical data from Deriv and cache it, unless CSV was provided
-        if not req.csv_data:
+        mt5_candles = None
+        if req.data_source == 'mt5' and not req.csv_data:
+            from app.api.routes.mt5 import get_runner, local_only
+            local_only(request)
+            if req.symbols != ['1HZ75V']:
+                raise ValueError('MT5 Strategy Lab supports only V75 1s (1HZ75V)')
+            mt5_candles = rows_to_candles(await asyncio.to_thread(get_runner(request).history, req.timeframe, req.days))
+        elif not req.csv_data:
             tf_seconds = timeframe_to_seconds(req.timeframe)
             await ensure_candles_for_symbols(req.symbols, tf_seconds, req.days)
 
         for symbol in req.symbols:
-            candles = await load_candles_for_symbol(db, symbol, req.timeframe, req.days, req.csv_data)
+            candles = mt5_candles if mt5_candles is not None else await load_candles_for_symbol(db, symbol, req.timeframe, req.days, req.csv_data)
             config = EngineConfig(
                 use_zscore=req.use_zscore,
                 use_bb=req.use_bb,
@@ -276,7 +285,7 @@ async def run_backtest(req: BacktestRequest, db: AsyncSession = Depends(get_db))
                 initial_balance=req.initial_balance,
             )
 
-            report = bt_engine.run(candles, symbol=symbol, timeframe=req.timeframe)
+            report = await asyncio.to_thread(bt_engine.run, candles, symbol=symbol, timeframe=req.timeframe)
 
             run_id = str(uuid.uuid4())[:8]
             db_res = BacktestResult(

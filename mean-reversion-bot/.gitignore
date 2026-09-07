@@ -23,3 +23,7 @@ dist/
 
 # Local database files
 *.db
+*.sqlite3*
+backend/logs/
+backend/data/*.lock
+logs/

@@ -30,6 +30,7 @@ WHAT THIS DOES:
 """
 
 from __future__ import annotations
+import asyncio
 import logging
 import logging.config
 import os
@@ -145,6 +146,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
 
     # ── SHUTDOWN ──────────────────────────────────────────────────────────────
     logger.info("Shutting down %s...", settings.APP_NAME)
+    if hasattr(app.state, "mt5_demo"):
+        await asyncio.to_thread(app.state.mt5_demo.stop)
     if hasattr(app.state, "redis") and app.state.redis:
         await app.state.redis.aclose()
         logger.info("Redis connection closed")
@@ -199,6 +202,9 @@ def create_app() -> FastAPI:
     from app.api.routes import backtest
 
     app.include_router(backtest.router, prefix="/api/backtest", tags=["Backtest"])
+    if os.name == "nt" and not RUNNING_ON_VERCEL:
+        from app.api.routes import mt5
+        app.include_router(mt5.router, prefix="/api/mt5", tags=["MT5 Demo"])
 
     # ── Health & Meta Endpoints ───────────────────────────────────────────────
 

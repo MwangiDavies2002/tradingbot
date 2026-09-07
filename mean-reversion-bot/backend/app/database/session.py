@@ -44,11 +44,11 @@ database_url = settings.DATABASE_URL
 if database_url.startswith("postgresql://"):
     database_url = "postgresql+asyncpg://" + database_url[len("postgresql://"):]
 
+pool_options = {} if database_url.startswith("sqlite") else {"pool_size": 10, "max_overflow": 20}
 engine = create_async_engine(
     database_url,
     echo=settings.DB_ECHO,            # Log SQL in debug mode only
-    pool_size=10,                     # Connections kept open
-    max_overflow=20,                  # Extra connections allowed under load
+    **pool_options,
     pool_pre_ping=True,
     pool_recycle=3600,                # Recycle connections every hour
 )

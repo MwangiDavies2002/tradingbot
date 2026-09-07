@@ -17,13 +17,15 @@ import Risk from './pages/Risk'
 import Settings from './pages/Settings'
 import Logs from './pages/Logs'
 import Backtest from './pages/Backtest'
+import MT5Panel from './components/MT5Panel'
 
 const NAV = [
   { to: '/',         label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/trades',   label: 'Trades',    icon: TrendingUp      },
-  { to: '/signals',  label: 'Signals',   icon: Activity        },
+  { to: '/trades',   label: 'Deriv History', icon: TrendingUp  },
+  { to: '/signals',  label: 'Deriv Signals', icon: Activity    },
   { to: '/backtest', label: 'Strategy Lab', icon: FlaskConical },
-  { to: '/risk',     label: 'Risk',      icon: Shield          },
+  { to: '/mt5', label: 'MT5 Demo & Journal', icon: TrendingUp },
+  { to: '/risk',     label: 'Deriv Risk', icon: Shield         },
   { to: '/settings', label: 'Settings',  icon: SettingsIcon    },
   { to: '/logs',     label: 'Logs',      icon: FileText        },
 ]
@@ -88,10 +90,11 @@ export default function App() {
         {/* ── Main Content ─────────────────────────────────────── */}
         <main className="flex-1 overflow-y-auto">
           <Routes>
-            <Route path="/"         element={<Dashboard />} />
+            <Route path="/" element={<div className="p-6 space-y-4"><h1 className="text-2xl font-bold">V75 1s MT5 Dashboard</h1><NavLink className="inline-block text-cyan-300" to="/backtest">Open Strategy Lab to select and test your confluences →</NavLink><MT5Panel /></div>} />
             <Route path="/trades"   element={<Trades />} />
             <Route path="/signals"  element={<Signals />} />
             <Route path="/backtest" element={<Backtest />} />
+            <Route path="/mt5" element={<div className="p-6"><MT5Panel /></div>} />
             <Route path="/risk"     element={<Risk />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/logs"     element={<Logs />} />

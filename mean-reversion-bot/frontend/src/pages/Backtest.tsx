@@ -4,6 +4,7 @@ import {
   TrendingUp, BarChart3, History, Layers, Upload, ChevronDown
 } from 'lucide-react';
 import { api } from '../api/client';
+import MT5Panel from '../components/MT5Panel';
 import { CandlestickChart, type Candle } from '../components/CandlestickChart';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, 
@@ -22,14 +23,14 @@ const STRATEGIES = [
   { id: 'use_hurst', label: 'Hurst Regime', description: 'Mean-reversion vs Trending' },
 ];
 
-const SYMBOLS = ['R_10', 'R_25', 'R_50', 'R_75', 'R_100', '1HZ10V', '1HZ25V', '1HZ50V', '1HZ75V', '1HZ100V'];
+const SYMBOLS = ['1HZ75V'];
 
 export default function Backtest() {
   const [selectedStrategies, setSelectedStrategies] = useState<Record<string, boolean>>({
     use_zscore: true, use_rsi: true, use_bb: true, use_vwap: true,
     use_stoch: true, use_lsl: true, use_smc: true, use_volume: true, use_hurst: true
   });
-  const [selectedSymbols, setSelectedSymbols] = useState<string[]>(['R_75']);
+  const [selectedSymbols, setSelectedSymbols] = useState<string[]>(['1HZ75V']);
   const [timeframe, setTimeframe] = useState('M5');
   const [days, setDays] = useState(7);
   const [minConfluence, setMinConfluence] = useState(6);
@@ -57,9 +58,7 @@ export default function Backtest() {
   };
 
   const toggleSymbol = (symbol: string) => {
-    setSelectedSymbols(prev => 
-      prev.includes(symbol) ? prev.filter(s => s !== symbol) : [...prev, symbol]
-    );
+    setSelectedSymbols(['1HZ75V']);
   };
 
   const runBacktest = async (csvText?: string) => {
@@ -67,6 +66,7 @@ export default function Backtest() {
     setLoading(true);
     try {
       const payload = {
+        data_source: 'mt5',
         symbols: selectedSymbols,
         timeframe,
         days,
@@ -108,7 +108,7 @@ export default function Backtest() {
             Strategy Lab
           </h1>
           <p className="text-slate-400 text-sm mt-1">
-            Test combinations of strategies against historical data to identify optimal setups.
+            Test your selection on V75 1s candles from MT5, then run it on a demo account.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -135,6 +135,12 @@ export default function Backtest() {
           </button>
         </div>
       </div>
+
+      <MT5Panel selection={{ timeframe, min_confluence: minConfluence, ...selectedStrategies }}
+        onLoad={config => {
+          setTimeframe(config.timeframe); setMinConfluence(config.min_confluence);
+          setSelectedStrategies(Object.fromEntries(STRATEGIES.map(s => [s.id, config[s.id]])));
+        }} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Sidebar: Controls */}
