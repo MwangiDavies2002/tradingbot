@@ -148,6 +148,15 @@ class EngineConfig:
     use_smc:            bool  = True
     use_volume:         bool  = True
     use_hurst:          bool  = True
+    use_linear_regression: bool = False
+    use_tree_model: bool = False
+    use_time_series_nn: bool = False
+    use_smt: bool = False
+    use_day_levels: bool = False
+    use_candle_reversal: bool = False
+    use_candle_continuation: bool = False
+    use_crt: bool = False
+    model_strategy: str = "none"
 
     # Risk
     risk_pct:           float = 0.01

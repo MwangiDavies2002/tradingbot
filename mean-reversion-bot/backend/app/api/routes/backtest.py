@@ -6,6 +6,7 @@ import io
 import json
 import logging
 import uuid
+import base64
 from datetime import datetime, timedelta
 from typing import Any, List, Optional, Literal
 
@@ -120,6 +121,18 @@ def parse_csv_rows(csv_text: str) -> list[dict[str, Any]]:
     return rows
 
 
+def parse_uploaded_data(payload: str) -> list[dict[str, Any]]:
+    """Parse CSV text or a base64 data URL containing an Excel workbook."""
+    if payload.startswith("data:"):
+        try:
+            raw = base64.b64decode(payload.split(",", 1)[1])
+            import pandas as pd
+            return parse_csv_rows(pd.read_excel(io.BytesIO(raw)).to_csv(index=False))
+        except Exception as exc:
+            raise ValueError(f"Could not read Excel upload: {exc}") from exc
+    return parse_csv_rows(payload)
+
+
 def rows_to_candles(rows: list[dict[str, Any]]) -> List[DetectorCandle]:
     candles: List[DetectorCandle] = []
     for row in rows:
@@ -179,7 +192,7 @@ async def load_candles_for_symbol(
     csv_payload: Optional[str] = None,
 ) -> List[DetectorCandle]:
     if csv_payload:
-        rows = parse_csv_rows(csv_payload)
+        rows = parse_uploaded_data(csv_payload)
         return rows_to_candles(rows)
 
     tf_seconds = timeframe_to_seconds(timeframe)
@@ -211,7 +224,7 @@ async def load_candles_for_symbol(
 
 class BacktestRequest(BaseModel):
     data_source: Literal['deriv', 'mt5'] = 'deriv'
-    symbols: List[str]
+    symbols: List[str] = Field(..., min_length=1, max_length=1, description="One pair/instrument per run")
     timeframe: str = "M5"
     days: int = 7
     initial_balance: float = 10000.0
@@ -227,6 +240,15 @@ class BacktestRequest(BaseModel):
     use_smc: bool = True
     use_volume: bool = True
     use_hurst: bool = True
+    use_linear_regression: bool = False
+    use_tree_model: bool = False
+    use_time_series_nn: bool = False
+    use_smt: bool = False
+    use_day_levels: bool = False
+    use_candle_reversal: bool = False
+    use_candle_continuation: bool = False
+    use_crt: bool = False
+    model_strategy: Literal['none', 'linear_regression', 'tree', 'time_series_nn'] = 'none'
 
     min_confluence: int = Field(6, ge=1, le=20)
 
@@ -274,6 +296,15 @@ async def run_backtest(req: BacktestRequest, request: Request, db: AsyncSession 
                 use_smc=req.use_smc,
                 use_volume=req.use_volume,
                 use_hurst=req.use_hurst,
+                use_linear_regression=req.use_linear_regression,
+                use_tree_model=req.use_tree_model,
+                use_time_series_nn=req.use_time_series_nn,
+                use_smt=req.use_smt,
+                use_day_levels=req.use_day_levels,
+                use_candle_reversal=req.use_candle_reversal,
+                use_candle_continuation=req.use_candle_continuation,
+                use_crt=req.use_crt,
+                model_strategy=req.model_strategy,
                 min_confluence=req.min_confluence,
             )
 

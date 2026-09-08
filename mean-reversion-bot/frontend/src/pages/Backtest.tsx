@@ -23,9 +23,17 @@ const STRATEGIES = [
   { id: 'use_smc', label: 'SMC Structure', description: 'BOS/CHoCH & Order Blocks' },
   { id: 'use_volume', label: 'Volume Spike', description: 'Unusual volume activity' },
   { id: 'use_hurst', label: 'Hurst Regime', description: 'Mean-reversion vs Trending' },
+  { id: 'use_linear_regression', label: 'Linear Regression', description: 'Regression trend forecast' },
+  { id: 'use_tree_model', label: 'Tree Model', description: 'Non-linear feature classifier' },
+  { id: 'use_time_series_nn', label: 'Time-Series Neural Net', description: 'Sequence forecast filter' },
+  { id: 'use_smt', label: 'SMT Divergence', description: 'Cross-market divergence' },
+  { id: 'use_day_levels', label: 'Day High / Low', description: 'High/low of day reactions' },
+  { id: 'use_candle_reversal', label: 'Candle Reversal', description: 'Closed-candle reversal' },
+  { id: 'use_candle_continuation', label: 'Candle Continuation', description: 'Closed-candle continuation' },
+  { id: 'use_crt', label: 'CRT', description: 'Candle range theory setup' },
 ];
 
-const SYMBOLS = ['1HZ75V'];
+const SYMBOLS = ['1HZ75V', '1HZ100V', '1HZ50V', 'BOOM500', 'CRASH500', 'GER40', 'FRA40'];
 
 export default function Backtest() {
   const [savedLab] = useState(() => {
@@ -66,7 +74,7 @@ export default function Backtest() {
   };
 
   const toggleSymbol = (symbol: string) => {
-    setSelectedSymbols(['1HZ75V']);
+    setSelectedSymbols(prev => prev.includes(symbol) ? [] : [symbol]);
   };
 
   const runBacktest = async (csvText?: string) => {
@@ -99,8 +107,15 @@ export default function Backtest() {
     if (!file) return;
 
     try {
-      const csvText = await file.text();
-      await runBacktest(csvText);
+      if (file.name.toLowerCase().endsWith('.csv')) {
+        await runBacktest(await file.text());
+      } else {
+        const bytes = await file.arrayBuffer();
+        let binary = '';
+        const data = new Uint8Array(bytes);
+        for (let i = 0; i < data.length; i += 0x8000) binary += String.fromCharCode(...data.subarray(i, i + 0x8000));
+        await runBacktest(`data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${btoa(binary)}`);
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       alert(`CSV import failed: ${message}`);
@@ -122,8 +137,8 @@ export default function Backtest() {
         {platform === 'mt5' && <div className="flex items-center gap-3">
           <label className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700 cursor-pointer">
             <Upload className="w-4 h-4" />
-            Import CSV
-            <input type="file" accept=".csv" className="hidden" onChange={handleCsvUpload} />
+            Import CSV / Excel
+            <input type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleCsvUpload} />
           </label>
           <button
             onClick={() => runBacktest()}
