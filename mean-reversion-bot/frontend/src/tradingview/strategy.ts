@@ -41,8 +41,9 @@ slMult = input.float(1.5, "Stop distance in ATR", minval=0.1, group="Simulation"
 rr = input.float(2, "Target / stop ratio", minval=0.1, group="Simulation")
 
 maxScore = (useZ ? 3 : 0) + (useRsi ? 2 : 0) + (useBb ? 1 : 0) + (useVwap ? 1 : 0) + (useStoch ? 1 : 0) + (useVol ? 1 : 0)
-if not (useZ or useRsi or useBb or useVwap or useStoch) or threshold > maxScore
-    runtime.error("Enable a directional indicator and reduce the threshold to the selected maximum")
+// Translated Python detectors use a bounded RSI proxy. Clamp an imported lab
+// threshold so the script remains executable when the two score systems differ.
+effectiveThreshold = math.max(1, math.min(threshold, maxScore))
 
 basis = ta.sma(close, 20)
 sd = ta.stdev(close, 20)
@@ -64,8 +65,8 @@ sellDirectional = (useZ and z >= 2 ? (z >= 3 ? 3 : 2) : 0) + (useRsi and rsi > 7
 buyScore = buyDirectional + volumePoint
 sellScore = sellDirectional + volumePoint
 ready = barstate.isconfirmed and bar_index >= 60 and atr > 0
-longSignal = ready and buyDirectional > sellDirectional and buyScore >= threshold
-shortSignal = ready and sellDirectional > buyDirectional and sellScore >= threshold
+longSignal = ready and buyDirectional > sellDirectional and buyScore >= effectiveThreshold
+shortSignal = ready and sellDirectional > buyDirectional and sellScore >= effectiveThreshold
 
 // Stop/target ticks are fixed at the signal, relative to the emulator's actual entry fill.
 if strategy.position_size == 0
@@ -83,7 +84,7 @@ plot(useBb ? lower : na, "Lower BB", color=color.new(color.blue, 50))
 plot(useVwap ? vwap : na, "UTC VWAP", color=color.orange)
 plot(buyScore, "Buy score", display=display.data_window)
 plot(sellScore, "Sell score", display=display.data_window)
-plot(threshold, "Selected threshold", display=display.data_window)
+plot(effectiveThreshold, "Effective threshold", display=display.data_window)
 // Strategy Tester > List of trades contains all simulated entries and exits.
 // Set realistic commission/slippage in Strategy Properties before interpreting P&L.
 `
