@@ -52,8 +52,7 @@ async def ingest(payload: NewsIn, db: AsyncSession = Depends(get_db)):
     db.add(row); await db.flush()
     return {"id": row.id, "created": True}
 
-@router.post("/sync/forex-factory")
-async def sync_forex_factory(db: AsyncSession = Depends(get_db)):
+async def sync_forex_factory_feed(db: AsyncSession):
     """Import the public Forex Factory calendar RSS feed.
 
     This uses the published RSS endpoint, not HTML scraping. Feed availability,
@@ -89,6 +88,10 @@ async def sync_forex_factory(db: AsyncSession = Depends(get_db)):
         imported += 1
     await db.commit()
     return {"source": "forex_factory_rss", "imported": imported}
+
+@router.post("/sync/forex-factory")
+async def sync_forex_factory(db: AsyncSession = Depends(get_db)):
+    return await sync_forex_factory_feed(db)
 
 @router.get("/signals")
 async def news_signals(symbol: str = Query(...), window_minutes: int = Query(30, ge=1, le=240), db: AsyncSession = Depends(get_db)):

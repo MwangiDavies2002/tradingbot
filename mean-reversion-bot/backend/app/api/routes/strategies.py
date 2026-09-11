@@ -14,5 +14,5 @@ STRATEGIES = [
 
 @router.get("")
 def list_strategies():
-    return [{"id": key, "label": label, "versions": ["pine"] if key in TV_TRANSLATIONS else ["python_mt5"],
+    return [{"id": key, "label": label, "versions": ["pine"] if key in TV_TRANSLATIONS else ["python_mt5", "pine"],
              "default_version": "pine" if key in TV_TRANSLATIONS else "python_mt5"} for key, label in STRATEGIES]

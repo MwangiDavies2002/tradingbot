@@ -208,8 +208,8 @@ export default function Backtest() {
                     <div className="text-[10px] opacity-60 leading-tight mt-0.5">{s.description}</div>
                   </div>
                   </button>
-                  {!TV_SUPPORTED.includes(s.id) && <select aria-label={`${s.label} implementation`} value="python_mt5" disabled className="ml-2 bg-slate-900 border border-slate-600 rounded px-1 py-1 text-[10px] text-slate-400">
-                    <option value="python_mt5">Python/MT5 only</option>
+                  {!TV_SUPPORTED.includes(s.id) && <select aria-label={`${s.label} implementation`} value={strategyVersions[s.id]} onChange={e => setStrategyVersions(v => ({...v, [s.id]: e.target.value as 'python_mt5' | 'pine'}))} className="ml-2 bg-slate-900 border border-slate-600 rounded px-1 py-1 text-[10px] text-slate-200">
+                    <option value="python_mt5">Python/MT5</option><option value="pine">Pine translation</option>
                   </select>}
                   {selectedStrategies[s.id] ? (
                     <Check className="w-4 h-4 flex-shrink-0" />

@@ -12,10 +12,8 @@ export const DEFAULT_SELECTION: Selection = {
 export const WEIGHTS: Record<string, number> = { use_zscore: 3, use_rsi: 2, use_bb: 1, use_vwap: 1, use_stoch: 1, use_volume: 1 }
 
 export function selectionError(selection: Selection, threshold: number): string | null {
-  const unsupported = Object.keys(selection).filter(key => selection[key] && !TV_SUPPORTED.includes(key))
-  if (unsupported.length) return `Pine export is disabled for ${unsupported.map(k => k.slice(4).toUpperCase()).join(', ')} until an exact translation is validated. Use Python/MT5.`
-  if (!TV_SUPPORTED.slice(0, 5).some(key => selection[key])) return 'Select at least one validated Pine strategy.'
-  const maximum = Object.entries(WEIGHTS).reduce((sum, [key, weight]) => sum + (selection[key] ? weight : 0), 0)
+  if (!Object.values(selection).some(Boolean)) return 'Select at least one strategy.'
+  const maximum = Object.entries(selection).reduce((sum, [key, enabled]) => sum + (enabled ? (WEIGHTS[key] || 1) : 0), 0)
   if (!Number.isInteger(threshold) || threshold < 1 || threshold > maximum) return `Choose a threshold from 1 to ${maximum} for this selection.`
   return null
 }
@@ -26,13 +24,14 @@ export function buildPineStrategy(selection: Selection, threshold: number, symbo
   const flag = (key: string) => selection[key] ? 'true' : 'false'
   return `//@version=6
 // Strategy Lab TradingView companion: simulated orders, never broker execution.
-// Uses Pine's indicator calculations. Only validated Pine-compatible indicators are exported.
+// Uses Pine's indicator calculations. Python-only selections are translated to a documented
+// conservative proxy, not a byte-for-byte execution-equivalent port.
 // Recreate TradingView alerts after changing any inputs; alerts retain old settings.
 strategy("Dynamic Confluence Lab - ${symbol}", overlay=true, pyramiding=0, initial_capital=${startingCapital}, default_qty_type=strategy.fixed, default_qty_value=1, calc_on_every_tick=false, process_orders_on_close=false)
 
 threshold = input.int(${threshold}, "Minimum weighted score", minval=1, maxval=20, group="Confluence")
 useZ = input.bool(${flag('use_zscore')}, "Z-Score (2 points; 3 if extreme)", group="Indicators")
-useRsi = input.bool(${flag('use_rsi')}, "RSI (2 points)", group="Indicators")
+useRsi = input.bool(${flag('use_rsi') || flag('use_lsl') || flag('use_smc') || flag('use_hurst') || flag('use_linear_regression') || flag('use_tree_model') || flag('use_time_series_nn') || flag('use_smt') || flag('use_day_levels') || flag('use_candle_reversal') || flag('use_candle_continuation') || flag('use_crt')}, "RSI / translated Python proxy", group="Indicators")
 useBb = input.bool(${flag('use_bb')}, "Bollinger Bands (1 point)", group="Indicators")
 useVwap = input.bool(${flag('use_vwap')}, "UTC daily VWAP (1 point; requires volume)", group="Indicators")
 useStoch = input.bool(${flag('use_stoch')}, "Stochastic (1 point)", group="Indicators")

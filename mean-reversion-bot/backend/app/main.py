@@ -42,7 +42,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from app.config import settings
-from app.database.session import check_connection, create_tables
+from app.database.session import check_connection, create_tables, get_session
 
 logger = logging.getLogger(__name__)
 RUNNING_ON_VERCEL = (
@@ -142,10 +142,29 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
     logger.info("API ready — listening on port 8000")
     logger.info("-" * 60)
 
+    news_sync_task = None
+    if os.getenv("NEWS_AUTO_SYNC", "true").lower() not in {"0", "false", "no"} and db_ok:
+        async def _news_sync_loop():
+            from app.api.routes.news import sync_forex_factory_feed
+            while True:
+                try:
+                    async with get_session() as db:
+                        await sync_forex_factory_feed(db)
+                except Exception as exc:
+                    logger.warning("Automatic Forex Factory sync failed: %s", exc)
+                await asyncio.sleep(int(os.getenv("NEWS_SYNC_INTERVAL_SECONDS", "900")))
+        news_sync_task = asyncio.create_task(_news_sync_loop())
+
     yield   # ← App is running here
 
     # ── SHUTDOWN ──────────────────────────────────────────────────────────────
     logger.info("Shutting down %s...", settings.APP_NAME)
+    if news_sync_task:
+        news_sync_task.cancel()
+        try:
+            await news_sync_task
+        except asyncio.CancelledError:
+            pass
     if hasattr(app.state, "mt5_demo"):
         await asyncio.to_thread(app.state.mt5_demo.stop)
     if hasattr(app.state, "redis") and app.state.redis:
