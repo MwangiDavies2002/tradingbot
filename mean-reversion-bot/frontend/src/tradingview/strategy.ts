@@ -27,7 +27,7 @@ export function buildPineStrategy(selection: Selection, threshold: number, symbo
 // Uses Pine's indicator calculations. Python-only selections are translated to a documented
 // conservative proxy, not a byte-for-byte execution-equivalent port.
 // Recreate TradingView alerts after changing any inputs; alerts retain old settings.
-strategy("Dynamic Confluence Lab - ${symbol}", overlay=true, pyramiding=0, initial_capital=${startingCapital}, default_qty_type=strategy.fixed, default_qty_value=1, calc_on_every_tick=false, process_orders_on_close=false)
+strategy("Dynamic Confluence Lab - ${symbol}", overlay=true, pyramiding=0, initial_capital=${startingCapital}, default_qty_type=strategy.fixed, default_qty_value=1, calc_on_every_tick=false, process_orders_on_close=false, commission_type=strategy.commission.percent, commission_value=0.02, slippage=2)
 
 threshold = input.int(${threshold}, "Minimum weighted score", minval=1, maxval=20, group="Confluence")
 useZ = input.bool(${flag('use_zscore')}, "Z-Score (2 points; 3 if extreme)", group="Indicators")
@@ -39,6 +39,9 @@ useVol = input.bool(${flag('use_volume')}, "Volume spike (1 context point)", gro
 quantity = input.float(1, "Simulated quantity (units, not MT5 lots)", minval=0.001, group="Simulation")
 slMult = input.float(1.5, "Stop distance in ATR", minval=0.1, group="Simulation")
 rr = input.float(2, "Target / stop ratio", minval=0.1, group="Simulation")
+minDirectional = input.int(2, "Minimum directional points", minval=1, maxval=10, group="Filters")
+cooldownBars = input.int(10, "Cooldown bars after entry", minval=0, maxval=200, group="Filters")
+trendAtrLimit = input.float(3.0, "Trend distance limit (ATR)", minval=0.5, step=0.5, group="Filters")
 
 maxScore = (useZ ? 3 : 0) + (useRsi ? 2 : 0) + (useBb ? 1 : 0) + (useVwap ? 1 : 0) + (useStoch ? 1 : 0) + (useVol ? 1 : 0)
 // Translated Python detectors use a bounded RSI proxy. Clamp an imported lab
@@ -50,6 +53,9 @@ sd = ta.stdev(close, 20)
 z = sd > 0 ? (close - basis) / sd : 0.0
 rsi = ta.rsi(close, 14)
 atr = ta.atr(14)
+ema50 = ta.ema(close, 50)
+ema200 = ta.ema(close, 200)
+trendDistance = atr > 0 ? math.abs(ema50 - ema200) / atr : 999.0
 upper = basis + 2 * sd
 lower = basis - 2 * sd
 k = ta.sma(ta.stoch(close, high, low, 14), 3)
@@ -64,9 +70,13 @@ buyDirectional = (useZ and z <= -2 ? (z <= -3 ? 3 : 2) : 0) + (useRsi and rsi < 
 sellDirectional = (useZ and z >= 2 ? (z >= 3 ? 3 : 2) : 0) + (useRsi and rsi > 75 ? 2 : 0) + (useBb and close > upper ? 1 : 0) + (useVwap and vwapDev >= 1.5 ? 1 : 0) + (useStoch and k > 85 ? 1 : 0)
 buyScore = buyDirectional + volumePoint
 sellScore = sellDirectional + volumePoint
-ready = barstate.isconfirmed and bar_index >= 60 and atr > 0
-longSignal = ready and buyDirectional > sellDirectional and buyScore >= effectiveThreshold
-shortSignal = ready and sellDirectional > buyDirectional and sellScore >= effectiveThreshold
+var int lastEntryBar = na
+cooldownReady = na(lastEntryBar) or bar_index - lastEntryBar >= cooldownBars
+// Avoid fading an unusually strong directional regime and reject weak one-point setups.
+ready = barstate.isconfirmed and bar_index >= 200 and atr > 0 and trendDistance <= trendAtrLimit and cooldownReady
+requiredScore = math.max(effectiveThreshold, minDirectional)
+longSignal = ready and buyDirectional > sellDirectional and buyDirectional >= requiredScore and buyScore >= requiredScore
+shortSignal = ready and sellDirectional > buyDirectional and sellDirectional >= requiredScore and sellScore >= requiredScore
 
 // Stop/target ticks are fixed at the signal, relative to the emulator's actual entry fill.
 if strategy.position_size == 0
@@ -75,9 +85,11 @@ if strategy.position_size == 0
     if longSignal
         strategy.entry("Long", strategy.long, qty=quantity, alert_message="V751S simulated long entry")
         strategy.exit("Long exit", "Long", loss=stopTicks, profit=targetTicks, alert_message="V751S simulated long exit")
+        lastEntryBar := bar_index
     else if shortSignal
         strategy.entry("Short", strategy.short, qty=quantity, alert_message="V751S simulated short entry")
         strategy.exit("Short exit", "Short", loss=stopTicks, profit=targetTicks, alert_message="V751S simulated short exit")
+        lastEntryBar := bar_index
 
 plot(useBb ? upper : na, "Upper BB", color=color.new(color.blue, 50))
 plot(useBb ? lower : na, "Lower BB", color=color.new(color.blue, 50))
@@ -85,6 +97,7 @@ plot(useVwap ? vwap : na, "UTC VWAP", color=color.orange)
 plot(buyScore, "Buy score", display=display.data_window)
 plot(sellScore, "Sell score", display=display.data_window)
 plot(effectiveThreshold, "Effective threshold", display=display.data_window)
+plot(requiredScore, "Required directional score", display=display.data_window)
 // Strategy Tester > List of trades contains all simulated entries and exits.
 // Set realistic commission/slippage in Strategy Properties before interpreting P&L.
 `
