@@ -54,6 +54,9 @@ rr = input.float(2, "Target / stop ratio", minval=0.1, group="Simulation")
 minDirectional = input.int(2, "Minimum directional points", minval=1, maxval=10, group="Filters")
 cooldownBars = input.int(10, "Cooldown bars after entry", minval=0, maxval=200, group="Filters")
 trendAtrLimit = input.float(3.0, "Trend distance limit (ATR)", minval=0.5, step=0.5, group="Filters")
+useSessionFilter = input.bool(true, "Limit entries to handoff session", group="Sessions")
+sessionChoice = input.string("Asia-London", "Handoff session", options=["Asia-London", "London-New York", "Both handoffs"], group="Sessions")
+sessionTimezone = input.string("Etc/UTC", "Session timezone", options=["Etc/UTC", "Africa/Nairobi", "Europe/London", "America/New_York"], group="Sessions")
 
 maxScore = (useZ ? 3 : 0) + (useRsi ? 2 : 0) + (useBb ? 1 : 0) + (useVwap ? 1 : 0) + (useStoch ? 1 : 0) + (useVol ? 1 : 0)
 maxScore += (useLsl ? 2 : 0) + (useSmc ? 1 : 0) + (useHurst ? 1 : 0) + (useLinReg ? 1 : 0) + (useDay ? 1 : 0) + (useRev ? 1 : 0) + (useCont ? 1 : 0) + (useCrt ? 1 : 0)
@@ -62,6 +65,8 @@ maxScore += useSmt ? 2 : 0
 // Translated Python detectors use a bounded RSI proxy. Clamp an imported lab
 // threshold so the script remains executable when the two score systems differ.
 effectiveThreshold = math.max(1, math.min(threshold, maxScore))
+sessionWindow = sessionChoice == "Asia-London" ? "0700-0900:12345" : sessionChoice == "London-New York" ? "1200-1500:12345" : "0700-0900,1200-1500:12345"
+inHandoffSession = not na(time(timeframe.period, sessionWindow, sessionTimezone))
 
 basis = ta.sma(close, 20)
 sd = ta.stdev(close, 20)
@@ -127,7 +132,7 @@ sellScore = sellDirectional + volumePoint
 var int lastEntryBar = na
 cooldownReady = na(lastEntryBar) or bar_index - lastEntryBar >= cooldownBars
 // Avoid fading an unusually strong directional regime and reject weak one-point setups.
-ready = barstate.isconfirmed and bar_index >= 200 and atr > 0 and trendDistance <= trendAtrLimit and cooldownReady
+ready = barstate.isconfirmed and bar_index >= 200 and atr > 0 and trendDistance <= trendAtrLimit and cooldownReady and (not useSessionFilter or inHandoffSession)
 requiredScore = math.max(effectiveThreshold, minDirectional)
 longSignal = ready and buyDirectional > sellDirectional and buyDirectional >= requiredScore and buyScore >= requiredScore
 shortSignal = ready and sellDirectional > buyDirectional and sellDirectional >= requiredScore and sellScore >= requiredScore
