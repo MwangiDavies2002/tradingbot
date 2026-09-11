@@ -24,8 +24,27 @@ powershell -ExecutionPolicy Bypass -File .\start-local.ps1
 ```
 
 Open <http://localhost:3000/backtest>. Logs are under `logs/`.
-Alternatively run `.venv-mt5\Scripts\python.exe run_local.py` inside
-`backend`, and `npm run dev -- --host 127.0.0.1` inside `frontend`.
+
+To start the backend manually, open a PowerShell window and run:
+
+```powershell
+cd path\to\mean-reversion-bot\backend
+.\.venv-mt5\Scripts\python.exe run_local.py
+```
+
+Leave this window running. The backend is ready when it is listening on
+`http://127.0.0.1:8000`; you can verify it at
+<http://127.0.0.1:8000/health>. In a second PowerShell window, start the
+frontend:
+
+```powershell
+cd path\to\mean-reversion-bot\frontend
+npm run dev -- --host 127.0.0.1
+```
+
+Then open <http://localhost:3000/backtest>. You can also use
+`start-local.ps1`, which launches both processes for you and writes backend
+logs under `logs/`.
 
 `run_local.py` uses `backend/data/local.db` for the existing app database.
 It does not edit `.env` or need a Supabase password or Deriv API token.

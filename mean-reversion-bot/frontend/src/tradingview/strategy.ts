@@ -1,5 +1,8 @@
-export const TV_SYMBOL = 'DERIV:VOLATILITY_75_1S_INDEX'
-export const TV_URL = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(TV_SYMBOL)}`
+export const TV_SYMBOLS: Record<string, string> = { '1HZ75V': 'DERIV:VOLATILITY_75_1S_INDEX', '1HZ100V': 'DERIV:VOLATILITY_100_1S_INDEX', '1HZ50V': 'DERIV:VOLATILITY_50_1S_INDEX', BOOM500: 'DERIV:BOOM_500_INDEX', CRASH500: 'DERIV:CRASH_500_INDEX', GER40: 'TVC:DE40', FRA40: 'TVC:CAC40' }
+export const tradingViewSymbol = (symbol: string) => TV_SYMBOLS[symbol] || `DERIV:${symbol}`
+export const tradingViewUrl = (symbol = '1HZ75V') => `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(tradingViewSymbol(symbol))}`
+export const TV_SYMBOL = tradingViewSymbol('1HZ75V')
+export const TV_URL = tradingViewUrl()
 export const TV_SUPPORTED = ['use_zscore', 'use_rsi', 'use_bb', 'use_vwap', 'use_stoch', 'use_volume']
 export type Selection = Record<string, boolean>
 export const DEFAULT_SELECTION: Selection = {
@@ -10,22 +13,22 @@ export const WEIGHTS: Record<string, number> = { use_zscore: 3, use_rsi: 2, use_
 
 export function selectionError(selection: Selection, threshold: number): string | null {
   const unsupported = Object.keys(selection).filter(key => selection[key] && !TV_SUPPORTED.includes(key))
-  if (unsupported.length) return `TradingView export does not implement ${unsupported.map(k => k.slice(4).toUpperCase()).join(', ')}. Deselect them or use the Python/MT5 mode.`
-  if (!TV_SUPPORTED.slice(0, 5).some(key => selection[key])) return 'Select at least one directional indicator. Volume alone cannot determine buy or sell.'
+  if (unsupported.length) return `Pine export is disabled for ${unsupported.map(k => k.slice(4).toUpperCase()).join(', ')} until an exact translation is validated. Use Python/MT5.`
+  if (!TV_SUPPORTED.slice(0, 5).some(key => selection[key])) return 'Select at least one validated Pine strategy.'
   const maximum = Object.entries(WEIGHTS).reduce((sum, [key, weight]) => sum + (selection[key] ? weight : 0), 0)
   if (!Number.isInteger(threshold) || threshold < 1 || threshold > maximum) return `Choose a threshold from 1 to ${maximum} for this selection.`
   return null
 }
 
-export function buildPineStrategy(selection: Selection, threshold: number): string {
+export function buildPineStrategy(selection: Selection, threshold: number, symbol = '1HZ75V', startingCapital = 10000): string {
   const error = selectionError(selection, threshold)
   if (error) throw new Error(error)
   const flag = (key: string) => selection[key] ? 'true' : 'false'
   return `//@version=6
 // Strategy Lab TradingView companion: simulated orders, never broker execution.
-// Uses Pine's indicator calculations. Not a byte-for-byte port of the Python engine.
+// Uses Pine's indicator calculations. Only validated Pine-compatible indicators are exported.
 // Recreate TradingView alerts after changing any inputs; alerts retain old settings.
-strategy("V75 1s - Dynamic Confluence Lab", overlay=true, pyramiding=0, initial_capital=10000, default_qty_type=strategy.fixed, default_qty_value=1, calc_on_every_tick=false, process_orders_on_close=false)
+strategy("Dynamic Confluence Lab - ${symbol}", overlay=true, pyramiding=0, initial_capital=${startingCapital}, default_qty_type=strategy.fixed, default_qty_value=1, calc_on_every_tick=false, process_orders_on_close=false)
 
 threshold = input.int(${threshold}, "Minimum weighted score", minval=1, maxval=20, group="Confluence")
 useZ = input.bool(${flag('use_zscore')}, "Z-Score (2 points; 3 if extreme)", group="Indicators")
@@ -38,8 +41,6 @@ quantity = input.float(1, "Simulated quantity (units, not MT5 lots)", minval=0.0
 slMult = input.float(1.5, "Stop distance in ATR", minval=0.1, group="Simulation")
 rr = input.float(2, "Target / stop ratio", minval=0.1, group="Simulation")
 
-if syminfo.tickerid != "${TV_SYMBOL}"
-    runtime.error("Use DERIV:VOLATILITY_75_1S_INDEX only")
 maxScore = (useZ ? 3 : 0) + (useRsi ? 2 : 0) + (useBb ? 1 : 0) + (useVwap ? 1 : 0) + (useStoch ? 1 : 0) + (useVol ? 1 : 0)
 if not (useZ or useRsi or useBb or useVwap or useStoch) or threshold > maxScore
     runtime.error("Enable a directional indicator and reduce the threshold to the selected maximum")

@@ -151,6 +151,23 @@ class Signal(Base):
                 f"score={self.score} | fired={self.fired} | {self.reason}>")
 
 
+class NewsEvent(Base):
+    """Normalized high-impact macro event used by the news strategy gate."""
+    __tablename__ = "news_events"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    event_id = Column(String(128), unique=True, nullable=False, index=True)
+    title = Column(String(256), nullable=False)
+    currency = Column(String(8), nullable=True, index=True)
+    impact = Column(String(16), nullable=False, default="high", index=True)
+    event_at = Column(DateTime, nullable=False, index=True)
+    actual = Column(Float, nullable=True)
+    forecast = Column(Float, nullable=True)
+    previous = Column(Float, nullable=True)
+    source = Column(String(64), nullable=False, default="manual")
+    raw_json = Column(JSON, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
 # ─── Candles ──────────────────────────────────────────────────────────────────
 
 class Candle(Base):

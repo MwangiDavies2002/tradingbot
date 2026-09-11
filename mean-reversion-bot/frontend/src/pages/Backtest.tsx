@@ -33,7 +33,7 @@ const STRATEGIES = [
   { id: 'use_crt', label: 'CRT', description: 'Candle range theory setup' },
 ];
 
-const SYMBOLS = ['1HZ75V', '1HZ100V', '1HZ50V', 'BOOM500', 'CRASH500', 'GER40', 'FRA40'];
+const SYMBOLS = ['1HZ75V', '1HZ100V', '1HZ50V', 'BOOM500', 'CRASH500', 'UK100', 'NAS100', 'SP500', 'GER40', 'FRA40', 'XAUUSD'];
 
 export default function Backtest() {
   const [savedLab] = useState(() => {
@@ -45,12 +45,16 @@ export default function Backtest() {
   const [selectedSymbols, setSelectedSymbols] = useState<string[]>(['1HZ75V']);
   const [timeframe, setTimeframe] = useState(['M1', 'M5', 'M15', 'M30', 'H1', 'H4'].includes(savedLab.timeframe) ? savedLab.timeframe : 'M5');
   const [days, setDays] = useState(7);
+  const [startingCapital, setStartingCapital] = useState(10000);
   const [minConfluence, setMinConfluence] = useState(Number.isInteger(savedLab.threshold) && savedLab.threshold >= 1 && savedLab.threshold <= 20 ? savedLab.threshold : 3);
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<any[]>([]);
   const [recentRuns, setRecentRuns] = useState<any[]>([]);
   const [selectedRun, setSelectedRun] = useState<any | null>(null);
   const [expandedTrades, setExpandedTrades] = useState<Record<string, boolean>>({});
+  const [strategyVersions, setStrategyVersions] = useState<Record<string, 'python_mt5' | 'pine'>>(() =>
+    Object.fromEntries(STRATEGIES.map(s => [s.id, 'python_mt5'])));
+  const [newsOnly, setNewsOnly] = useState(false);
 
   useEffect(() => {
     if (platform === 'mt5') fetchRecentRuns();
@@ -82,13 +86,14 @@ export default function Backtest() {
     setLoading(true);
     try {
       const payload = {
-        data_source: 'mt5',
+        data_source: 'deriv',
         symbols: selectedSymbols,
         timeframe,
         days,
         min_confluence: minConfluence,
         csv_data: csvText || null,
         ...selectedStrategies
+        , strategy_versions: strategyVersions, news_only: newsOnly
       };
       const data = await api.post('/api/backtest/run', payload) as any[];
       setResults(data);
@@ -131,7 +136,7 @@ export default function Backtest() {
             Strategy Lab
           </h1>
           <p className="text-slate-400 text-sm mt-1">
-            Choose your own threshold — 1, 2, 3 or more — and test V75 1s on TradingView.
+            Choose one instrument and test it with the Python/Deriv data pipeline.
           </p>
         </div>
         {platform === 'mt5' && <div className="flex items-center gap-3">
@@ -166,11 +171,11 @@ export default function Backtest() {
         <label className="text-sm">Timeframe <select aria-label="Timeframe" value={timeframe} onChange={e => setTimeframe(e.target.value)} className="ml-2 bg-slate-800 border border-slate-600 rounded p-2">
           {['M1', 'M5', 'M15', 'M30', 'H1', 'H4'].map(tf => <option key={tf}>{tf}</option>)}
         </select></label>
-        <span className="text-sm text-cyan-300">V75 1s only · {minConfluence} points required</span>
+        <span className="text-sm text-cyan-300">One instrument · {minConfluence} points required</span>
         <label className="text-sm">Minimum score <input aria-label="Minimum weighted score" type="number" min="1" max="20" step="1" value={minConfluence} onChange={e => { const value = Number(e.target.value); if (Number.isInteger(value) && value >= 1 && value <= 20) setMinConfluence(value) }} className="ml-2 w-20 bg-slate-800 border border-slate-600 rounded p-2" /></label>
         {[1, 2, 3, 6].map(score => <button key={score} onClick={() => setMinConfluence(score)} aria-pressed={minConfluence === score} className={`px-3 py-2 rounded ${minConfluence === score ? 'bg-cyan-600' : 'bg-slate-800'}`}>{score} points</button>)}
       </div>
-      {platform === 'tradingview' ? <TradingViewPanel selection={selectedStrategies} threshold={minConfluence} timeframe={timeframe} /> :
+      {platform === 'tradingview' ? <TradingViewPanel selection={selectedStrategies} threshold={minConfluence} timeframe={timeframe} symbol={selectedSymbols[0] || '1HZ75V'} startingCapital={startingCapital} /> :
       <MT5Panel selection={{ timeframe, min_confluence: minConfluence, ...selectedStrategies }}
         onLoad={config => {
           setTimeframe(config.timeframe); setMinConfluence(config.min_confluence);
@@ -188,30 +193,38 @@ export default function Backtest() {
             </h2>
             <div className="grid grid-cols-1 gap-2">
               {STRATEGIES.map(s => (
-                <button
+                <div
                   key={s.id}
-                  aria-pressed={selectedStrategies[s.id]}
-                  disabled={platform === 'tradingview' && !TV_SUPPORTED.includes(s.id) && !selectedStrategies[s.id]}
-                  onClick={() => toggleStrategy(s.id)}
                   className={`flex items-center justify-between px-3 py-2.5 rounded-lg border transition-all text-left group ${
                     selectedStrategies[s.id]
                       ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400'
                       : 'bg-slate-900/50 border-slate-700 text-slate-500 hover:border-slate-600'
                   }`}
                 >
+                  <button aria-pressed={selectedStrategies[s.id]} onClick={() => toggleStrategy(s.id)} className="flex items-center gap-2 text-left min-w-0">
                   <div>
                     <div className="text-sm font-medium">{s.label}</div>
-                    {platform === 'tradingview' && !TV_SUPPORTED.includes(s.id) && <div className="text-xs text-amber-300">Python / MT5 only</div>}
+                    {!TV_SUPPORTED.includes(s.id) && <div className="text-xs text-amber-300">Python / MT5 only · exact Pine port pending</div>}
                     <div className="text-[10px] opacity-60 leading-tight mt-0.5">{s.description}</div>
                   </div>
+                  </button>
+                  {!TV_SUPPORTED.includes(s.id) && <select aria-label={`${s.label} implementation`} value="python_mt5" disabled className="ml-2 bg-slate-900 border border-slate-600 rounded px-1 py-1 text-[10px] text-slate-400">
+                    <option value="python_mt5">Python/MT5 only</option>
+                  </select>}
                   {selectedStrategies[s.id] ? (
                     <Check className="w-4 h-4 flex-shrink-0" />
                   ) : (
                     <X className="w-4 h-4 flex-shrink-0 opacity-20 group-hover:opacity-100" />
                   )}
-                </button>
+                </div>
               ))}
             </div>
+          </div>
+
+          <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 space-y-3">
+            <h2 className="text-sm font-bold text-slate-300 uppercase tracking-wider">News-volatility mode</h2>
+            <label className="flex items-center gap-2 text-sm text-slate-200"><input type="checkbox" checked={newsOnly} onChange={e => setNewsOnly(e.target.checked)} /> High-impact news only</label>
+            <p className="text-xs text-slate-400">Uses backend economic events and only emits signals during the configured event window. Post events to <code>/api/news/events</code>; review signals at <code>/api/news/signals?symbol=NAS100</code>.</p>
           </div>
 
           {/* Symbols */}
@@ -240,6 +253,11 @@ export default function Backtest() {
           {/* Parameters */}
           <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-sm space-y-4">
             <h2 className="text-sm font-bold text-slate-300 uppercase tracking-wider mb-2">Parameters</h2>
+            <div>
+              <label className="text-xs text-slate-500 block mb-1.5">Starting capital (USD)</label>
+              <input type="number" min="1" step="100" value={startingCapital} onChange={e => setStartingCapital(Math.max(1, Number(e.target.value) || 1))} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200" />
+              <p className="text-[10px] text-slate-500 mt-1">Used in the generated TradingView strategy. It is not a broker deposit.</p>
+            </div>
             <div>
               <label className="text-xs text-slate-500 block mb-1.5">Lookback (Days)</label>
               <select 
@@ -273,6 +291,7 @@ export default function Backtest() {
               <p className="text-slate-300">{STRATEGIES.filter(s => selectedStrategies[s.id]).map(s => s.label).join(', ') || 'Select an indicator to begin.'}</p>
               <p className="text-sm text-slate-400">There is no required six-point minimum. A one-point Bollinger setup is allowed. Lower thresholds admit more setups; they do not guarantee profitable trades.</p>
               <p className="text-sm text-slate-400">Download or copy your Pine strategy above. Run the test in TradingView, where the script can access this instrument's price history and draw its simulated trades.</p>
+              <p className="text-sm text-cyan-200">Current test: {selectedSymbols[0] || 'No pair'} · {timeframe} · ${startingCapital.toLocaleString()} starting capital · {STRATEGIES.filter(s => selectedStrategies[s.id]).map(s => s.label).join(', ') || 'no indicators'}.</p>
               <a className="inline-block text-cyan-300" href={TV_URL} target="_blank" rel="noopener noreferrer">Open TradingView chart and Strategy Tester ↗</a>
             </div>
           ) : results.length > 0 ? (

@@ -251,6 +251,8 @@ class BacktestRequest(BaseModel):
     model_strategy: Literal['none', 'linear_regression', 'tree', 'time_series_nn'] = 'none'
 
     min_confluence: int = Field(6, ge=1, le=20)
+    strategy_versions: dict[str, Literal['python_mt5', 'pine']] = Field(default_factory=dict)
+    news_only: bool = False
 
 
 class BacktestReportResponse(BaseModel):
@@ -277,8 +279,6 @@ async def run_backtest(req: BacktestRequest, request: Request, db: AsyncSession 
         if req.data_source == 'mt5' and not req.csv_data:
             from app.api.routes.mt5 import get_runner, local_only
             local_only(request)
-            if req.symbols != ['1HZ75V']:
-                raise ValueError('MT5 Strategy Lab supports only V75 1s (1HZ75V)')
             mt5_candles = rows_to_candles(await asyncio.to_thread(get_runner(request).history, req.timeframe, req.days))
         elif not req.csv_data:
             tf_seconds = timeframe_to_seconds(req.timeframe)

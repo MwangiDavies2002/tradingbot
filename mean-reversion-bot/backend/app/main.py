@@ -191,7 +191,7 @@ def create_app() -> FastAPI:
 
     # ── Routers ───────────────────────────────────────────────────────────────
     # Import here to avoid circular imports at module level
-    from app.api.routes import bot_control, config, risk, signals, test, trades
+    from app.api.routes import bot_control, config, risk, signals, test, trades, news, strategies
 
     app.include_router(trades.router,      prefix="/api/trades",   tags=["Trades"])
     app.include_router(signals.router,     prefix="/api/signals",  tags=["Signals"])
@@ -202,6 +202,8 @@ def create_app() -> FastAPI:
     from app.api.routes import backtest
 
     app.include_router(backtest.router, prefix="/api/backtest", tags=["Backtest"])
+    app.include_router(news.router, prefix="/api/news", tags=["News"])
+    app.include_router(strategies.router, prefix="/api/strategies", tags=["Strategies"])
     if os.name == "nt" and not RUNNING_ON_VERCEL:
         from app.api.routes import mt5
         app.include_router(mt5.router, prefix="/api/mt5", tags=["MT5 Demo"])

@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import { buildPineStrategy, selectionError, TV_SYMBOL, TV_URL, type Selection } from '../tradingview/strategy'
+import { buildPineStrategy, selectionError, tradingViewSymbol, tradingViewUrl, type Selection } from '../tradingview/strategy'
 
-export default function TradingViewPanel({ selection, threshold, timeframe }: { selection: Selection; threshold: number; timeframe: string }) {
+export default function TradingViewPanel({ selection, threshold, timeframe, symbol, startingCapital }: { selection: Selection; threshold: number; timeframe: string; symbol: string; startingCapital: number }) {
   const chart = useRef<HTMLDivElement>(null)
   const [message, setMessage] = useState('')
   const [scriptError, setScriptError] = useState(false)
   const error = selectionError(selection, threshold)
-  const source = error ? '' : buildPineStrategy(selection, threshold)
+  const tvSymbol = tradingViewSymbol(symbol)
+  const tvUrl = tradingViewUrl(symbol)
+  const source = error ? '' : buildPineStrategy(selection, threshold, symbol, startingCapital)
   useEffect(() => {
     const container = chart.current
     if (!container) return
@@ -18,14 +20,14 @@ export default function TradingViewPanel({ selection, threshold, timeframe }: { 
     const script = document.createElement('script')
     script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js'
     script.async = true
-    script.textContent = JSON.stringify({ autosize: true, symbol: TV_SYMBOL,
+    script.textContent = JSON.stringify({ autosize: true, symbol: tvSymbol,
       interval: String(Number(timeframe.slice(1)) * (timeframe.startsWith('H') ? 60 : 1)),
       timezone: 'Etc/UTC', theme: 'dark', style: '1', locale: 'en',
       allow_symbol_change: false, hide_side_toolbar: false, calendar: false, support_host: 'https://www.tradingview.com' })
     script.onerror = () => setScriptError(true)
     container.appendChild(script)
     return () => { script.onerror = null; container.replaceChildren() }
-  }, [timeframe])
+  }, [timeframe, tvSymbol])
   const download = () => {
     const url = URL.createObjectURL(new Blob([source], { type: 'text/plain;charset=utf-8' }))
     const link = document.createElement('a')
@@ -39,12 +41,12 @@ export default function TradingViewPanel({ selection, threshold, timeframe }: { 
   }
   return <section className="bg-slate-800 border border-cyan-800 rounded-xl p-5 space-y-4">
     <div className="flex flex-wrap justify-between gap-3">
-      <div><h2 className="text-lg font-bold">TradingView · V75 1s</h2>
+      <div><h2 className="text-lg font-bold">TradingView · {symbol}</h2>
         <p className="text-sm text-slate-400">Selected threshold: {threshold} points · change it whenever you want.</p></div>
-      <a href={TV_URL} target="_blank" rel="noopener noreferrer" className="rounded bg-cyan-500 px-4 py-2 text-slate-950 font-semibold">Open V75 1s in TradingView ↗</a>
+      <a href={tvUrl} target="_blank" rel="noopener noreferrer" className="rounded bg-cyan-500 px-4 py-2 text-slate-950 font-semibold">Open {symbol} in TradingView ↗</a>
     </div>
     <div ref={chart} className="tradingview-widget-container h-[460px] w-full" />
-    <p className="text-xs text-slate-400"><a href={TV_URL} target="_blank" rel="noopener noreferrer" className="text-cyan-300">V75 1s chart by TradingView</a>. This embedded chart shows market prices. Your Pine strategy's trade markers appear on the full TradingView chart after you add the script.</p>
+    <p className="text-xs text-slate-400"><a href={tvUrl} target="_blank" rel="noopener noreferrer" className="text-cyan-300">{symbol} chart by TradingView</a>. This embedded chart shows market prices. Your Pine strategy's trade markers appear on the full TradingView chart after you add the script.</p>
     {scriptError && <p role="alert" className="text-amber-300">The chart could not load. Open the full TradingView chart using the link above.</p>}
     <p className="text-xs text-slate-400">If TradingView restricts this symbol in embedded charts, use Open V75 1s. No MT5 connection is needed for this workflow.</p>
     <div className="flex flex-wrap gap-3">
