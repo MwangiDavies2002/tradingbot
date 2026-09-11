@@ -396,6 +396,13 @@ class SignalEngine:
         direction = self._determine_direction(
             lsl_signal, structure, zs_result, rsi_result, htf_bias
         )
+        if self.cfg.use_tree_model and zs_result and rsi_result:
+            from app.core.engine.tree_model import classify
+            recent = [float(c.close) for c in candles[-50:]]
+            long_recent = [float(c.close) for c in candles[-200:]]
+            ema50 = sum(recent) / len(recent)
+            ema200 = sum(long_recent) / len(long_recent)
+            direction, _ = classify(zs_result.value, rsi_result.value, atr, candles[-1].close, ema50, ema200)
         if direction is None:
             # A single enabled directional indicator may qualify at a low threshold.
             # Context-only conditions (volume/Hurst) must never invent a direction.
