@@ -1,5 +1,3 @@
-version: "3.9"
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Mean Reversion Bot — Docker Compose (Local Dev)
 #
@@ -36,8 +34,9 @@ services:
     restart: unless-stopped
     env_file: ./backend/.env
     environment:
-      DATABASE_URL: mysql+aiomysql://root:@host.docker.internal:3306/meanrevbot
       REDIS_URL: redis://redis:6379/0
+      NEWS_AUTO_SYNC: ${NEWS_AUTO_SYNC:-true}
+      NEWS_SYNC_INTERVAL_SECONDS: ${NEWS_SYNC_INTERVAL_SECONDS:-900}
     ports:
       - "8000:8000"
     depends_on:
@@ -49,8 +48,7 @@ services:
       uvicorn app.main:app
         --host 0.0.0.0
         --port 8000
-        --reload
-        --log-level info
+      --log-level info
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -66,8 +64,9 @@ services:
     restart: unless-stopped
     env_file: ./backend/.env
     environment:
-      DATABASE_URL: mysql+aiomysql://root:@host.docker.internal:3306/meanrevbot
       REDIS_URL: redis://redis:6379/0
+      NEWS_AUTO_SYNC: ${NEWS_AUTO_SYNC:-true}
+      NEWS_SYNC_INTERVAL_SECONDS: ${NEWS_SYNC_INTERVAL_SECONDS:-900}
     depends_on:
       redis:
         condition: service_healthy
@@ -75,7 +74,7 @@ services:
         condition: service_healthy
     command: python -m app.bot
     profiles:
-      - bot      # Only start with: docker compose --profile bot up
+      - bot
 
   # ── React Frontend (dev) ────────────────────────────────────────────────────
   frontend:
@@ -94,4 +93,3 @@ services:
       - api
     profiles:
       - frontend   # Only start with: docker compose --profile frontend up
-
