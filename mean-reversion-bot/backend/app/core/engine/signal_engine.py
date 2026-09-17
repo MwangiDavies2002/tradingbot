@@ -156,7 +156,22 @@ class EngineConfig:
     use_candle_reversal: bool = False
     use_candle_continuation: bool = False
     use_crt: bool = False
+    use_news: bool = False
+    news_mode: str = "high_impact_only"
     model_strategy: str = "none"
+
+    # Phase 3: Scaling & Execution
+    use_safety_orders:   bool  = False
+    max_safety_orders:   int   = 3
+    safety_order_step_atr: float = 1.0  # ATR distance between safety orders
+    safety_order_volume_mult: float = 1.0 # 1.0 = static stake, 2.0 = martingale
+    tp_on_average_price: bool = True   # Move TP relative to new avg price
+
+    # Phase 5: Optimization & Adaptive Risk
+    use_trailing_stop:   bool  = False
+    trailing_stop_atr:   float = 1.5   # Distance for trailing stop
+    max_concurrent_trades: int = 3     # Global limit across all symbols
+    max_total_exposure:  float = 0.05  # Max 5% total account risk
 
     # Risk
     risk_pct:           float = 0.01
@@ -196,6 +211,12 @@ class TradeDecision:
     entry_price:       Optional[float]            = None
     lsl_signal:        Optional[LSLSignal]        = None
     structure:         Optional[BOSCHoCHResult]   = None
+    news_impact:       Optional[str]              = None
+    
+    # Phase 3 scaling info
+    is_safety_order:   bool                       = False
+    order_index:       int                        = 0
+    average_price:     Optional[float]            = None
 
     # Indicator snapshots for logging/dashboard
     zscore:            Optional[ZScoreResult]     = None
@@ -314,6 +335,10 @@ class SignalEngine:
         timeframe:       str = "",
         instrument_type: Optional[InstrumentType] = None,
         htf_bias:        Optional[str] = None,    # "buy", "sell", or None (from HTF analysis)
+        news_impact:     Optional[str] = None,    # "high", "medium", or None
+        active_position: Optional[Position] = None, # Current open position for scaling
+        total_open_positions: int = 0,             # Phase 5: Global limit
+        total_open_risk_pct: float = 0.0,          # Phase 5: Global risk limit
     ) -> TradeDecision:
         """
         Evaluate the current candle for a trade opportunity.
@@ -328,6 +353,7 @@ class SignalEngine:
         timeframe       : str            Timeframe string (e.g. "M5", "M15")
         instrument_type : InstrumentType Instrument category for specialised logic
         htf_bias        : str or None    Higher timeframe trend bias for confluence
+        news_impact     : str or None    Current news impact level for this symbol
 
         Returns
         -------
@@ -350,6 +376,19 @@ class SignalEngine:
         # ── 1. Guard: circuit breaker ─────────────────────────────────────────
         if not self.cb.is_trading_allowed():
             return _no_trade(f"circuit_breaker_{self.cb._state.value}")
+
+        # ── Phase 5: Multi-Symbol Guards ──────────────────────────────────────
+        if not active_position: # Only for new entries
+            if total_open_positions >= self.cfg.max_concurrent_trades:
+                return _no_trade("max_concurrent_trades_exceeded")
+            if total_open_risk_pct >= self.cfg.max_total_exposure:
+                return _no_trade("max_total_exposure_exceeded")
+
+        # ── Phase 3: Safety Order Scaling ─────────────────────────────────────
+        if active_position and self.cfg.use_safety_orders:
+            return self._evaluate_safety_order(
+                active_position, candles, symbol, timeframe, atr_ind=self.atr_ind
+            )
 
         # ── 2. ATR — volatility baseline ─────────────────────────────────────
         atr_result = self.atr_ind.compute(candles)
@@ -403,6 +442,11 @@ class SignalEngine:
             ema50 = sum(recent) / len(recent)
             ema200 = sum(long_recent) / len(long_recent)
             direction, _ = classify(zs_result.value, rsi_result.value, atr, candles[-1].close, ema50, ema200)
+
+        # News Impact directionality: If news impact is high and no other direction found,
+        # we still allow evaluation for news-only setups.
+        if direction is None and news_impact:
+            direction = "buy" # Arbitrary candidate for scoring; confluence will validate
         if direction is None:
             # A single enabled directional indicator may qualify at a low threshold.
             # Context-only conditions (volume/Hurst) must never invent a direction.
@@ -444,6 +488,7 @@ class SignalEngine:
             htf_aligned  = htf_aligned,
             volume_ratio = self._volume_ratio(candles) if self.cfg.use_volume else None,
             hurst        = hurst_result.value if hurst_result else None,
+            news_impact  = news_impact        if self.cfg.use_news   else None,
             symbol       = symbol,
             timeframe    = timeframe,
         )
@@ -456,6 +501,7 @@ class SignalEngine:
                 zscore=zs_result, bollinger=bb_result, rsi=rsi_result,
                 vwap=vwap_result, stoch=stoch_result, atr=atr_result,
                 hurst=hurst_result, lsl_signal=lsl_signal, structure=structure,
+                news_impact=news_impact,
             )
 
         # ── 14. Position sizing ───────────────────────────────────────────────
@@ -488,6 +534,7 @@ class SignalEngine:
             entry_price   = entry,
             lsl_signal    = lsl_signal,
             structure     = structure,
+            news_impact   = news_impact,
             zscore        = zs_result,
             bollinger     = bb_result,
             rsi           = rsi_result,
@@ -538,6 +585,10 @@ class SignalEngine:
         if zs_result and zs_result.is_very_extreme and zs_result.direction:
             return zs_result.direction
 
+        # LSL early phases (contextual direction)
+        if lsl_signal and lsl_signal.direction:
+            return lsl_signal.direction.value
+
         return None
 
     def _get_lsl_detector(self, instrument_type: Optional[InstrumentType]) -> LSLDetector:
@@ -565,3 +616,63 @@ class SignalEngine:
             return None
         avg = sum(vols[:-1]) / len(vols[:-1])
         return vols[-1] / avg if avg > 0 else None
+
+    # ── Phase 3: Scaling Logic ───────────────────────────────────────────────
+
+    def _evaluate_safety_order(
+        self,
+        pos: Position,
+        candles: list[Candle],
+        symbol: str,
+        timeframe: str,
+        atr_ind: ATRIndicator
+    ) -> TradeDecision:
+        """
+        Check if we should add a safety order (DCA) to an existing position.
+        """
+        t0 = time.perf_counter()
+        last_price = candles[-1].close
+        atr_res = atr_ind.compute(candles)
+        atr = atr_res.value if atr_res else 0.0
+        
+        # 1. Check if we've reached max safety orders
+        current_orders = getattr(pos, "order_index", 0)
+        if current_orders >= self.cfg.max_safety_orders:
+            return TradeDecision(symbol=symbol, timeframe=timeframe, direction=pos.direction, should_trade=False, reason="max_safety_orders_reached")
+
+        # 2. Check distance from last entry
+        price_diff = last_price - pos.entry_price
+        dist_atr = abs(price_diff) / atr if atr > 0 else 0
+        
+        required_dist = self.cfg.safety_order_step_atr * (current_orders + 1)
+        
+        is_wrong_way = (pos.direction == "buy" and price_diff < 0) or (pos.direction == "sell" and price_diff > 0)
+        
+        if is_wrong_way and dist_atr >= required_dist:
+            # We should trade!
+            ms = (time.perf_counter() - t0) * 1000
+            
+            # Recalculate sizing for safety order
+            new_stake = pos.stake * self.cfg.safety_order_volume_mult
+            
+            # Simple sizing for safety order (reuse existing logic but bypass min balance checks if needed)
+            sizing = self.sizer.calculate(
+                entry=last_price,
+                atr=atr,
+                direction=pos.direction,
+                confluence_mult=1.0,
+                product=self.cfg.deriv_product,
+                multiplier=self.cfg.deriv_multiplier
+            )
+            # Override stake
+            sizing.stake = new_stake
+            
+            return TradeDecision(
+                symbol=symbol, timeframe=timeframe, direction=pos.direction,
+                should_trade=True, reason=f"safety_order_{current_orders + 1}",
+                sizing=sizing, entry_price=last_price,
+                is_safety_order=True, order_index=current_orders + 1,
+                eval_ms=round(ms, 2)
+            )
+
+        return TradeDecision(symbol=symbol, timeframe=timeframe, direction=pos.direction, should_trade=False, reason="waiting_for_safety_distance")

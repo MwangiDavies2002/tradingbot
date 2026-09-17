@@ -320,7 +320,14 @@ class TickConsumer:
                          len(candle_list), self.min_candles)
             return
 
-        if self._cooldown.get(key, 0) > 0:
+        # Phase 3: Scaling bypasses cooldown if we have an active position
+        active_pos = None
+        for p in self.manager.open_positions:
+            if p.symbol == symbol:
+                active_pos = p
+                break
+
+        if active_pos is None and self._cooldown.get(key, 0) > 0:
             logger.debug("Cooldown active: %d bars remaining", self._cooldown[key])
             return
 
@@ -331,12 +338,28 @@ class TickConsumer:
     ) -> None:
         """Run the signal engine and execute if a valid trade decision is returned."""
         try:
+            # Phase 3: Check for active positions to allow scaling
+            active_pos = None
+            open_positions = self.manager.open_positions
+            total_risk = 0.0
+            for p in open_positions:
+                if p.symbol == info.symbol:
+                    active_pos = p
+                if hasattr(p, 'risk_pct') and p.risk_pct:
+                    total_risk += p.risk_pct
+                elif p.stake > 0:
+                    # Fallback if risk_pct not on object
+                    total_risk += (p.stake * 100 / self.engine.sizer.account_balance) / 100
+
             decision: TradeDecision = self.engine.evaluate(
                 candles         = candles,
                 symbol          = info.symbol,
                 timeframe       = info.tf_label,
                 instrument_type = info.instrument_type,
                 htf_bias        = info.htf_bias,
+                active_position = active_pos,
+                total_open_positions = len(open_positions),
+                total_open_risk_pct  = total_risk,
             )
         except Exception as exc:
             logger.error("Signal engine error for %s: %s", info.symbol, exc, exc_info=True)
@@ -397,6 +420,9 @@ class TickConsumer:
                     "hurst":    decision.hurst.value     if decision.hurst    else None,
                     "lsl":      decision.lsl_signal.direction.value
                                 if decision.lsl_signal else None,
+                    "is_scaling": decision.is_safety_order,
+                    "order_index": decision.order_index,
+                    "score_breakdown": decision.confluence.breakdown.to_dict() if decision.confluence else None,
                 },
             })
             await self.redis.setex(key, 30, data)

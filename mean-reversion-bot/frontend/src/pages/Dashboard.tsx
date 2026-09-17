@@ -9,7 +9,7 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import {
   fetchBotStatus, fetchRisk, fetchSignals, fetchTrades,
+  fetchBotPerformance,
   stopBot, startBot, resetCircuitBreaker,
   type BotStatus, type RiskDashboard, type Signal, type Trade,
 } from '../api/client'
@@ -32,6 +33,7 @@ interface DashState {
   risk:     RiskDashboard | null
   signals:  Signal[]
   trades:   Trade[]
+  performance: any | null
   loading:  boolean
   error:    string | null
   lastRefresh: Date | null
@@ -83,22 +85,25 @@ function CBBadge({ state }: { state: string }) {
 export default function Dashboard() {
   const [state, setState] = useState<DashState>({
     status: null, risk: null, signals: [], trades: [],
+    performance: null,
     loading: true, error: null, lastRefresh: null,
   })
   const [actionLoading, setActionLoading] = useState(false)
 
   const refresh = useCallback(async () => {
     try {
-      const [status, risk, sigRes, tradeRes] = await Promise.all([
+      const [status, risk, sigRes, tradeRes, perfRes] = await Promise.all([
         fetchBotStatus(),
         fetchRisk(),
         fetchSignals({ limit: 20, fired: true }),
         fetchTrades({ status: 'open', page_size: 10 }),
+        fetchBotPerformance(),
       ])
       setState(s => ({
         ...s, status, risk,
         signals: sigRes.signals,
         trades:  tradeRes.trades,
+        performance: perfRes.stats,
         loading: false, error: null,
         lastRefresh: new Date(),
       }))
@@ -221,6 +226,32 @@ export default function Dashboard() {
         />
       </div>
 
+      {/* ── Phase 6: Advanced Analytics Row ───────────────────── */}
+      {state.performance && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard
+            label="Win Rate"
+            value={`${state.performance.win_rate}%`}
+            sub={`${state.performance.total_trades} total trades`}
+          />
+          <StatCard
+            label="Profit Factor"
+            value={state.performance.profit_factor.toFixed(2)}
+            sub={`Avg Win: $${state.performance.avg_win}`}
+          />
+          <StatCard
+            label="Sharpe Ratio"
+            value={state.performance.sharpe_ratio.toFixed(2)}
+            sub="Risk-adjusted return"
+          />
+          <StatCard
+            label="Max Drawdown"
+            value={`${state.performance.max_drawdown_pct}%`}
+            sub="Historical Peak-to-Valley"
+          />
+        </div>
+      )}
+
       {/* ── Equity Curve ───────────────────────────────────────── */}
       {equityCurve.length > 1 && (
         <div className="bg-slate-800 border border-slate-700 rounded-xl p-5">
@@ -296,29 +327,62 @@ export default function Dashboard() {
 
         {/* Signal Feed */}
         <div className="bg-slate-800 border border-slate-700 rounded-xl p-5">
-          <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-4 flex items-center gap-2">
-            <Shield className="w-4 h-4 text-cyan-400" />
-            Recent Fired Signals
+          <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Shield className="w-4 h-4 text-cyan-400" />
+              Recent Signal Feed
+            </div>
+            <span className="text-[10px] text-slate-500 font-normal">REAL-TIME ANALYSIS</span>
           </h2>
           {signals.length === 0
             ? <p className="text-slate-500 text-sm text-center py-6">No signals yet</p>
             : (
-              <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+              <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1 custom-scrollbar">
                 {signals.map(s => (
                   <div key={s.id}
-                       className="flex items-center justify-between bg-slate-700/40 rounded-lg px-3 py-2 text-xs">
-                    <div className="flex items-center gap-2 min-w-0">
-                      {s.direction === 'buy'
-                        ? <TrendingUp  className="w-3 h-3 text-emerald-400 flex-shrink-0" />
-                        : <TrendingDown className="w-3 h-3 text-red-400 flex-shrink-0" />
-                      }
-                      <span className="font-medium text-white truncate">{s.symbol}</span>
-                      <span className="text-slate-400">{s.timeframe}</span>
+                       className="group bg-slate-700/30 hover:bg-slate-700/50 border border-slate-700/50 rounded-lg p-3 transition-all duration-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-1.5 h-1.5 rounded-full ${s.fired ? 'bg-cyan-400 animate-pulse' : 'bg-slate-500'}`} />
+                        <span className="font-bold text-white text-sm">{s.symbol}</span>
+                        <span className="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded uppercase tracking-tighter">
+                          {s.timeframe}
+                        </span>
+                        {s.indicators.is_scaling && (
+                          <span className="text-[9px] bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded border border-purple-500/30 font-bold uppercase">
+                            SCALE #{s.indicators.order_index}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <div className={`text-sm font-black ${scoreColor(s.score)}`}>
+                          {s.score} <span className="text-[10px] font-normal text-slate-500">pts</span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3 flex-shrink-0 ml-2">
-                      <span className={`font-bold ${scoreColor(s.score)}`}>{s.score}pts</span>
-                      <span className="text-slate-500">{fmt(s.evaluated_at)}</span>
+
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase ${dirBg(s.direction || '')}`}>
+                        {s.direction === 'buy' ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                        {s.direction}
+                      </span>
+                      <span className="text-[10px] text-slate-500 italic truncate flex-1">
+                        {s.reason.replace(/_/g, ' ')}
+                      </span>
+                      <span className="text-[10px] text-slate-600 font-mono">{fmt(s.evaluated_at)}</span>
                     </div>
+
+                    {/* Breakdown Chips */}
+                    {s.indicators.breakdown && Object.keys(s.indicators.breakdown).length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 border-t border-slate-700/50 pt-2 opacity-60 group-hover:opacity-100 transition-opacity">
+                        {Object.entries(s.indicators.breakdown).map(([key, val]) => val > 0 && (
+                          <div key={key} className="flex items-center gap-1 bg-slate-800/80 px-1.5 py-0.5 rounded text-[9px] border border-slate-700">
+                            <span className="text-slate-400 capitalize">{key.replace('_', ' ')}</span>
+                            <span className="text-cyan-400 font-bold">+{val}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

@@ -105,6 +105,10 @@ class Position:
     closed_at:      Optional[datetime] = None
     confluence_score: int              = 0
     reason_code:    str                = ""
+    
+    # Phase 3 Scaling
+    order_index:    int                = 0  # 0 for initial, 1+ for safety orders
+    parent_trade_id: Optional[str]     = None # Link safety order to original
 
     @property
     def is_open(self) -> bool:
@@ -225,6 +229,15 @@ class OrderManager:
             return None
         from app.execution.safety import validate_account
         validate_account(self.settings, self.client.state)
+
+        # Phase 3: Safety Order Check
+        if decision.is_safety_order:
+            logger.info("Scaling into %s (Safety Order #%d)", decision.symbol, decision.order_index)
+        elif self._open_count >= self.max_positions:
+            logger.info("Max positions (%d) reached — skipping %s",
+                        self.max_positions, decision.symbol)
+            return None
+
         if self.client.state.connect_time != self._connection_time:
             self.ready = False
             return None
@@ -352,6 +365,7 @@ class OrderManager:
         Called on every incoming tick for a symbol.
         Checks all open positions for that symbol against SL and TP levels.
         Client-side backup to server-side SL/TP on Deriv.
+        Also handles Trailing Stop logic if enabled in settings.
         """
         open_positions = [
             p for p in self._positions.values()
@@ -359,6 +373,24 @@ class OrderManager:
         ]
 
         for position in open_positions:
+            # Phase 5: Trailing Stop Logic
+            if self.settings and getattr(self.settings, "use_trailing_stop", False):
+                atr = getattr(self.settings, "current_atr", 1.0) # Fallback to 1.0 if not found
+                trail_dist = getattr(self.settings, "trailing_stop_atr", 1.5) * atr
+                
+                if position.direction == "buy":
+                    new_sl = current_price - trail_dist
+                    if new_sl > position.stop_loss:
+                        logger.info("TRAILING STOP UP | %s | old_SL=%.5f -> new_SL=%.5f", 
+                                    position.trade_id, position.stop_loss, new_sl)
+                        position.stop_loss = new_sl
+                else: # sell
+                    new_sl = current_price + trail_dist
+                    if new_sl < position.stop_loss:
+                        logger.info("TRAILING STOP DOWN | %s | old_SL=%.5f -> new_SL=%.5f", 
+                                    position.trade_id, position.stop_loss, new_sl)
+                        position.stop_loss = new_sl
+
             if position.sl_hit(current_price):
                 logger.warning("SL HIT | %s | price=%.5f | SL=%.5f",
                                position.trade_id, current_price, position.stop_loss)
@@ -420,6 +452,7 @@ class OrderManager:
             stake          = sizing.stake if sizing else 0.0,
             confluence_score = decision.confluence_score,
             reason_code    = decision.reason,
+            order_index    = decision.order_index,
         )
 
     async def _place_order(self, position: Position, decision: TradeDecision) -> dict:

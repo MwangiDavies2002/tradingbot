@@ -3,11 +3,12 @@ export const tradingViewSymbol = (symbol: string) => TV_SYMBOLS[symbol] || `DERI
 export const tradingViewUrl = (symbol = '1HZ75V') => `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(tradingViewSymbol(symbol))}`
 export const TV_SYMBOL = tradingViewSymbol('1HZ75V')
 export const TV_URL = tradingViewUrl()
-export const TV_SUPPORTED = ['use_zscore', 'use_rsi', 'use_bb', 'use_vwap', 'use_stoch', 'use_volume']
+export const TV_SUPPORTED = ['use_zscore', 'use_rsi', 'use_bb', 'use_vwap', 'use_stoch', 'use_volume', 'use_news']
 export type Selection = Record<string, boolean>
 export const DEFAULT_SELECTION: Selection = {
   use_zscore: true, use_rsi: true, use_bb: true, use_vwap: false,
   use_stoch: false, use_volume: false, use_lsl: false, use_smc: false, use_hurst: false,
+  use_news: false,
 }
 export const WEIGHTS: Record<string, number> = { use_zscore: 3, use_rsi: 2, use_bb: 1, use_vwap: 1, use_stoch: 1, use_volume: 1 }
 
@@ -44,6 +45,7 @@ useDay = input.bool(${flag('use_day_levels')}, "Previous-day levels", group="Pyt
 useRev = input.bool(${flag('use_candle_reversal')}, "Candle reversal", group="Python translations")
 useCont = input.bool(${flag('use_candle_continuation')}, "Candle continuation", group="Python translations")
 useCrt = input.bool(${flag('use_crt')}, "Candle range theory", group="Python translations")
+useNews = input.bool(${flag('use_news')}, "High-impact news event (2 points)", group="Python translations")
 useTree = input.bool(${flag('use_tree_model')}, "Fixed decision tree", group="Python translations")
 useSmt = input.bool(${flag('use_smt')}, "SMT divergence", group="Cross-market")
 smtSymbol = input.symbol("TVC:SPX", "Comparison symbol", group="Cross-market")
@@ -59,7 +61,7 @@ sessionChoice = input.string("Asia-London", "Handoff session", options=["Asia-Lo
 sessionTimezone = input.string("Etc/UTC", "Session timezone", options=["Etc/UTC", "Africa/Nairobi", "Europe/London", "America/New_York"], group="Sessions")
 
 maxScore = (useZ ? 3 : 0) + (useRsi ? 2 : 0) + (useBb ? 1 : 0) + (useVwap ? 1 : 0) + (useStoch ? 1 : 0) + (useVol ? 1 : 0)
-maxScore += (useLsl ? 2 : 0) + (useSmc ? 1 : 0) + (useHurst ? 1 : 0) + (useLinReg ? 1 : 0) + (useDay ? 1 : 0) + (useRev ? 1 : 0) + (useCont ? 1 : 0) + (useCrt ? 1 : 0)
+maxScore += (useLsl ? 2 : 0) + (useSmc ? 1 : 0) + (useHurst ? 1 : 0) + (useLinReg ? 1 : 0) + (useDay ? 1 : 0) + (useRev ? 1 : 0) + (useCont ? 1 : 0) + (useCrt ? 1 : 0) + (useNews ? 2 : 0)
 maxScore += useTree ? 3 : 0
 maxScore += useSmt ? 2 : 0
 // Translated Python detectors use a bounded RSI proxy. Clamp an imported lab

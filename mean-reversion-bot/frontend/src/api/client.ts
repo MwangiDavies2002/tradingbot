@@ -103,6 +103,9 @@ export interface Signal {
     lsl_grab:    boolean
     bos_choch:   boolean
     order_block: boolean
+    is_scaling?: boolean
+    order_index?: number
+    breakdown?: Record<string, number>
   }
 }
 
@@ -215,6 +218,27 @@ export async function stopBot(): Promise<{ status: string }> {
 
 export async function resetCircuitBreaker(): Promise<{ status: string }> {
   return apiFetch('/api/bot/circuit-breaker/reset', { method: 'POST' })
+}
+
+export async function fetchBotPerformance(): Promise<{
+  stats: {
+    total_trades: number
+    win_rate: number
+    total_pnl: number
+    avg_win: number
+    avg_loss: number
+    profit_factor: number
+    sharpe_ratio: number
+    max_drawdown_pct: number
+  },
+  recent_trades: Array<{
+    trade_id: string
+    symbol: string
+    pnl: number
+    closed_at: string
+  }>
+}> {
+  return apiFetch('/api/bot/performance')
 }
 
 // ── Risk ──────────────────────────────────────────────────────────────────────

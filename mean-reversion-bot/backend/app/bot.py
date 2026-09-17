@@ -79,18 +79,49 @@ class BotRunner:
         """
         Main entry point. Call this from __main__.
         Runs until shutdown signal received.
+        Phase 6: Includes Automated Recovery Mode.
         """
-        try:
-            await self._setup()
-            await self._main_loop()
-        except KeyboardInterrupt:
-            logger.info("KeyboardInterrupt — shutting down gracefully")
-        except Exception as exc:
-            logger.critical("Fatal error in bot runner: %s", exc, exc_info=True)
-            if self.alert_manager:
-                await self.alert_manager.bot_stopped(f"FATAL ERROR: {exc}")
-        finally:
-            await self._shutdown()
+        retry_count = 0
+        max_retries = 5
+        retry_delay = 10 # seconds
+
+        while retry_count < max_retries:
+            try:
+                await self._setup()
+                await self._main_loop()
+                break # Normal exit
+            except KeyboardInterrupt:
+                logger.info("KeyboardInterrupt — shutting down gracefully")
+                break
+            except Exception as exc:
+                retry_count += 1
+                logger.critical("Fatal error in bot runner (Attempt %d/%d): %s", 
+                                retry_count, max_retries, exc, exc_info=True)
+                
+                if self.alert_manager:
+                    await self.alert_manager.bot_stopped(f"RECOVERY MODE: Attempting restart {retry_count}/{max_retries} after error: {exc}")
+                
+                # Cleanup before retry
+                await self._shutdown()
+                
+                if retry_count < max_retries:
+                    logger.info("Recovery Mode: Waiting %d seconds before restart...", retry_delay)
+                    await asyncio.sleep(retry_delay)
+                    # Reset components for clean setup
+                    self.client = None
+                    self.signal_engine = None
+                    self.order_manager = None
+                    self.tick_consumer = None
+                    self.alert_manager = None
+                    self.circuit_breaker = None
+                    self.redis = None
+                    self.store = None
+                else:
+                    logger.error("Recovery Mode: Max retries reached. Manual intervention required.")
+                    break # Exit the loop after max retries
+        
+        # Final shutdown after loop exit
+        await self._shutdown()
 
     # ── Setup ─────────────────────────────────────────────────────────────────
 

@@ -43,9 +43,8 @@ def public_config_key(key):
 # BOT CONTROL  /api/bot
 # ══════════════════════════════════════════════════════════════════════════════
 
-router = APIRouter()   # re-exported; main.py imports each module separately
-
 bot_control_router = APIRouter()
+router = bot_control_router  # Export as router for main.py
 
 
 class ResolveIntent(BaseModel):
@@ -193,6 +192,78 @@ async def start_bot(request: Request, db: AsyncSession = Depends(get_db)):
     return {"status": "start_signal_sent"}
 
 
+@bot_control_router.get("/performance")
+async def performance_report(db: AsyncSession = Depends(get_db)):
+    """
+    Generate a P&L and efficiency report from historical execution records.
+    Phase 5: Performance Reporting API.
+    """
+    stmt = (
+        select(ExecutionRecord)
+        .where(ExecutionRecord.scope == scope(), ExecutionRecord.status == "closed")
+        .order_by(desc(ExecutionRecord.closed_at))
+        .limit(100)
+    )
+    result = await db.execute(stmt)
+    records = result.scalars().all()
+
+    if not records:
+        return {"stats": {"total_trades": 0, "win_rate": 0, "total_pnl": 0}}
+
+    total_pnl = sum(r.pnl or 0.0 for r in records)
+    wins = [r for r in records if (r.pnl or 0.0) > 0]
+    win_rate = len(wins) / len(records)
+    
+    avg_win = sum(r.pnl for r in wins) / len(wins) if wins else 0
+    losses = [r for r in records if (r.pnl or 0.0) <= 0]
+    avg_loss = sum(r.pnl for r in losses) / len(losses) if losses else 0
+    
+    profit_factor = abs(sum(r.pnl for r in wins) / sum(r.pnl for r in losses)) if losses and sum(r.pnl for r in losses) != 0 else 0
+
+    # Phase 6: Advanced Analytics
+    import numpy as np
+    pnls = [r.pnl or 0.0 for r in records]
+    
+    # Sharpe Ratio (Simplified for trading frequency)
+    sharpe = 0.0
+    if len(pnls) > 1:
+        std = np.std(pnls)
+        if std > 0:
+            sharpe = (np.mean(pnls) / std) * np.sqrt(252) # Annualized approximation
+
+    # Max Drawdown
+    max_dd = 0.0
+    if pnls:
+        cum_pnl = np.cumsum(pnls)
+        # Add 1000 to cumulative P&L to simulate a starting balance for drawdown calculation
+        equity = 1000 + cum_pnl
+        running_max = np.maximum.accumulate(equity)
+        drawdowns = (running_max - equity) / running_max
+        max_dd = np.max(drawdowns) if len(drawdowns) > 0 else 0.0
+
+    return {
+        "stats": {
+            "total_trades": len(records),
+            "win_rate": round(win_rate * 100, 2),
+            "total_pnl": round(total_pnl, 2),
+            "avg_win": round(avg_win, 2),
+            "avg_loss": round(avg_loss, 2),
+            "profit_factor": round(profit_factor, 2),
+            "sharpe_ratio": round(float(sharpe), 2),
+            "max_drawdown_pct": round(float(max_dd) * 100, 2),
+        },
+        "recent_trades": [
+            {
+                "trade_id": r.trade_id,
+                "symbol": r.symbol,
+                "pnl": r.pnl,
+                "closed_at": r.closed_at.isoformat() if r.closed_at else None,
+            }
+            for r in records[:10]
+        ]
+    }
+
+
 @bot_control_router.post("/circuit-breaker/reset")
 async def reset_circuit_breaker(request: Request, db: AsyncSession = Depends(get_db)):
     """
@@ -262,6 +333,9 @@ async def list_signals(
                     "lsl_grab":    s.lsl_grab,
                     "bos_choch":   s.bos_choch,
                     "order_block": s.order_block,
+                    "is_scaling":  s.payload.get("is_safety_order", False) if s.payload else False,
+                    "order_index": s.payload.get("order_index", 0) if s.payload else 0,
+                    "breakdown":   s.payload.get("score_breakdown", {}) if s.payload else {},
                 },
             }
             for s in signals

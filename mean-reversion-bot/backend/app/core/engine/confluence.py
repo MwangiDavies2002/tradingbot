@@ -99,6 +99,7 @@ class ScoreBreakdown:
     htf_points:         int = 0   # 0 or 1
     volume_points:      int = 0   # 0 or 1
     hurst_points:       int = 0   # 0 or 1
+    news_points:        int = 0   # 0, 1, or 2 (High impact news)
 
     @property
     def total(self) -> int:
@@ -113,7 +114,8 @@ class ScoreBreakdown:
             self.order_block_points +
             self.htf_points +
             self.volume_points +
-            self.hurst_points
+            self.hurst_points +
+            self.news_points
         )
 
     def to_dict(self) -> dict[str, int]:
@@ -146,6 +148,7 @@ class ScoreBreakdown:
         if self.htf_points:         parts.append(f"HTF:{self.htf_points}")
         if self.volume_points:      parts.append(f"Vol:{self.volume_points}")
         if self.hurst_points:       parts.append(f"Hurst:{self.hurst_points}")
+        if self.news_points:        parts.append(f"News:{self.news_points}")
         return " | ".join(parts) + f" → TOTAL: {self.total}"
 
 
@@ -230,6 +233,7 @@ class ConfluenceResult:
         if bd.htf_points:         parts.append("HTF")
         if bd.volume_points:      parts.append("VOL")
         if bd.hurst_points:       parts.append("HUR")
+        if bd.news_points:        parts.append("NWS")
         return "_".join(parts)
 
     def __repr__(self) -> str:
@@ -343,6 +347,7 @@ class ConfluenceScorer:
         htf_aligned:  bool = False,              # True if HTF trend matches direction
         volume_ratio: Optional[float] = None,    # current_vol / avg_vol
         hurst:        Optional[float] = None,    # Hurst exponent
+        news_impact:  Optional[str]   = None,    # "high", "medium", or None
         symbol:       str = "",
         timeframe:    str = "",
     ) -> ConfluenceResult:
@@ -361,11 +366,12 @@ class ConfluenceScorer:
         vwap_dev    : VWAP deviation in ATR units. Negative = below VWAP.
         stoch_k     : Stochastic %K value (0–100)
         lsl_signal  : Confirmed LSLSignal or None
-        bos_choch   : True if a Break of Structure or Change of Character detected
+        bos_choch   : True if a Break of Structure or Character detected
         order_block : True if price is at a mapped Order Block in signal direction
         htf_aligned : True if higher timeframe trend matches the proposed direction
         volume_ratio: current_volume / average_volume (>1 = above average)
         hurst       : Hurst exponent estimate (< 0.5 = mean-reverting)
+        news_impact : "high" or "medium" impact news active
         symbol      : Instrument name (for logging)
         timeframe   : Timeframe (for logging)
 
@@ -447,6 +453,12 @@ class ConfluenceScorer:
         # ── Hurst Exponent (Mean-Reverting Regime) ────────────────────────────
         if hurst is not None and hurst < self.hurst_mr_threshold:
             bd.hurst_points = 1
+
+        # ── News Impact ───────────────────────────────────────────────────────
+        if news_impact == "high":
+            bd.news_points = 2
+        elif news_impact == "medium":
+            bd.news_points = 1
 
         # ── Build Result ──────────────────────────────────────────────────────
         result = ConfluenceResult(
