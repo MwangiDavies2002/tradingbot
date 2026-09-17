@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api } from '../api/client'
+import { api, downloadFile } from '../api/client'
 
 type Selection = { timeframe: string; min_confluence: number; [key: string]: string | number | boolean }
 type Props = { selection?: Selection; onLoad?: (config: any) => void }
@@ -82,7 +82,7 @@ export default function MT5Panel({ selection, onLoad }: Props) {
     </table></div>}
     <details>
       <summary className="cursor-pointer font-semibold">Trade journal · latest {journal.length} events</summary>
-      <a className="inline-block text-sm text-cyan-300 my-3" href={`${(import.meta as any).env?.VITE_API_URL ?? ''}/api/mt5/journal.csv`}>Download complete journal CSV</a>
+      <button className="inline-block text-sm text-cyan-300 my-3" onClick={() => downloadFile('/api/mt5/journal.csv', 'mt5-journal.csv').catch(e => setError(String(e)))}>Download complete journal CSV</button>
       <p className="text-xs text-slate-400 mb-3">Includes signals, strategy snapshots, order requests, broker responses and entry/exit deals. Net deal P&amp;L includes commission, swap and fees. Exits while offline are recovered on reconnect.</p>
       <div className="max-h-96 overflow-auto"><table className="w-full text-xs text-left">
         <thead><tr><th className="p-2">Time</th><th>Event</th><th>Ticket / side</th><th>Lots / price</th><th>Net P&amp;L</th><th>Details</th></tr></thead>

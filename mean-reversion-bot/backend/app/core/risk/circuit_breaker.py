@@ -191,6 +191,35 @@ class CircuitBreaker:
         self._week_reset_at        = now
         logger.info("CircuitBreaker initialised | balance=$%.2f", account_balance)
 
+    def snapshot(self) -> dict:
+        names = ("_state", "_pause_until", "_last_trigger", "_consecutive_losses",
+                 "_api_error_streak", "_session_start_balance", "_week_start_balance",
+                 "_day_start_balance", "_current_balance", "_day_reset_at", "_week_reset_at")
+        return {name: (value.isoformat() if isinstance(value, datetime) else
+                       value.value if isinstance(value, BreakerState) else value)
+                for name in names for value in [getattr(self, name)]}
+
+    def restore(self, state: dict) -> None:
+        for name in self.snapshot():
+            if name not in state:
+                raise ValueError("Incomplete persisted circuit breaker state")
+            value = state[name]
+            if name == "_state":
+                value = BreakerState(value)
+            elif name in {"_pause_until", "_day_reset_at", "_week_reset_at"} and value:
+                value = datetime.fromisoformat(value)
+            setattr(self, name, value)
+
+    def mark_equity(self, equity: float) -> None:
+        self._check_day_week_reset(equity)
+        self._current_balance = equity
+        # Limits remain binding even after an operator resets a pause.
+        if self._weekly_drawdown() >= self.weekly_drawdown_pct:
+            self._trigger_halt("weekly_drawdown", "Weekly equity limit reached")
+        elif self._daily_drawdown() >= self.daily_drawdown_pct:
+            self._trigger_pause("daily_drawdown", self.cooldown_hours,
+                                "Daily equity limit reached")
+
     def is_trading_allowed(self) -> bool:
         """
         The single check before placing ANY order.
@@ -305,6 +334,10 @@ class CircuitBreaker:
         if self._state == BreakerState.HALTED:
             return   # Already halted — don't re-evaluate
 
+        if self._weekly_drawdown() >= self.weekly_drawdown_pct:
+            self._trigger_halt("weekly_drawdown", "Weekly loss limit reached")
+            return
+
         # 1. Single trade loss too large
         loss_pct = abs(last_pnl) / max(self._session_start_balance, 1.0)
         if last_pnl < 0 and loss_pct >= self.single_trade_loss_pct:
@@ -391,8 +424,7 @@ class CircuitBreaker:
                 logger.info("CB: New day | day_start_balance=$%.2f", balance)
 
         if self._week_reset_at:
-            days_since = (now.date() - self._week_reset_at.date()).days
-            if days_since >= 7:
+            if now.isocalendar()[:2] != self._week_reset_at.isocalendar()[:2]:
                 self._week_start_balance = balance
                 self._week_reset_at      = now
                 logger.info("CB: New week | week_start_balance=$%.2f", balance)

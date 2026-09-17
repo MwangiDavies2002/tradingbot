@@ -11,6 +11,19 @@
  */
 
 const BASE = (import.meta as any).env?.VITE_API_URL ?? ''
+let accessKey = ''
+export function setAccessKey(value: string) { accessKey = value }
+export function authHeaders(): Record<string, string> {
+  return accessKey ? { Authorization: `Bearer ${accessKey}` } : {}
+}
+export async function downloadFile(path: string, filename: string) {
+  const res = await fetch(`${BASE}${path}`, { headers: authHeaders() })
+  if (!res.ok) throw new Error(`Download failed (${res.status})`)
+  const url = URL.createObjectURL(await res.blob())
+  const link = document.createElement('a')
+  link.href = url; link.download = filename; link.click()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
 
 // ── Exported API Client Object ────────────────────────────────────────────────
 export const api = {
@@ -123,12 +136,11 @@ export interface EquityPoint { ts: string; balance: number; open_equity: number 
 // ── Core fetch helper ─────────────────────────────────────────────────────────
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const token = localStorage.getItem('access_token')
   const res   = await fetch(`${BASE}${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...authHeaders(),
       ...init?.headers,
     },
   })

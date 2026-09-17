@@ -61,6 +61,8 @@ class Settings(BaseSettings):
     DERIV_APP_ID:       str = Field(..., description="Deriv application ID")
     DERIV_API_TOKEN:    str = Field(..., description="Deriv trading API token (keep secret)")
     DERIV_DEMO:         bool = True         # True = demo account, False = real money
+    DERIV_ACCOUNT_ID: str = ""
+    LIVE_TRADING_ENABLED: bool = False
     DERIV_WS_ENDPOINT:  str = "wss://ws.derivws.com/websockets/v3"
 
     # ── Database ──────────────────────────────────────────────────────────────
@@ -81,12 +83,21 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES:  int  = 60
     REFRESH_TOKEN_EXPIRE_DAYS:    int  = 7
     ALGORITHM:          str  = "HS256"
+    # SHA-256 digests of independently generated, high-entropy access keys.
+    API_ADMIN_KEY_HASH: str = ""
+    API_OPERATOR_KEY_HASH: str = ""
+    API_VIEWER_KEY_HASH: str = ""
     ALLOWED_ORIGINS:    list[str] = ["http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:3000", "http://127.0.0.1:5173"]
 
     # ── Trading — Risk ────────────────────────────────────────────────────────
     RISK_PCT:               float = 0.01    # 1% per trade
     MAX_RISK_PCT:           float = 0.02    # 2% hard cap
     MAX_OPEN_POSITIONS:     int   = 3
+    MAX_TOTAL_RISK_PCT: float = Field(0.04, gt=0, le=0.1)
+    MAX_SYMBOL_RISK_PCT: float = Field(0.02, gt=0, le=0.1)
+    MAX_DAILY_TRADES: int = Field(20, ge=1, le=1000)
+    MAX_DAILY_LOSS_AMOUNT: float = Field(100, gt=0)
+    MAX_WEEKLY_LOSS_AMOUNT: float = Field(200, gt=0)
     SL_ATR_MULTIPLIER:      float = 1.5
     TP_RR_RATIO:            float = 2.0
     MIN_CONFLUENCE_SCORE:   int   = 6

@@ -18,6 +18,7 @@ import Settings from './pages/Settings'
 import Logs from './pages/Logs'
 import Backtest from './pages/Backtest'
 import MT5Panel from './components/MT5Panel'
+import AccessGate from './components/AccessGate'
 
 const NAV = [
   { to: '/',         label: 'Dashboard', icon: LayoutDashboard },
@@ -46,8 +47,8 @@ function Placeholder({ title }: { title: string }) {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <div className="flex h-screen bg-slate-900 text-slate-100 overflow-hidden">
+    <AccessGate><BrowserRouter>
+      <div className="flex h-[calc(100vh-36px)] bg-slate-900 text-slate-100 overflow-hidden">
 
         {/* ── Sidebar ─────────────────────────────────────────── */}
         <aside className="w-56 flex-shrink-0 bg-slate-800 border-r border-slate-700 flex flex-col">
@@ -83,7 +84,7 @@ export default function App() {
 
           {/* Footer */}
           <div className="px-5 py-4 border-t border-slate-700">
-            <p className="text-xs text-slate-500">v1.0.0 · demo mode</p>
+            <p className="text-xs text-slate-500">v1.0.0 · protected controls</p>
           </div>
         </aside>
 
@@ -102,6 +103,6 @@ export default function App() {
         </main>
 
       </div>
-    </BrowserRouter>
+    </BrowserRouter></AccessGate>
   )
 }

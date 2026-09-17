@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Settings as SettingsIcon, Save, RefreshCw, AlertCircle } from 'lucide-react'
+import { authHeaders } from '../api/client'
 
 // Mocking some config fetch since I don't have a specific client function for all config
 // But I can see the routes in bot_control.py
@@ -22,7 +23,7 @@ export default function Settings() {
   const loadConfig = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`${BASE}/api/config`)
+      const res = await fetch(`${BASE}/api/config`, { headers: authHeaders() })
       if (!res.ok) throw new Error('Failed to fetch config')
       const data = await res.json()
       setConfig(data.config)
@@ -43,7 +44,7 @@ export default function Settings() {
     try {
       const res = await fetch(`${BASE}/api/config/${key}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ value: newValue })
       })
       if (!res.ok) {

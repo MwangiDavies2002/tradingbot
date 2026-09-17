@@ -200,6 +200,14 @@ def create_app() -> FastAPI:
     )
 
     # Request timing middleware
+    from app.api.security import protect_api
+    app.middleware("http")(protect_api)
+
+    @app.get("/api/auth/me")
+    async def whoami(request: Request):
+        return {"role": request.state.role, "demo": settings.DERIV_DEMO,
+                "account_id": settings.DERIV_ACCOUNT_ID}
+
     @app.middleware("http")
     async def add_timing_header(request: Request, call_next):
         start = time.perf_counter()

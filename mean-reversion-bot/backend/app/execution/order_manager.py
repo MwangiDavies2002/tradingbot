@@ -45,6 +45,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import math
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -63,6 +64,8 @@ class PositionStatus(str, Enum):
     OPEN      = "open"
     CLOSED    = "closed"
     CANCELLED = "cancelled"
+    UNKNOWN = "unknown"
+    CLOSING = "closing"
 
 
 class CloseReason(str, Enum):
@@ -180,6 +183,8 @@ class OrderManager:
         sizer:           Optional[PositionSizer] = None,
         multiplier:      int = 100,
         max_positions:   int = 3,
+        store=None,
+        settings=None,
     ) -> None:
         self.client          = client
         self.cb              = circuit_breaker
@@ -189,10 +194,24 @@ class OrderManager:
         self._positions:     dict[str, Position] = {}      # trade_id → Position
         self._open_count:    int = 0
         self._trade_counter: int = 0
+        self.store = store
+        self.settings = settings
+        self._lock = asyncio.Lock()
+        self.ready = False
+        self.recovery_error = "Startup reconciliation required"
+        self._connection_time = None
 
     # ── Public API ────────────────────────────────────────────────────────────
 
     async def execute(self, decision: TradeDecision) -> Optional[Position]:
+        async with self._lock:
+            try:
+                return await self._execute(decision)
+            except Exception as exc:
+                logger.error("Entry blocked: %s", exc)
+                return None
+
+    async def _execute(self, decision: TradeDecision) -> Optional[Position]:
         """
         Execute a trade decision. Returns the opened Position or None on failure.
 
@@ -202,6 +221,13 @@ class OrderManager:
           - Open position count must be below max
           - Minimum R:R must be met
         """
+        if not self.store or not self.ready:
+            return None
+        from app.execution.safety import validate_account
+        validate_account(self.settings, self.client.state)
+        if self.client.state.connect_time != self._connection_time:
+            self.ready = False
+            return None
         if not decision.should_trade:
             logger.warning("execute() called with should_trade=False — ignoring")
             return None
@@ -215,21 +241,32 @@ class OrderManager:
                         self.max_positions, decision.symbol)
             return None
 
-        if decision.sizing and not decision.sizing.meets_minimum_rr:
+        if not decision.sizing or not decision.sizing.is_valid:
+            return None
+        if not decision.sizing.meets_minimum_rr:
             logger.warning("RR %.2f below minimum — skipping", decision.sizing.rr_ratio)
             return None
 
         # ── Build position record ─────────────────────────────────────────────
         position = self._build_position(decision)
+        equity = await self._equity()
+        self._validate_risk(position, equity)
         self._positions[position.trade_id] = position
+        await self.store.save(position, self.cb)  # Intent committed BEFORE network side effect.
 
         # ── Place the order ───────────────────────────────────────────────────
+        submitted = False
         try:
-            contract = await self._place_order(position, decision)
+            async with self.store.entry_gate():
+                submitted = True
+                contract = await self._place_order(position, decision)
             position.contract_id = int(contract.get("contract_id", 0))
+            if position.contract_id <= 0:
+                raise RuntimeError("Buy response missing contract id")
             position.status      = PositionStatus.OPEN
             self._open_count    += 1
             self.cb.record_trade_open()
+            await self.store.save(position, self.cb)
 
             logger.info(
                 "✅ POSITION OPEN | %s | contract=%s | stake=$%.2f | "
@@ -240,7 +277,12 @@ class OrderManager:
             return position
 
         except Exception as exc:
-            position.status = PositionStatus.CANCELLED
+            # A timeout may mean the broker accepted the buy. Never retry it.
+            position.status = PositionStatus.UNKNOWN if submitted else PositionStatus.CANCELLED
+            if submitted:
+                self.ready = False
+                self.recovery_error = "Uncertain order; broker reconciliation required"
+            await self.store.save(position, self.cb)
             logger.error("Order placement failed for %s: %s",
                          decision.symbol, exc, exc_info=True)
             return None
@@ -251,6 +293,10 @@ class OrderManager:
         reason:       CloseReason = CloseReason.MANUAL,
         current_price: Optional[float] = None,
     ) -> Optional[Position]:
+        async with self._lock:
+            return await self._close_position(trade_id, reason, current_price)
+
+    async def _close_position(self, trade_id, reason, current_price=None):
         """
         Close an open position. Updates all state and notifies circuit breaker.
         """
@@ -264,10 +310,15 @@ class OrderManager:
             return None
 
         try:
+            from app.execution.safety import validate_account
+            validate_account(self.settings, self.client.state)
+            await self.store.check_owner()
+            position.status = PositionStatus.CLOSING
+            await self.store.save(position, self.cb)
             sold = await self.client.sell_contract(position.contract_id)
 
-            position.exit_price  = float(sold.get("sold_for", current_price or 0))
-            position.pnl         = self._compute_pnl(position)
+            position.exit_price  = current_price
+            position.pnl         = float(sold["sold_for"]) - position.stake
             position.status      = PositionStatus.CLOSED
             position.close_reason = reason
             position.closed_at   = datetime.utcnow()
@@ -279,10 +330,11 @@ class OrderManager:
             self.cb.record_trade_close()
             if self.sizer:
                 self.sizer.update_balance(balance)
+            await self.store.save(position, self.cb)
 
             logger.info(
                 "✅ POSITION CLOSED | trade=%s | reason=%s | "
-                "exit=%.5f | pnl=$%.2f | duration=%ds",
+                "exit=%s | pnl=$%.2f | duration=%ds",
                 trade_id, reason.value,
                 position.exit_price, position.pnl or 0,
                 int(position.duration_seconds or 0),
@@ -290,6 +342,8 @@ class OrderManager:
             return position
 
         except Exception as exc:
+            self.ready = False
+            self.recovery_error = "Uncertain close; broker reconciliation required"
             logger.error("Failed to close position %s: %s", trade_id, exc, exc_info=True)
             return None
 
@@ -348,7 +402,7 @@ class OrderManager:
         """Build a Position object from a TradeDecision."""
         import uuid
         self._trade_counter += 1
-        trade_id = f"T{self._trade_counter:04d}_{decision.symbol.replace(' ', '')[:8]}"
+        trade_id = uuid.uuid4().hex
 
         contract_type = "MULTUP" if decision.direction == "buy" else "MULTDOWN"
         sizing        = decision.sizing
@@ -379,7 +433,115 @@ class OrderManager:
             amount         = position.stake,
             multiplier     = self.multiplier,
             basis          = "stake",
+            limit_order = {
+                "stop_loss": math.floor(self._risk(position) * 100) / 100,
+                "take_profit": round(position.stake * self.multiplier *
+                                     abs(position.take_profit - position.entry_price) /
+                                     position.entry_price, 2),
+            },
         )
+
+    def _risk(self, p):
+        return min(p.stake, p.stake * self.multiplier *
+                   abs(p.entry_price - p.stop_loss) / p.entry_price)
+
+    async def _equity(self):
+        balance = await self.client.get_balance()
+        equity = balance
+        for p in self.open_positions:
+            contract = await self.client.get_contract(p.contract_id)
+            if contract.get("is_sold"):
+                raise RuntimeError("Closed contract needs reconciliation before new entry")
+            equity += float(contract["bid_price"])
+        if not math.isfinite(equity) or equity <= 0:
+            raise RuntimeError("Invalid account equity")
+        self.cb.mark_equity(equity)
+        return equity
+
+    def _validate_risk(self, p, equity):
+        cfg = self.settings
+        values = (p.entry_price, p.stop_loss, p.take_profit, p.stake, equity)
+        if not all(math.isfinite(v) and v > 0 for v in values):
+            raise ValueError("Invalid prices, stake or equity")
+        if p.symbol not in cfg.ACTIVE_SYMBOLS or p.direction not in {"buy", "sell"}:
+            raise ValueError("Unsupported symbol or direction")
+        if not (p.stop_loss < p.entry_price < p.take_profit if p.direction == "buy"
+                else p.take_profit < p.entry_price < p.stop_loss):
+            raise ValueError("Stops on incorrect side of entry")
+        risk = self._risk(p)
+        if risk < 0.01 or risk > equity * cfg.MAX_RISK_PCT:
+            raise ValueError("Per-trade risk limit exceeded")
+        if p.stake > self.client.state.balance:
+            raise ValueError("Insufficient available balance")
+        active = self.open_positions
+        if sum(self._risk(x) for x in active) + risk > equity * cfg.MAX_TOTAL_RISK_PCT:
+            raise ValueError("Account exposure limit exceeded")
+        if sum(self._risk(x) for x in active if x.symbol == p.symbol) + risk > equity * cfg.MAX_SYMBOL_RISK_PCT:
+            raise ValueError("Symbol exposure limit exceeded")
+        today = datetime.utcnow().date()
+        if sum(x.opened_at.date() == today and x.status != PositionStatus.CANCELLED
+               for x in self.all_positions) >= cfg.MAX_DAILY_TRADES:
+            raise ValueError("Daily trade limit reached")
+        if (self.cb._day_start_balance - equity >= cfg.MAX_DAILY_LOSS_AMOUNT or
+                self.cb._week_start_balance - equity >= cfg.MAX_WEEKLY_LOSS_AMOUNT):
+            raise ValueError("Cash loss limit reached")
+        if not self.cb.is_trading_allowed():
+            raise ValueError("Circuit breaker blocks entry")
+
+    async def recover(self, initial=False):
+        async with self._lock:
+            self.ready = False
+            try:
+                from app.execution.safety import validate_account
+                validate_account(self.settings, self.client.state)
+                await self.store.check_owner()
+                if self.store:
+                    records, state = await self.store.load()
+                    if state:
+                        self.cb.restore(state)
+                    for data in records:
+                        data["status"] = PositionStatus(data["status"])
+                        data["opened_at"] = datetime.fromisoformat(data["opened_at"])
+                        data["closed_at"] = datetime.fromisoformat(data["closed_at"]) if data["closed_at"] else None
+                        data["close_reason"] = CloseReason(data["close_reason"]) if data["close_reason"] else None
+                        self._positions[data["trade_id"]] = Position(**data)
+                portfolio = await self.client.get_portfolio()
+                broker_ids = {int(c["contract_id"]) for c in portfolio}
+                known_ids = {p.contract_id for p in self.all_positions if p.contract_id}
+                issues = []
+                if broker_ids - known_ids:
+                    issues.append("Unowned broker contracts: operator review required")
+                for p in self.all_positions:
+                    if p.status in {PositionStatus.CLOSED, PositionStatus.CANCELLED}:
+                        continue
+                    if not p.contract_id:
+                        issues.append(f"Unresolved intent {p.trade_id}; never automatically resubmitted")
+                        continue
+                    c = await self.client.get_contract(p.contract_id)
+                    if c.get("is_sold"):
+                        p.pnl = float(c["profit"])
+                        spot = c.get("exit_tick") or c.get("exit_spot") or c.get("sell_spot")
+                        p.exit_price = float(spot) if spot is not None else None
+                        p.closed_at = datetime.utcfromtimestamp(int(c["sell_time"]))
+                        p.status = PositionStatus.CLOSED
+                        p.close_reason = CloseReason.SERVER_CLOSED
+                        self.cb.record_trade(p.pnl, await self.client.get_balance())
+                        await self.store.save(p, self.cb)
+                    elif p.contract_id in broker_ids:
+                        p.status = PositionStatus.OPEN
+                        await self.store.save(p, self.cb)
+                    else:
+                        issues.append(f"Contract {p.contract_id} has inconsistent broker state")
+                self._open_count = len(self.open_positions)
+                self.cb._open_positions = self._open_count
+                await self._equity()
+                self.recovery_error = "; ".join(issues) or None
+                self._connection_time = self.client.state.connect_time
+                self.ready = not issues
+            except Exception as exc:
+                self.recovery_error = str(exc)
+                logger.error("Recovery blocked: %s", exc)
+            return self.ready
 
     def _compute_pnl(self, position: Position) -> float:
         """

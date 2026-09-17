@@ -195,7 +195,12 @@ class PositionSizer:
         )
 
         # ── Apply hard limits ─────────────────────────────────────────────────
-        stake = max(self.min_stake, min(stake, self.max_stake))
+        import math
+        stake = math.floor(min(stake, self.max_stake) * 100) / 100
+        if stake < self.min_stake:
+            stake = 0.0  # Skip; rounding up would exceed the risk budget.
+        risk_amount = (min(stake, stake * multiplier * pip_risk / entry)
+                       if product == "multiplier" else stake)
         # Recompute actual risk after clamping
         actual_risk_pct = risk_amount / self.account_balance
 

@@ -31,7 +31,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from sqlalchemy import (
-    Boolean, Column, DateTime, Float, Index,
+    BigInteger, Boolean, Column, DateTime, Float, Index,
     Integer, JSON, String, Text, UniqueConstraint,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped
@@ -39,6 +39,26 @@ from sqlalchemy.orm import DeclarativeBase, Mapped
 
 class Base(DeclarativeBase):
     pass
+
+
+class TradingControl(Base):
+    __tablename__ = "trading_control"
+    scope = Column(String(96), primary_key=True)
+    enabled = Column(Boolean, nullable=False, default=False)
+    reset_version = Column(Integer, nullable=False, default=0)
+    reset_applied = Column(Integer, nullable=False, default=0)
+    heartbeat = Column(DateTime, nullable=True)
+    recovery_error = Column(Text, nullable=True)
+    risk_state = Column(JSON, nullable=False, default=dict)
+
+
+class ExecutionRecord(Base):
+    __tablename__ = "execution_records"
+    trade_id = Column(String(32), primary_key=True)
+    scope = Column(String(96), nullable=False, index=True)
+    status = Column(String(16), nullable=False)
+    payload = Column(JSON, nullable=False)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
 
 # ─── Trades ───────────────────────────────────────────────────────────────────
@@ -52,7 +72,7 @@ class Trade(Base):
 
     id               = Column(Integer,  primary_key=True, autoincrement=True)
     trade_id         = Column(String(32),  unique=True, nullable=False, index=True)
-    contract_id      = Column(Integer,  nullable=True,  index=True)
+    contract_id      = Column(BigInteger,  nullable=True,  index=True)
 
     # Instrument
     symbol           = Column(String(32),  nullable=False, index=True)

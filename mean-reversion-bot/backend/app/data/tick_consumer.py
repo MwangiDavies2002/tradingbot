@@ -140,6 +140,7 @@ class TickConsumer:
         self._subscriptions: dict[tuple, SubscriptionInfo] = {}
         # (symbol, timeframe) → bars since last signal (for cooldown)
         self._cooldown:      dict[tuple, int] = {}
+        self._forming:      dict[tuple, Candle] = {}
 
     # ── Public API ────────────────────────────────────────────────────────────
 
@@ -163,6 +164,10 @@ class TickConsumer:
 
         candles = candles_from_dict(raw)
         key     = (symbol, timeframe)
+        import time
+        boundary = int(time.time()) // timeframe * timeframe
+        candles = [c for c in candles if c.timestamp < boundary]
+        self._forming.pop(key, None)
         self._buffers[key] = deque(candles, maxlen=self.buffer_size)
         logger.info("Bootstrap complete: %d candles loaded for %s %s",
                     len(candles), symbol, TIMEFRAME_LABELS.get(timeframe, f"{timeframe}s"))
@@ -257,19 +262,19 @@ class TickConsumer:
         Deriv sends both in-progress and completed candles.
         We only act on COMPLETED candles (epoch advances).
         """
-        ohlc = msg.get("ohlc") or msg.get("candles", [{}])[-1] if "candles" in msg else None
+        ohlc = msg.get("ohlc")
         if not ohlc:
             return
 
         # Deriv sends the candle's open epoch; a new epoch = new completed candle
-        candle_epoch = int(ohlc.get("epoch", 0))
+        candle_epoch = int(ohlc.get("open_time", ohlc.get("epoch", 0)))
         key          = (symbol, timeframe)
         info         = self._subscriptions.get(key)
         if not info:
             return
 
-        # Skip if same candle (still forming — not yet closed)
-        if candle_epoch == info.last_candle_ts:
+        previous = self._forming.get(key)
+        if previous and candle_epoch < previous.timestamp:
             return
 
         # Build Candle object
@@ -282,9 +287,19 @@ class TickConsumer:
             volume    = float(ohlc.get("volume", 0)),
         )
 
+        # Monitor existing positions on every update, but evaluate entries only
+        # using the previous candle after a new candle begins.
+        await self.manager.monitor_tick(symbol, new_candle.close)
+        self._forming[key] = new_candle
+        if previous is None or candle_epoch == previous.timestamp:
+            return
+        new_candle = previous
+        if self._buffers[key] and new_candle.timestamp <= self._buffers[key][-1].timestamp:
+            return
+
         # Append to rolling buffer
         self._buffers[key].append(new_candle)
-        info.last_candle_ts   = candle_epoch
+        info.last_candle_ts   = new_candle.timestamp
         info.candles_received += 1
 
         # Cooldown tracking

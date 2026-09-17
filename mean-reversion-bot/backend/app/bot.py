@@ -71,6 +71,7 @@ class BotRunner:
         self.alert_manager  = None
         self.circuit_breaker = None
         self.redis          = None
+        self.store = None
 
     # ── Public Entry Point ────────────────────────────────────────────────────
 
@@ -100,7 +101,8 @@ class BotRunner:
         from app.core.risk.circuit_breaker import CircuitBreaker
         from app.core.risk.position_sizer import PositionSizer
         from app.data.tick_consumer import TickConsumer
-        from app.database.session import check_connection, create_tables
+        from app.database.session import check_connection, create_tables, AsyncSessionLocal, engine
+        from app.execution.safety import ExecutionStore, account_scope, validate_account
         from app.execution.deriv_client import DerivClient, DerivConfig
         from app.execution.order_manager import OrderManager
         from app.monitoring.alerts import AlertManager
@@ -115,6 +117,8 @@ class BotRunner:
         if not await check_connection():
             raise RuntimeError("Database connection failed — check DATABASE_URL")
         await create_tables()
+        self.store = ExecutionStore(AsyncSessionLocal, account_scope(settings))
+        await self.store.acquire(engine)
         logger.info("Database connected")
 
         # ── 2. Redis ──────────────────────────────────────────────────────────
@@ -144,6 +148,7 @@ class BotRunner:
             )
         )
         await self.client.connect()
+        validate_account(settings, self.client.state)
         logger.info("Deriv connected | account=%s | balance=$%.2f",
                     self.client.state.account_id, self.client.state.balance)
 
@@ -154,6 +159,7 @@ class BotRunner:
             weekly_drawdown_pct    = settings.CB_WEEKLY_DRAWDOWN_PCT,
             single_trade_loss_pct  = settings.CB_SINGLE_TRADE_LOSS_PCT,
             pause_hours_losses     = settings.CB_PAUSE_HOURS_LOSSES,
+            max_open_positions     = settings.MAX_OPEN_POSITIONS,
         )
         sizer = PositionSizer(
             account_balance = self.client.state.balance,
@@ -188,7 +194,11 @@ class BotRunner:
             sizer           = sizer,
             multiplier      = settings.DERIV_MULTIPLIER,
             max_positions   = settings.MAX_OPEN_POSITIONS,
+            store           = self.store,
+            settings        = settings,
         )
+        await self.order_manager.recover(initial=True)
+        await self.store.heartbeat(self.circuit_breaker, self.order_manager.recovery_error)
 
         # ── 8. Tick Consumer ──────────────────────────────────────────────────
         self.tick_consumer = TickConsumer(
@@ -222,6 +232,8 @@ class BotRunner:
             logger.debug("Balance update: $%.2f", new_balance)
 
         await self.client.subscribe_balance(on_balance)
+        self._balance_handler = on_balance
+        self._subscribed_connection = self.client.state.connect_time
 
         # ── Alert: bot started ────────────────────────────────────────────────
         await self.alert_manager.bot_started(
@@ -244,9 +256,29 @@ class BotRunner:
         last_heartbeat = datetime.utcnow()
 
         while self._running:
-            await asyncio.sleep(60)   # Check every 60 seconds
-
-            await self._apply_control_events()
+            await asyncio.sleep(2)
+            try:
+                if (self.client.state.authenticated and
+                        self.client.state.connect_time != self._subscribed_connection):
+                    self.order_manager.ready = False
+                    from app.config import settings
+                    for symbol in settings.ACTIVE_SYMBOLS:
+                        await self.tick_consumer.bootstrap(symbol, settings.PRIMARY_TIMEFRAME,
+                                                           settings.CANDLE_BUFFER_SIZE)
+                        await self.tick_consumer.subscribe(symbol, settings.PRIMARY_TIMEFRAME)
+                    await self.client.subscribe_balance(self._balance_handler)
+                    self._subscribed_connection = self.client.state.connect_time
+                await self.order_manager.recover()
+                # Use the same mutex as execution so persisted breaker updates
+                # cannot overwrite concurrent fill accounting.
+                async with self.order_manager._lock:
+                    enabled = await self.store.heartbeat(self.circuit_breaker,
+                                                         self.order_manager.recovery_error)
+                if not enabled:
+                    await self.order_manager.close_all()
+            except Exception as exc:
+                self.order_manager.ready = False
+                logger.error("Safety control unavailable; entries blocked: %s", exc)
 
             # Reconnect check
             if not self.client.state.connected:
@@ -266,38 +298,20 @@ class BotRunner:
             if self._shutdown_event.is_set():
                 self._running = False
 
-    async def _apply_control_events(self) -> None:
-        """Apply the latest dashboard control event written to the database."""
-        from sqlalchemy import desc, select
-        from app.database.models import BotEvent
-        from app.database.session import AsyncSessionLocal
-
-        async with AsyncSessionLocal() as db:
-            stmt = (
-                select(BotEvent)
-                .where(BotEvent.event_type.in_(("bot_start_manual", "bot_stop_manual")))
-                .order_by(desc(BotEvent.ts))
-                .limit(1)
-            )
-            result = await db.execute(stmt)
-            event = result.scalar_one_or_none()
-
-        if event and event.event_type == "bot_stop_manual":
-            logger.warning("Dashboard stop requested")
-            self.request_shutdown()
-
     # ── Shutdown ──────────────────────────────────────────────────────────────
 
     async def _shutdown(self) -> None:
         """Graceful shutdown: close positions, unsubscribe, disconnect."""
         logger.info("Graceful shutdown initiated...")
         self._running = False
+        if self.order_manager:
+            self.order_manager.ready = False
 
         try:
             if self.order_manager:
                 from app.execution.order_manager import CloseReason
                 await self.order_manager.close_all(reason=CloseReason.MANUAL)
-                logger.info("All positions closed")
+                logger.info("Shutdown close attempts finished; unresolved positions remain journaled")
         except Exception as exc:
             logger.error("Error closing positions during shutdown: %s", exc)
 
@@ -326,11 +340,15 @@ class BotRunner:
             pass
 
         logger.info("Shutdown complete. Goodbye.")
+        if self.store:
+            await self.store.release()
 
     def request_shutdown(self) -> None:
         """Called by signal handlers (SIGINT, SIGTERM)."""
         logger.info("Shutdown requested via signal")
         self._shutdown_event.set()
+        if self.order_manager:
+            self.order_manager.ready = False
         self._running = False
 
 

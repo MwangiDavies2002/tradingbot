@@ -86,6 +86,7 @@ class DerivConnectionState:
     account_id:    Optional[str] = None
     balance:       float    = 0.0
     currency:      str      = "USD"
+    is_virtual:    Optional[bool] = None
 
 
 class DerivClient:
@@ -121,6 +122,8 @@ class DerivClient:
         self._running:          bool  = False
         self._recv_task:        Optional[asyncio.Task] = None
         self._ping_task:        Optional[asyncio.Task] = None
+        self._handler_task = None
+        self._messages = asyncio.Queue(maxsize=1000)
 
     # ── Lifecycle ─────────────────────────────────────────────────────────────
 
@@ -148,6 +151,8 @@ class DerivClient:
         self.state.connect_time = datetime.utcnow()
         self._reconnect_delay   = self.cfg.reconnect_delay
         self._running           = True
+        if self._handler_task is None or self._handler_task.done():
+            self._handler_task = asyncio.create_task(self._handle_messages())
 
         # Start background tasks
         self._recv_task = asyncio.create_task(self._receive_loop(), name="deriv_recv")
@@ -159,6 +164,8 @@ class DerivClient:
     async def disconnect(self) -> None:
         """Gracefully disconnect and clean up."""
         self._running = False
+        if self._handler_task:
+            self._handler_task.cancel()
         if self._recv_task:
             self._recv_task.cancel()
         if self._ping_task:
@@ -176,6 +183,11 @@ class DerivClient:
         """
         self.state.connected     = False
         self.state.authenticated = False
+        if self._ping_task:
+            self._ping_task.cancel()
+        for future in self._pending.values():
+            if not future.done():
+                future.set_exception(ConnectionError("Broker disconnected"))
         self._pending.clear()
 
         while self._running:
@@ -294,6 +306,16 @@ class DerivClient:
         resp = await self._send_request({"portfolio": 1})
         return resp.get("portfolio", {}).get("contracts", [])
 
+    async def get_contract(self, contract_id: int) -> dict:
+        response = await self._send_request({"proposal_open_contract": 1,
+                                             "contract_id": contract_id})
+        return response["proposal_open_contract"]
+
+    async def get_balance(self) -> float:
+        response = await self._send_request({"balance": 1})
+        self.state.balance = float(response["balance"]["balance"])
+        return self.state.balance
+
     async def get_proposal(
         self,
         contract_type:  str,
@@ -303,6 +325,7 @@ class DerivClient:
         basis:          str = "stake",
         duration:       Optional[int] = None,
         duration_unit:  Optional[str] = None,
+        limit_order: Optional[dict] = None,
     ) -> dict:
         """
         Get a price proposal before placing an order.
@@ -318,6 +341,8 @@ class DerivClient:
         }
         if multiplier:
             req["multiplier"] = multiplier
+        if limit_order:
+            req["limit_order"] = limit_order
         if duration:
             req["duration"]      = duration
             req["duration_unit"] = duration_unit or "m"
@@ -332,6 +357,7 @@ class DerivClient:
         multiplier:    int   = 100,
         basis:         str   = "stake",
         price:         float = 0,        # Max price to pay (0 = any)
+        limit_order: Optional[dict] = None,
     ) -> dict:
         """
         Place a buy order on Deriv.
@@ -349,6 +375,7 @@ class DerivClient:
             amount=amount,
             multiplier=multiplier,
             basis=basis,
+            limit_order=limit_order,
         )
 
         proposal_id = proposal.get("proposal", {}).get("id")
@@ -423,6 +450,8 @@ class DerivClient:
         self.state.account_id    = str(auth.get("loginid", ""))
         self.state.balance       = float(auth.get("balance", 0))
         self.state.currency      = auth.get("currency", "USD")
+        self.state.is_virtual = (bool(int(auth["is_virtual"]))
+                                 if "is_virtual" in auth else None)
 
         logger.info(
             "Authenticated | account=%s | balance=$%.2f %s",
@@ -488,12 +517,21 @@ class DerivClient:
 
                 await self._dispatch(msg)
 
+            if self._running:
+                self.state.connected = False
+                self.state.authenticated = False
+                asyncio.create_task(self.reconnect())
+
         except (ws_exc.ConnectionClosed, ws_exc.ConnectionClosedError) as exc:
             if self._running:
+                self.state.connected = False
+                self.state.authenticated = False
                 logger.warning("WS connection closed: %s — reconnecting", exc)
                 asyncio.create_task(self.reconnect())
         except Exception as exc:
             if self._running:
+                self.state.connected = False
+                self.state.authenticated = False
                 logger.error("Receive loop error: %s", exc, exc_info=True)
                 asyncio.create_task(self.reconnect())
 
@@ -515,10 +553,19 @@ class DerivClient:
         sub_id = msg.get("subscription", {}).get("id")
         if sub_id and sub_id in self._subscriptions:
             handler = self._subscriptions[sub_id]
+            self._messages.put_nowait((handler, msg, self.state.connect_time))
+
+    async def _handle_messages(self):
+        # Do not await handlers in the receiver: they may await broker replies.
+        while self._running:
+            handler, msg, connection = await self._messages.get()
             try:
-                await handler(msg)
+                if connection == self.state.connect_time and self.state.authenticated:
+                    await handler(msg)
             except Exception as exc:
-                logger.error("Subscription handler error (sub=%s): %s", sub_id, exc)
+                logger.error("Subscription handler error: %s", exc)
+            finally:
+                self._messages.task_done()
 
     # ── Internal: Heartbeat ───────────────────────────────────────────────────
 
