@@ -57,6 +57,10 @@ from typing import Any, Callable, Coroutine, Optional
 
 logger = logging.getLogger(__name__)
 
+
+class BrokerRejectedError(RuntimeError):
+    """Definitive broker error response, distinct from an unknown transport outcome."""
+
 # Type aliases
 MessageHandler  = Callable[[dict], Coroutine]
 SubscriptionId  = str
@@ -124,6 +128,7 @@ class DerivClient:
         self._ping_task:        Optional[asyncio.Task] = None
         self._handler_task = None
         self._messages = asyncio.Queue(maxsize=1000)
+        self._reconnect_lock = asyncio.Lock()
 
     # ── Lifecycle ─────────────────────────────────────────────────────────────
 
@@ -177,6 +182,12 @@ class DerivClient:
         logger.info("Deriv client disconnected cleanly")
 
     async def reconnect(self) -> None:
+        async with self._reconnect_lock:
+            if not self._running or self.state.authenticated:
+                return
+            await self._reconnect()
+
+    async def _reconnect(self) -> None:
         """
         Reconnect with exponential backoff.
         Called automatically when the connection drops.
@@ -189,12 +200,16 @@ class DerivClient:
             if not future.done():
                 future.set_exception(ConnectionError("Broker disconnected"))
         self._pending.clear()
+        if self._ws:
+            await self._ws.close()
 
         while self._running:
             delay = min(self._reconnect_delay, self.cfg.max_reconnect)
             logger.warning("Reconnecting in %.0fs (attempt #%d)...",
                            delay, self.state.reconnects + 1)
             await asyncio.sleep(delay)
+            if not self._running:
+                return
             self._reconnect_delay *= 2   # Exponential backoff
 
             try:
@@ -303,16 +318,16 @@ class DerivClient:
 
     async def get_portfolio(self) -> list[dict]:
         """Return list of all currently open contracts."""
-        resp = await self._send_request({"portfolio": 1})
+        resp = await self._read_request({"portfolio": 1})
         return resp.get("portfolio", {}).get("contracts", [])
 
     async def get_contract(self, contract_id: int) -> dict:
-        response = await self._send_request({"proposal_open_contract": 1,
+        response = await self._read_request({"proposal_open_contract": 1,
                                              "contract_id": contract_id})
         return response["proposal_open_contract"]
 
     async def get_balance(self) -> float:
-        response = await self._send_request({"balance": 1})
+        response = await self._read_request({"balance": 1})
         self.state.balance = float(response["balance"]["balance"])
         return self.state.balance
 
@@ -358,6 +373,7 @@ class DerivClient:
         basis:         str   = "stake",
         price:         float = 0,        # Max price to pay (0 = any)
         limit_order: Optional[dict] = None,
+        pre_buy_check: Optional[Callable] = None,
     ) -> dict:
         """
         Place a buy order on Deriv.
@@ -389,6 +405,8 @@ class DerivClient:
             "price": price or ask_price,
         }
 
+        if pre_buy_check:
+            pre_buy_check()
         response = await self._send_request(req)
         contract = response.get("buy", {})
 
@@ -460,6 +478,16 @@ class DerivClient:
 
     # ── Internal: Request / Response ──────────────────────────────────────────
 
+    async def _read_request(self, payload):
+        """Retry only explicitly read-only operations; never buys or sells."""
+        for attempt in range(3):
+            try:
+                return await self._send_request(dict(payload))
+            except (ConnectionError, asyncio.TimeoutError):
+                if attempt == 2 or not self.state.authenticated:
+                    raise
+                await asyncio.sleep(.25 * 2 ** attempt)
+
     async def _send_request(self, payload: dict) -> dict:
         """
         Send a request and await the correlated response.
@@ -494,7 +522,7 @@ class DerivClient:
         # Raise on Deriv API errors
         if "error" in response:
             err = response["error"]
-            raise RuntimeError(
+            raise BrokerRejectedError(
                 f"Deriv API error [{err.get('code')}]: {err.get('message')}"
             )
 

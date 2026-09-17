@@ -46,7 +46,11 @@ import logging
 import time
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
+from dataclasses import asdict
+import hashlib
+import json
+import math
 from typing import Optional
 
 import numpy as np
@@ -55,6 +59,7 @@ from app.core.engine.signal_engine import SignalEngine, TradeDecision
 from app.core.lsl.lsl_detector import Candle, InstrumentType
 from app.core.risk.circuit_breaker import CircuitBreaker
 from app.core.risk.drawdown_monitor import DrawdownMonitor
+from app.data.validation import validate_candles
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +85,7 @@ class BTTrade:
     reason_code:   str = ""
     entry_ts:      Optional[int] = None
     exit_ts:       Optional[int] = None
+    regime: str = "unknown"
 
     @property
     def is_open(self) -> bool:
@@ -129,6 +135,10 @@ class BacktestReport:
     max_consec_wins:  int  = 0
     max_consec_losses: int = 0
     run_duration_sec: float = 0.0
+    sortino_ratio: float = 0.0
+    expectancy: float = 0.0
+    metadata: dict = field(default_factory=dict)
+    attribution: dict = field(default_factory=dict)
 
     def summary(self) -> str:
         lines = [
@@ -180,6 +190,10 @@ class BacktestReport:
             "max_consec_wins":  self.max_consec_wins,
             "max_consec_losses": self.max_consec_losses,
             "equity_curve":    self.equity_curve,
+            "sortino_ratio": self.sortino_ratio,
+            "expectancy": self.expectancy,
+            "metadata": self.metadata,
+            "attribution": self.attribution,
         }
 
 
@@ -209,6 +223,7 @@ class BacktestEngine:
         warmup_bars:     int   = 60,
         max_open:        int   = 3,
         instrument_type: Optional[InstrumentType] = None,
+        commission: float = 0.0,
     ) -> None:
         self.engine          = signal_engine
         self.initial_balance = initial_balance
@@ -217,6 +232,12 @@ class BacktestEngine:
         self.warmup_bars     = warmup_bars
         self.max_open        = max_open
         self.instrument_type = instrument_type
+        self.commission = commission
+        self.multiplier = signal_engine.cfg.deriv_multiplier
+        if initial_balance <= 0 or warmup_bars < 1 or max_open < 1:
+            raise ValueError("Invalid simulation limits")
+        if not all(math.isfinite(x) and x >= 0 for x in (initial_balance, slippage_pct, spread_pips, commission)):
+            raise ValueError("Invalid costs or balance")
 
     def run(
         self,
@@ -240,17 +261,31 @@ class BacktestEngine:
         BacktestReport with full trade log and performance metrics.
         """
         t_start = time.perf_counter()
+        validate_candles(candles)
+        if len(candles) <= self.warmup_bars:
+            raise ValueError("Insufficient candles after warmup")
+        if self.engine.cfg.deriv_product != "multiplier":
+            raise ValueError("Simulation currently models multipliers only")
+        if self.engine.cfg.use_safety_orders or self.engine.cfg.use_trailing_stop:
+            raise ValueError("Scaling/trailing simulation is not validated")
+        self.engine = SignalEngine(self.engine.cfg)
+        self.engine.initialise(self.initial_balance)
         logger.info("Backtest starting | %s %s | %d candles | balance=$%.2f",
                     symbol, timeframe, len(candles), self.initial_balance)
 
         balance      = self.initial_balance
         open_trades: list[BTTrade] = []
         all_trades:  list[BTTrade] = []
-        equity_curve: list[dict]  = []
+        equity_curve: list[dict]  = [{"ts": candles[self.warmup_bars - 1].timestamp,
+                                    "balance": balance, "equity": balance}]
         dd_monitor   = DrawdownMonitor(initial_balance=balance)
 
         # Re-initialise the circuit breaker fresh for this run
-        cb = CircuitBreaker()
+        simulated_now = datetime.fromtimestamp(candles[0].timestamp, timezone.utc)
+        cb = CircuitBreaker(clock=lambda: simulated_now, max_open_positions=self.max_open,
+                            max_consecutive_losses=self.engine.cfg.cb_max_losses,
+                            daily_drawdown_pct=self.engine.cfg.cb_daily_dd,
+                            weekly_drawdown_pct=self.engine.cfg.cb_weekly_dd)
         cb.initialise(balance)
         self.engine.cb = cb
         self.engine.sizer.update_balance(balance)
@@ -260,27 +295,33 @@ class BacktestEngine:
 
         for i in range(self.warmup_bars, len(candles)):
             current = candles[i]
+            simulated_now = datetime.fromtimestamp(current.timestamp, timezone.utc)
 
             # ── 1. Check SL/TP on open trades (use current candle's OHLC) ────
             just_closed = []
             for trade in open_trades:
                 closed, pnl = self._check_exit(trade, current)
                 if closed:
+                    trade.exit_bar = i
+                    trade.exit_ts = current.timestamp
                     balance += pnl
                     trade.pnl = pnl
                     cb.record_trade(pnl=pnl, account_balance=balance)
                     cb.record_trade_close()
                     self.engine.sizer.update_balance(balance)
                     dd_monitor.update(balance, note="trade_close")
-                    equity_curve.append({"ts": current.timestamp, "balance": balance})
                     just_closed.append(trade)
                     logger.debug("BT trade closed | pnl=$%.2f | balance=$%.2f",
                                  pnl, balance)
 
             open_trades = [t for t in open_trades if t not in just_closed]
+            equity = balance + sum(self._compute_pnl(t, current.close) for t in open_trades)
+            equity_curve.append({"ts": current.timestamp, "balance": balance, "equity": equity})
+            cb.mark_equity(equity)
+            self.engine.sizer.update_balance(max(0, equity))
 
             # ── 2. Evaluate signal on this bar ────────────────────────────────
-            if len(open_trades) < self.max_open and cb.is_trading_allowed():
+            if i < len(candles) - 1 and equity > 0 and len(open_trades) < self.max_open and cb.is_trading_allowed():
                 window   = candles[max(0, i - 499): i + 1]
                 decision = self.engine.evaluate(
                     candles         = window,
@@ -290,22 +331,33 @@ class BacktestEngine:
                     htf_bias        = htf_bias,
                 )
 
-                if decision.should_trade and decision.sizing:
-                    entry = self._apply_slippage(current.close, decision.direction)
+                if decision.should_trade and decision.sizing and decision.sizing.is_valid:
+                    entry = self._apply_slippage(candles[i + 1].open, decision.direction)
                     sizing = decision.sizing
+                    valid_stops = (sizing.stop_loss < entry < sizing.take_profit if decision.direction == "buy"
+                                   else sizing.take_profit < entry < sizing.stop_loss)
+                    if not valid_stops:
+                        continue
+                    # Size using the actual next-open distance; never increase stake.
+                    unit_risk = min(1.0, self.multiplier * abs(entry - sizing.stop_loss) / entry)
+                    stake = math.floor(min(sizing.stake, min(sizing.risk_amount, equity * self.engine.cfg.max_risk_pct) /
+                                           max(unit_risk, 1e-12)) * 100) / 100
+                    if stake < self.engine.sizer.min_stake or sum(t.stake for t in open_trades) + stake > balance:
+                        continue
 
                     trade = BTTrade(
-                        trade_id      = str(uuid.uuid4())[:8],
+                        trade_id      = f"BT{i + 1:08d}",
                         symbol        = symbol,
                         direction     = decision.direction,
                         entry_price   = entry,
                         stop_loss     = sizing.stop_loss,
                         take_profit   = sizing.take_profit,
-                        stake         = sizing.stake,
-                        entry_bar     = i,
-                        entry_ts      = current.timestamp,
+                        stake         = stake,
+                        entry_bar     = i + 1,
+                        entry_ts      = candles[i + 1].timestamp,
                         confluence_score = decision.confluence_score,
                         reason_code   = decision.reason,
+                        regime = decision.hurst.regime if decision.hurst else "unknown",
                     )
                     open_trades.append(trade)
                     all_trades.append(trade)
@@ -325,7 +377,7 @@ class BacktestEngine:
             trade.pnl         = pnl
             trade.close_reason = "end_of_data"
             balance += pnl
-            all_trades.append(trade)
+        equity_curve[-1].update(balance=balance, equity=balance)
 
         date_to = datetime.utcfromtimestamp(last.timestamp)
 
@@ -342,6 +394,16 @@ class BacktestEngine:
             run_duration_sec = time.perf_counter() - t_start,
         )
         self._compute_metrics(report)
+        config = asdict(self.engine.cfg)
+        report.metadata = {
+            "model_version": "multiplier-next-open-v2", "config": config,
+            "config_hash": hashlib.sha256(json.dumps(config, sort_keys=True).encode()).hexdigest(),
+            "data_sha256": hashlib.sha256(json.dumps([asdict(c) for c in candles], sort_keys=True).encode()).hexdigest(),
+            "slippage_pct": self.slippage_pct, "spread_price": self.spread_pips,
+            "commission": self.commission, "intrabar_policy": "stop_first",
+            "profit_factor_defined": report.losing_trades > 0,
+            "limitations": "OHLC approximation; no liquidity, latency, rejection or order-book model",
+        }
         logger.info("Backtest complete | %s", report.summary())
         return report
 
@@ -358,24 +420,11 @@ class BacktestEngine:
         Returns a list of out-of-sample BacktestReports.
         Stable OOS metrics across folds = robust, non-overfit strategy.
         """
-        n   = len(candles)
-        fold_size = n // n_splits
-        reports: list[BacktestReport] = []
-
-        for i in range(n_splits):
-            start = i * fold_size
-            end   = start + fold_size
-            oos_start = start + int(fold_size * 0.8)
-
-            oos_candles = candles[oos_start:end]
-            if len(oos_candles) < self.warmup_bars + 10:
-                continue
-
-            logger.info("Walk-forward fold %d/%d | OOS bars: %d", i+1, n_splits, len(oos_candles))
-            report = self.run(oos_candles, symbol=symbol, timeframe=timeframe)
-            reports.append(report)
-
-        return reports
+        from app.backtesting.research import walk_forward
+        return walk_forward(candles, [self.engine.cfg], n_splits, symbol, timeframe,
+                            initial_balance=self.initial_balance, slippage_pct=self.slippage_pct,
+                            spread_pips=self.spread_pips, commission=self.commission,
+                            warmup_bars=self.warmup_bars)["reports"]
 
     # ── Internal ──────────────────────────────────────────────────────────────
 
@@ -387,7 +436,7 @@ class BacktestEngine:
         """
         if trade.direction == "buy":
             if candle.low <= trade.stop_loss:
-                exit_p = self._apply_slippage(trade.stop_loss, "buy", closing=True)
+                exit_p = self._apply_slippage(min(candle.open, trade.stop_loss), "buy", closing=True)
                 trade.exit_price   = exit_p
                 trade.exit_bar     = 0
                 trade.exit_ts      = candle.timestamp
@@ -400,7 +449,7 @@ class BacktestEngine:
                 return True, self._compute_pnl(trade, exit_p)
         else:
             if candle.high >= trade.stop_loss:
-                exit_p = self._apply_slippage(trade.stop_loss, "sell", closing=True)
+                exit_p = self._apply_slippage(max(candle.open, trade.stop_loss), "sell", closing=True)
                 trade.exit_price   = exit_p
                 trade.close_reason = "stop_loss"
                 return True, self._compute_pnl(trade, exit_p)
@@ -417,12 +466,12 @@ class BacktestEngine:
         if trade.direction == "sell":
             move = -move
         if trade.entry_price > 0:
-            return (move / trade.entry_price) * trade.stake * 100
+            return max(-trade.stake, (move / trade.entry_price) * trade.stake * self.multiplier) - self.commission
         return move * trade.stake
 
     def _apply_slippage(self, price: float, direction: str, closing: bool = False) -> float:
         """Apply slippage to simulate real execution costs."""
-        slip = price * self.slippage_pct
+        slip = price * self.slippage_pct + self.spread_pips / 2
         if not closing:
             return price + slip if direction == "buy" else price - slip
         return price - slip if direction == "buy" else price + slip
@@ -448,6 +497,7 @@ class BacktestEngine:
         report.profit_factor   = (gross_profit / gross_loss
                       if gross_loss > 0 else 0.0)
         report.total_pnl       = sum(pnls)
+        report.expectancy = float(np.mean(pnls))
         report.total_pnl_pct   = report.total_pnl / report.initial_balance
         report.avg_win         = float(np.mean(wins))   if wins   else 0.0
         report.avg_loss        = float(np.mean([abs(l) for l in losses])) if losses else 0.0
@@ -459,15 +509,21 @@ class BacktestEngine:
         durations = [t.duration_bars for t in trades if t.duration_bars is not None]
         report.avg_duration_bars = float(np.mean(durations)) if durations else 0.0
 
-        # Sharpe ratio (annualised, assumes 1 trade ~= 1 period)
-        if len(pnls) > 1:
-            mean_r = float(np.mean(pnls))
-            std_r  = float(np.std(pnls, ddof=1))
-            report.sharpe_ratio = (mean_r / std_r * np.sqrt(252)) if std_r > 0 else 0.0
+        # Daily marked equity returns, annualized for 24/7 synthetic markets.
+        daily = {}
+        for point in report.equity_curve:
+            daily[datetime.fromtimestamp(point["ts"], timezone.utc).date()] = point.get("equity", point["balance"])
+        values = np.array(list(daily.values()))
+        if len(values) > 2 and np.all(values > 0):
+            returns = np.diff(values) / values[:-1]
+            std = float(np.std(returns, ddof=1))
+            downside = float(np.sqrt(np.mean(np.minimum(returns, 0) ** 2)))
+            report.sharpe_ratio = float(np.mean(returns) / std * np.sqrt(365)) if std else 0
+            report.sortino_ratio = float(np.mean(returns) / downside * np.sqrt(365)) if downside else 0
 
         # Max drawdown from equity curve
         if report.equity_curve:
-            balances = [p["balance"] for p in report.equity_curve]
+            balances = [report.initial_balance] + [p.get("equity", p["balance"]) for p in report.equity_curve]
             hwm, max_dd = balances[0], 0.0
             for b in balances:
                 if b > hwm:
@@ -489,3 +545,10 @@ class BacktestEngine:
                 max_l  = max(max_l, abs(streak))
         report.max_consec_wins   = max_w
         report.max_consec_losses = max_l
+        for trade in trades:
+            hour = datetime.fromtimestamp(trade.entry_ts, timezone.utc).hour
+            weekday = datetime.fromtimestamp(trade.entry_ts, timezone.utc).strftime('%a')
+            key = f"{trade.direction}:{trade.regime}:{weekday}:UTC{hour // 6 * 6:02d}:{trade.reason_code}"
+            group = report.attribution.setdefault(key, {"trades": 0, "pnl": 0})
+            group["trades"] += 1
+            group["pnl"] += trade.pnl

@@ -52,7 +52,10 @@ import logging
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.execution.order_manager import Position
 
 from app.core.engine.confluence import ConfluenceResult, ConfluenceScorer
 from app.core.indicators.atr import ATRIndicator, ATRResult
@@ -378,11 +381,10 @@ class SignalEngine:
             return _no_trade(f"circuit_breaker_{self.cb._state.value}")
 
         # ── Phase 5: Multi-Symbol Guards ──────────────────────────────────────
-        if not active_position: # Only for new entries
-            if total_open_positions >= self.cfg.max_concurrent_trades:
-                return _no_trade("max_concurrent_trades_exceeded")
-            if total_open_risk_pct >= self.cfg.max_total_exposure:
-                return _no_trade("max_total_exposure_exceeded")
+        if total_open_positions >= self.cfg.max_concurrent_trades:
+            return _no_trade("max_concurrent_trades_exceeded")
+        if total_open_risk_pct >= self.cfg.max_total_exposure:
+            return _no_trade("max_total_exposure_exceeded")
 
         # ── Phase 3: Safety Order Scaling ─────────────────────────────────────
         if active_position and self.cfg.use_safety_orders:
@@ -665,7 +667,7 @@ class SignalEngine:
                 multiplier=self.cfg.deriv_multiplier
             )
             # Override stake
-            sizing.stake = new_stake
+            sizing.stake = min(sizing.stake, new_stake)
             
             return TradeDecision(
                 symbol=symbol, timeframe=timeframe, direction=pos.direction,

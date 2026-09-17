@@ -17,7 +17,7 @@ services:
     container_name: mrbot_redis
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -38,7 +38,7 @@ services:
       NEWS_AUTO_SYNC: ${NEWS_AUTO_SYNC:-true}
       NEWS_SYNC_INTERVAL_SECONDS: ${NEWS_SYNC_INTERVAL_SECONDS:-900}
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     depends_on:
       redis:
         condition: service_healthy
@@ -73,6 +73,12 @@ services:
       api:
         condition: service_healthy
     command: python -m app.bot
+    healthcheck:
+      test: ["CMD", "python", "-m", "app.monitoring.worker_health"]
+      interval: 15s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
     profiles:
       - bot
 

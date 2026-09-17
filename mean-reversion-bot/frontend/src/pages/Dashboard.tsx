@@ -236,18 +236,18 @@ export default function Dashboard() {
           />
           <StatCard
             label="Profit Factor"
-            value={state.performance.profit_factor.toFixed(2)}
+            value={state.performance.profit_factor?.toFixed(2) ?? '—'}
             sub={`Avg Win: $${state.performance.avg_win}`}
           />
           <StatCard
             label="Sharpe Ratio"
-            value={state.performance.sharpe_ratio.toFixed(2)}
-            sub="Risk-adjusted return"
+            value={state.performance.sharpe_ratio?.toFixed(2) ?? '—'}
+            sub="Requires full equity history"
           />
           <StatCard
             label="Max Drawdown"
-            value={`${state.performance.max_drawdown_pct}%`}
-            sub="Historical Peak-to-Valley"
+            value={state.performance.max_drawdown_pct == null ? '—' : `${state.performance.max_drawdown_pct}%`}
+            sub="Requires full equity history"
           />
         </div>
       )}

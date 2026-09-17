@@ -72,7 +72,7 @@ def configure_logging() -> None:
         "handlers": {
             "console": {
                 "class":     "logging.StreamHandler",
-                "formatter": "standard",
+                "formatter": "json" if settings.is_production else "standard",
                 "level":     settings.LOG_LEVEL,
             },
         },
@@ -119,7 +119,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
     db_ok = await check_connection()
     if not db_ok:
         logger.error("Database connection FAILED — check DATABASE_URL in .env")
-    elif not RUNNING_ON_VERCEL:
+    elif not RUNNING_ON_VERCEL or settings.is_production:
         await create_tables()
         logger.info("Database connected ✓")
     else:
@@ -191,14 +191,6 @@ def create_app() -> FastAPI:
 
     # ── Middleware ────────────────────────────────────────────────────────────
 
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins     = settings.ALLOWED_ORIGINS,
-        allow_credentials = True,
-        allow_methods     = ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        allow_headers     = ["*"],
-    )
-
     # Request timing middleware
     from app.api.security import protect_api
     app.middleware("http")(protect_api)
@@ -227,6 +219,8 @@ def create_app() -> FastAPI:
     app.include_router(config.router,      prefix="/api/config",   tags=["Config"])
     app.include_router(test.router,        prefix="/api",          tags=["Diagnostics"])
     from app.api.routes import backtest
+    from app.api.routes import metrics
+    app.include_router(metrics.router, prefix="/api", tags=["Monitoring"])
 
     app.include_router(backtest.router, prefix="/api/backtest", tags=["Backtest"])
     app.include_router(news.router, prefix="/api/news", tags=["News"])
@@ -257,7 +251,7 @@ def create_app() -> FastAPI:
         # Redis is an optional cache. Vercel/Supabase deployments can run without it.
         status = "healthy" if db_ok else "degraded"
         return JSONResponse(
-            status_code = 200 if status == "healthy" else 207,
+            status_code = 200 if status == "healthy" else 503,
             content     = {
                 "status":      status,
                 "version":     settings.APP_VERSION,
@@ -291,6 +285,11 @@ def create_app() -> FastAPI:
             content={"detail": "Internal server error"},
         )
 
+    # Outermost middleware also adds CORS headers to authentication failures.
+    app.add_middleware(CORSMiddleware, allow_origins=settings.ALLOWED_ORIGINS,
+                       allow_credentials=True,
+                       allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+                       allow_headers=["Authorization", "Content-Type"])
     return app
 
 

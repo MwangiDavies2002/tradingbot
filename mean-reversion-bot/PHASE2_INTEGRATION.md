@@ -1,5 +1,7 @@
 # Phase 2: Advanced Strategy Integration & Strategy Lab Enhancements
 
+> Historical feature overview, using different numbering from the original roadmap. News scoring exists but is not automatically connected to worker news retrieval. See [PRODUCTION_READINESS.md](PRODUCTION_READINESS.md) for verified behavior and research limits.
+
 ## Overview
 Phase 2 enhances the core `SignalEngine` and `BacktestEngine` by integrating news-driven signals, refining machine-learning-inspired models, and bridging the gap between Python and TradingView strategy definitions.
 

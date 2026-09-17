@@ -1,0 +1,48 @@
+services:
+  migrate:
+    image: ${MRBOT_IMAGE:-mrbot:local}
+    build: ./backend
+    env_file: ./backend/.env
+    command: python -m alembic upgrade head
+    profiles: [migration]
+  api:
+    image: ${MRBOT_IMAGE:-mrbot:local}
+    build: ./backend
+    env_file: ./backend/.env
+    environment:
+      ENVIRONMENT: production
+      NEWS_AUTO_SYNC: 'false'
+      REDIS_URL: redis://redis:6379/0
+    ports: ['127.0.0.1:8000:8000']
+    restart: unless-stopped
+    read_only: true
+    tmpfs: [/tmp]
+    mem_limit: 1g
+    cpus: 1.0
+    security_opt: ['no-new-privileges:true']
+    depends_on: [redis]
+  worker:
+    image: ${MRBOT_IMAGE:-mrbot:local}
+    env_file: ./backend/.env
+    environment:
+      ENVIRONMENT: production
+      REDIS_URL: redis://redis:6379/0
+    command: python -m app.bot
+    restart: unless-stopped
+    read_only: true
+    tmpfs: [/tmp]
+    mem_limit: 1g
+    cpus: 1.0
+    security_opt: ['no-new-privileges:true']
+    healthcheck:
+      test: ['CMD', 'python', '-m', 'app.monitoring.worker_health']
+      interval: 15s
+      timeout: 10s
+      start_period: 60s
+    depends_on: [redis]
+    profiles: [worker]
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    mem_limit: 320m

@@ -143,6 +143,7 @@ class CircuitBreaker:
         pause_hours_losses:     float = 4.0,
         pause_hours_api:        float = 0.5,
         cooldown_hours:         float = 24.0,
+        clock=None,
     ) -> None:
         self.max_consecutive_losses = max_consecutive_losses
         self.daily_drawdown_pct     = daily_drawdown_pct
@@ -153,6 +154,7 @@ class CircuitBreaker:
         self.pause_hours_losses     = pause_hours_losses
         self.pause_hours_api        = pause_hours_api
         self.cooldown_hours         = cooldown_hours
+        self._clock = clock or (lambda: datetime.now(tz=timezone.utc))
 
         # ── Runtime state ─────────────────────────────────────────────────────
         self._state:               BreakerState      = BreakerState.ACTIVE
@@ -182,7 +184,7 @@ class CircuitBreaker:
 
     def initialise(self, account_balance: float) -> None:
         """Call once on bot startup with the current account balance."""
-        now = datetime.now(tz=timezone.utc)
+        now = self._clock()
         self._current_balance      = account_balance
         self._session_start_balance = account_balance
         self._day_start_balance    = account_balance
@@ -376,7 +378,7 @@ class CircuitBreaker:
             )
 
     def _trigger_pause(self, trigger: str, hours: float, details: str) -> None:
-        now         = datetime.now(tz=timezone.utc)
+        now         = self._clock()
         pause_until = now + timedelta(hours=hours)
         self._state        = BreakerState.PAUSED
         self._pause_until  = pause_until
@@ -390,7 +392,7 @@ class CircuitBreaker:
                        trigger, pause_until.strftime("%H:%M UTC"), details)
 
     def _trigger_halt(self, trigger: str, details: str) -> None:
-        now = datetime.now(tz=timezone.utc)
+        now = self._clock()
         self._state        = BreakerState.HALTED
         self._pause_until  = None
         self._last_trigger = trigger
@@ -405,7 +407,7 @@ class CircuitBreaker:
     def _check_auto_resume(self) -> None:
         """Auto-resume from PAUSED state once pause_until has passed."""
         if self._state == BreakerState.PAUSED and self._pause_until:
-            now = datetime.now(tz=timezone.utc)
+            now = self._clock()
             if now >= self._pause_until:
                 self._state       = BreakerState.ACTIVE
                 self._pause_until = None
@@ -414,7 +416,7 @@ class CircuitBreaker:
 
     def _check_day_week_reset(self, balance: float) -> None:
         """Reset daily/weekly tracking at UTC midnight / week start."""
-        now = datetime.now(tz=timezone.utc)
+        now = self._clock()
 
         if self._day_reset_at:
             if now.date() > self._day_reset_at.date():

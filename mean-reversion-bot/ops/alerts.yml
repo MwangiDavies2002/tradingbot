@@ -1,0 +1,30 @@
+groups:
+  - name: trading-safety
+    rules:
+      - alert: TradingWorkerMissing
+        expr: mrbot_worker_heartbeat_age_seconds > 30
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: Worker heartbeat is stale; inspect broker exposure
+      - alert: UncertainOrder
+        expr: mrbot_unresolved_orders > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: Order outcome needs broker reconciliation
+      - alert: RecoveryBlocked
+        expr: mrbot_recovery_blocked > 0
+        for: 30s
+        labels:
+          severity: warning
+        annotations:
+          summary: Entries blocked by recovery
+      - alert: TradingApiMissing
+        expr: up{job="mrbot"} == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: API or metrics authentication unavailable

@@ -1,0 +1,13 @@
+.venv*/
+**/.env
+**/.env.*
+!**/.env.example
+**/.secrets/
+**/backups/
+**/__pycache__/
+**/.pytest_cache/
+**/*.pyc
+**/node_modules/
+**/dist/
+**/data/*.db
+**/data/*.db-*

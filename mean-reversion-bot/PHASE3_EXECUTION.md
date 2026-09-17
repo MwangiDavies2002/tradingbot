@@ -1,5 +1,7 @@
 # Phase 3: Advanced Execution & Scale-Out (DCA)
 
+> Experimental feature overview. The risk-bypass and unrestricted martingale behavior described below is not supported: all entries face execution risk caps and scaling size is bounded. Scaling/backtest parity remains unvalidated. See [PRODUCTION_READINESS.md](PRODUCTION_READINESS.md).
+
 ## Overview
 Phase 3 transitions the bot from simple single-entry mean reversion to a professional-grade execution system capable of scaling into positions during extreme volatility. It also fully integrates the Liquidity Simulation Logic (LSL) as the primary confirmation for reversals.
 

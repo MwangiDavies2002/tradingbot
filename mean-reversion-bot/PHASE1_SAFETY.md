@@ -1,5 +1,7 @@
 # Phase 1 Safety & Execution Architecture
 
+> Verification note: see [PRODUCTION_READINESS.md](PRODUCTION_READINESS.md) for the current tested roadmap and remaining demo/deployment validation. This overview alone is not a production sign-off.
+
 ## Overview
 Phase 1 implements the "Fail-Closed" safety architecture for the Mean Reversion Bot. It ensures that trading only occurs under strictly controlled conditions and that only one worker can operate a specific broker account at any given time.
 
@@ -14,7 +16,7 @@ Phase 1 implements the "Fail-Closed" safety architecture for the Mean Reversion 
 - **Database Table**: `trading_control`
 - **Fields**:
   - `enabled`: Boolean master switch.
-  - `heartbeat`: Updated every 30 seconds by the worker.
+  - `heartbeat`: Updated after each safety loop (nominally every 2 seconds, plus broker/database processing time).
   - `recovery_error`: Captures reconciliation or startup errors that must be resolved before trading.
 - **Requirement**: The `enabled` flag must be `true` AND `recovery_error` must be `null` for any order to be placed.
 

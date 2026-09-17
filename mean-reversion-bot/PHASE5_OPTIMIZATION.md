@@ -1,5 +1,7 @@
 # Phase 5: Performance Optimization & Adaptive Risk
 
+> Experimental overview. Trailing stops are not wired to validated worker settings or broker stop updates. Portfolio caps apply to scaling orders as well. No performance improvement is established by these descriptions. See [PRODUCTION_READINESS.md](PRODUCTION_READINESS.md) for the actual strategy-validation workflow.
+
 ## Overview
 Phase 5 elevates the bot to professional-grade status by introducing dynamic profit protection, multi-symbol risk management, and integrated performance analytics. It focuses on maximizing the Sharpe ratio by reducing drawdown and improving execution efficiency.
 

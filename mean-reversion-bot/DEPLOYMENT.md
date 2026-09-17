@@ -1,5 +1,9 @@
 # Deploying the dashboard API and database
 
+For protected access, account configuration, migrations, monitoring and recovery,
+follow [the current production runbook](PRODUCTION_READINESS.md). Production
+requires `alembic upgrade head` before startup; it no longer creates tables automatically.
+
 This repository is configured as one Vercel project: Vite builds the dashboard and `api/index.py` exposes the FastAPI routes as a Python serverless function. The persistent Deriv trading process is deliberately **not** run by Vercel; deploy `python -m app.bot` to an always-on worker service with the same environment variables.
 
 ## 1. Create Supabase database

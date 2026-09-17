@@ -65,7 +65,7 @@ export default function Settings() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">System Settings</h1>
-          <p className="text-slate-400 text-sm">Configure trading parameters and risk limits</p>
+          <p className="text-slate-400 text-sm">Trading parameters are read-only here. Update server settings and restart the worker to apply changes.</p>
         </div>
         <button 
             onClick={() => loadConfig()}
@@ -96,6 +96,7 @@ export default function Settings() {
               <div className="flex items-center gap-3">
                 <input 
                     type="text"
+                    readOnly
                     defaultValue={item.value}
                     onBlur={(e) => {
                         if (e.target.value !== item.value) {

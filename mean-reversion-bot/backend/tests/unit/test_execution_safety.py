@@ -93,6 +93,16 @@ async def test_timeout_blocks_retries_across_restart(system):
 
 
 @pytest.mark.asyncio
+async def test_definitive_rejection_is_not_an_unknown_buy(system):
+    from app.execution.deriv_client import BrokerRejectedError
+    manager, broker, store, _ = system
+    broker.buy_contract.side_effect = BrokerRejectedError("Contract validation failed")
+    assert await manager.execute(decision()) is None
+    assert (await store.load())[0][0]["status"] == "cancelled"
+    assert manager.ready
+
+
+@pytest.mark.asyncio
 async def test_persisted_stop_blocks_entries(system):
     manager, broker, store, sessions = system
     async with sessions() as db:
@@ -210,3 +220,74 @@ def test_authentication_roles_and_defaults(monkeypatch):
         assert client.get("/api/bot/stop", headers=headers).status_code == 200
         assert client.post("/api/bot/stop", headers=headers).status_code == (403 if role == "viewer" else 200)
         assert client.put("/api/config/test", headers=headers).status_code == (200 if role == "admin" else 403)
+
+
+@pytest.mark.asyncio
+async def test_same_candle_cannot_replay_after_restart(system):
+    manager, broker, store, _ = system
+    assert await manager.execute(decision(), signal_key="a" * 64)
+    broker.get_portfolio.return_value = [{"contract_id": 123}]
+    recovered = OrderManager(broker, CircuitBreaker(), store=store, settings=settings)
+    assert await recovered.recover(initial=True)
+    assert await recovered.execute(decision(), signal_key="a" * 64) is None
+    assert broker.buy_contract.await_count == 1
+
+
+@pytest.mark.asyncio
+async def test_control_routes_and_performance_use_real_schema(system, monkeypatch):
+    import httpx
+    from app.main import create_app
+    from app.database.session import get_db
+    from app.database.models import Signal
+    manager, broker, store, sessions = system
+    p = await manager.execute(decision())
+    await manager.close_position(p.trade_id)
+    async with sessions() as db:
+        db.add(Signal(symbol="R_75", timeframe="M5", score=1, fired=False, reason="fixture"))
+        await db.commit()
+    token = "test-admin-key-" * 4
+    monkeypatch.setattr(settings, "API_ADMIN_KEY_HASH", hashlib.sha256(token.encode()).hexdigest())
+    app = create_app()
+    async def database():
+        async with sessions() as db:
+            yield db
+            await db.commit()
+    app.dependency_overrides[get_db] = database
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        assert (await client.post('/api/bot/stop')).status_code == 401
+        client.headers["Authorization"] = f"Bearer {token}"
+        performance = await client.get('/api/bot/performance')
+        assert performance.status_code == 200
+        assert performance.json()["stats"]["total_trades"] == 1
+        assert (await client.get('/api/signals')).status_code == 200
+        assert (await client.get('/api/metrics')).status_code == 200
+        assert (await client.get('/api/config/SECRET_KEY')).status_code == 403
+        assert (await client.post('/api/bot/stop')).status_code == 200
+        assert (await client.post('/api/bot/start')).status_code == 409  # No heartbeat
+
+
+@pytest.mark.asyncio
+async def test_receiver_keeps_processing_replies_during_callback():
+    import asyncio
+    from app.execution.deriv_client import DerivClient
+    client = DerivClient()
+    client._running = True
+    client.state.authenticated = True
+    waiting = asyncio.Event()
+    future = asyncio.get_running_loop().create_future()
+    client._pending[99] = future
+    async def callback(msg):
+        waiting.set()
+        await future
+    client._subscriptions['sub'] = callback
+    task = asyncio.create_task(client._handle_messages())
+    try:
+        await client._dispatch({"subscription": {"id": "sub"}})
+        await asyncio.wait_for(waiting.wait(), 1)
+        await client._dispatch({"req_id": 99, "buy": {"contract_id": 1}})
+        await asyncio.wait_for(client._messages.join(), 1)
+        assert future.done()
+    finally:
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task

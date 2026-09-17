@@ -1,5 +1,7 @@
 # Phase 6: Advanced Analytics & Automated Recovery
 
+> Corrections: recent-trade cash P&L alone cannot establish annualized Sharpe or account drawdown. The API now returns unavailable values for those metrics instead of assuming a starting balance. See [PRODUCTION_READINESS.md](PRODUCTION_READINESS.md) for verification and operational boundaries.
+
 ## Overview
 Phase 6 enhances the bot's operational robustness and provides deeper insights into strategy performance. It introduces an automated "Recovery Mode" to handle process crashes and advanced risk-adjusted metrics to the dashboard.
 

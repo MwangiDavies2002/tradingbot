@@ -1,5 +1,7 @@
 # Phase 4: Dashboard Visualization & Deployment Readiness
 
+> See [PRODUCTION_READINESS.md](PRODUCTION_READINESS.md) for migrations, CI, monitoring, backup/rollback instructions and remaining deployment checks. The checkboxes below describe prior work, not a deployment acceptance test.
+
 ## Overview
 Phase 4 focuses on bridging the gap between raw execution logic and operational transparency. It enhances the dashboard with real-time signal analysis and prepares the bot for production deployment with improved monitoring and environment parity.
 

@@ -61,6 +61,12 @@ class ExecutionRecord(Base):
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
 
+class DecisionReceipt(Base):
+    __tablename__ = "decision_receipts"
+    fingerprint = Column(String(64), primary_key=True)
+    trade_id = Column(String(32), nullable=False, unique=True)
+
+
 # ─── Trades ───────────────────────────────────────────────────────────────────
 
 class Trade(Base):

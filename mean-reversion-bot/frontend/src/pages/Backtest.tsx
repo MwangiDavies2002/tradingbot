@@ -90,6 +90,7 @@ export default function Backtest() {
         symbols: selectedSymbols,
         timeframe,
         days,
+        initial_balance: startingCapital,
         min_confluence: minConfluence,
         csv_data: csvText || null,
         ...selectedStrategies

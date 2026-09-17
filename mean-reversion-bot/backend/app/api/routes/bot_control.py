@@ -21,7 +21,7 @@ from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.models import BotEvent, ConfigEntry, EquitySnapshot, Signal, ExecutionRecord
+from app.database.models import BotEvent, ConfigEntry, EquitySnapshot, Signal, ExecutionRecord, Trade
 from app.database.session import get_db
 from app.config import settings
 from app.execution.safety import account_scope, control_row
@@ -87,6 +87,10 @@ async def resolve_intent(trade_id: str, body: ResolveIntent, request: Request,
     record.payload = payload
     record.status = payload["status"]
     record.updated_at = datetime.utcnow()
+    trade = (await db.execute(select(Trade).where(Trade.trade_id == trade_id))).scalar_one_or_none()
+    if trade:
+        trade.status = payload["status"]
+        trade.contract_id = payload.get("contract_id")
     db.add(BotEvent(event_type="order_resolution", severity="warning",
                     message="Operator supplied broker evidence for uncertain order",
                     details_json={"scope": scope(), "trade_id": trade_id,
@@ -201,7 +205,7 @@ async def performance_report(db: AsyncSession = Depends(get_db)):
     stmt = (
         select(ExecutionRecord)
         .where(ExecutionRecord.scope == scope(), ExecutionRecord.status == "closed")
-        .order_by(desc(ExecutionRecord.closed_at))
+        .order_by(desc(ExecutionRecord.updated_at))
         .limit(100)
     )
     result = await db.execute(stmt)
@@ -210,36 +214,21 @@ async def performance_report(db: AsyncSession = Depends(get_db)):
     if not records:
         return {"stats": {"total_trades": 0, "win_rate": 0, "total_pnl": 0}}
 
-    total_pnl = sum(r.pnl or 0.0 for r in records)
-    wins = [r for r in records if (r.pnl or 0.0) > 0]
+    payloads = sorted([r.payload for r in records], key=lambda r: r.get("closed_at") or "")
+    total_pnl = sum(r.get("pnl") or 0.0 for r in payloads)
+    wins = [r for r in payloads if (r.get("pnl") or 0.0) > 0]
     win_rate = len(wins) / len(records)
     
-    avg_win = sum(r.pnl for r in wins) / len(wins) if wins else 0
-    losses = [r for r in records if (r.pnl or 0.0) <= 0]
-    avg_loss = sum(r.pnl for r in losses) / len(losses) if losses else 0
+    avg_win = sum(r["pnl"] for r in wins) / len(wins) if wins else 0
+    losses = [r for r in payloads if (r.get("pnl") or 0.0) <= 0]
+    avg_loss = sum(r["pnl"] for r in losses) / len(losses) if losses else 0
     
-    profit_factor = abs(sum(r.pnl for r in wins) / sum(r.pnl for r in losses)) if losses and sum(r.pnl for r in losses) != 0 else 0
+    gross_loss = abs(sum(r.get("pnl") or 0 for r in losses))
+    profit_factor = sum(r["pnl"] for r in wins) / gross_loss if gross_loss else None
 
     # Phase 6: Advanced Analytics
-    import numpy as np
-    pnls = [r.pnl or 0.0 for r in records]
-    
-    # Sharpe Ratio (Simplified for trading frequency)
-    sharpe = 0.0
-    if len(pnls) > 1:
-        std = np.std(pnls)
-        if std > 0:
-            sharpe = (np.mean(pnls) / std) * np.sqrt(252) # Annualized approximation
-
-    # Max Drawdown
-    max_dd = 0.0
-    if pnls:
-        cum_pnl = np.cumsum(pnls)
-        # Add 1000 to cumulative P&L to simulate a starting balance for drawdown calculation
-        equity = 1000 + cum_pnl
-        running_max = np.maximum.accumulate(equity)
-        drawdowns = (running_max - equity) / running_max
-        max_dd = np.max(drawdowns) if len(drawdowns) > 0 else 0.0
+    # A recent trade sample is insufficient for annualized returns or account
+    # drawdown. Never invent a starting balance or a trading frequency.
 
     return {
         "stats": {
@@ -248,18 +237,19 @@ async def performance_report(db: AsyncSession = Depends(get_db)):
             "total_pnl": round(total_pnl, 2),
             "avg_win": round(avg_win, 2),
             "avg_loss": round(avg_loss, 2),
-            "profit_factor": round(profit_factor, 2),
-            "sharpe_ratio": round(float(sharpe), 2),
-            "max_drawdown_pct": round(float(max_dd) * 100, 2),
+            "profit_factor": round(profit_factor, 2) if profit_factor is not None else None,
+            "sharpe_ratio": None,
+            "max_drawdown_pct": None,
+            "metrics_note": "Last 100 closed trades. Account return metrics require a complete equity history.",
         },
         "recent_trades": [
             {
-                "trade_id": r.trade_id,
-                "symbol": r.symbol,
-                "pnl": r.pnl,
-                "closed_at": r.closed_at.isoformat() if r.closed_at else None,
+                "trade_id": r["trade_id"],
+                "symbol": r["symbol"],
+                "pnl": r.get("pnl"),
+                "closed_at": r.get("closed_at"),
             }
-            for r in records[:10]
+            for r in list(reversed(payloads))[:10]
         ]
     }
 
@@ -333,9 +323,9 @@ async def list_signals(
                     "lsl_grab":    s.lsl_grab,
                     "bos_choch":   s.bos_choch,
                     "order_block": s.order_block,
-                    "is_scaling":  s.payload.get("is_safety_order", False) if s.payload else False,
-                    "order_index": s.payload.get("order_index", 0) if s.payload else 0,
-                    "breakdown":   s.payload.get("score_breakdown", {}) if s.payload else {},
+                    "is_scaling":  (s.breakdown_json or {}).get("is_safety_order", False),
+                    "order_index": (s.breakdown_json or {}).get("order_index", 0),
+                    "breakdown":   (s.breakdown_json or {}).get("score_breakdown", {}),
                 },
             }
             for s in signals
@@ -461,20 +451,17 @@ class ConfigUpdate(BaseModel):
 @config_router.get("")
 async def get_config(db: AsyncSession = Depends(get_db)):
     """Return all configuration entries (excludes secrets)."""
-    EXCLUDED_KEYS = {"DERIV_API_TOKEN", "SECRET_KEY", "TELEGRAM_BOT_TOKEN"}
-    stmt   = select(ConfigEntry).order_by(ConfigEntry.key)
-    result = await db.execute(stmt)
-    entries = result.scalars().all()
+    import json
     return {
         "config": [
             {
-                "key":         e.key,
-                "value":       e.value if e.key not in EXCLUDED_KEYS else "***",
-                "value_type":  e.value_type,
-                "description": e.description,
-                "updated_at":  e.updated_at.isoformat(),
+                "key": key,
+                "value": json.dumps(value) if isinstance(value, (list, dict, bool)) else str(value),
+                "value_type": type(value).__name__,
+                "description": type(settings).model_fields[key].description or "Effective server setting; restart required",
+                "updated_at": None,
             }
-            for e in entries if public_config_key(e.key)
+            for key, value in sorted(settings.model_dump().items()) if public_config_key(key)
         ]
     }
 
@@ -496,16 +483,11 @@ async def get_config_key(key: str, db: AsyncSession = Depends(get_db)):
     """Get a single config value by key."""
     if not public_config_key(key):
         raise HTTPException(403, "This configuration key is not public")
-    stmt   = select(ConfigEntry).where(ConfigEntry.key == key)
-    result = await db.execute(stmt)
-    entry  = result.scalar_one_or_none()
-    if not entry:
-        raise HTTPException(status_code=404, detail=f"Config key {key!r} not found")
     return {
-        "key":        entry.key,
-        "value":      entry.get_typed_value(),
-        "value_type": entry.value_type,
-        "updated_at": entry.updated_at.isoformat(),
+        "key": key,
+        "value": getattr(settings, key),
+        "value_type": type(getattr(settings, key)).__name__,
+        "updated_at": None,
     }
 
 

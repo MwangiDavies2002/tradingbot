@@ -7,7 +7,8 @@ import json
 import logging
 import uuid
 import base64
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from dataclasses import fields
 from typing import Any, List, Optional, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -148,6 +149,8 @@ def rows_to_candles(rows: list[dict[str, Any]]) -> List[DetectorCandle]:
         )
     if len(candles) < 20:
         raise ValueError("At least 20 candles are required for a valid backtest")
+    from app.data.validation import validate_candles
+    validate_candles(candles)
     return candles
 
 
@@ -206,8 +209,7 @@ async def load_candles_for_symbol(
     rows = res.scalars().all()
 
     if not rows:
-        logger.warning("No historical candles found in DB for %s %s. Falling back to synthetic data.", symbol, timeframe)
-        return generate_mock_candles(symbol, timeframe, days)
+        raise ValueError("No historical candles available; import real data before backtesting")
 
     return [
         DetectorCandle(
@@ -226,9 +228,12 @@ class BacktestRequest(BaseModel):
     data_source: Literal['deriv', 'mt5'] = 'deriv'
     symbols: List[str] = Field(..., min_length=1, max_length=1, description="One pair/instrument per run")
     timeframe: str = "M5"
-    days: int = 7
-    initial_balance: float = 10000.0
-    csv_data: Optional[str] = None
+    days: int = Field(7, ge=1, le=90)
+    initial_balance: float = Field(10000.0, gt=0, le=10000000)
+    csv_data: Optional[str] = Field(None, max_length=10000000)
+    slippage_pct: float = Field(0.0005, ge=0, le=0.05)
+    spread_price: float = Field(0, ge=0, le=1000)
+    commission: float = Field(0, ge=0, le=1000)
 
     # Strategy selection
     use_zscore: bool = True
@@ -275,6 +280,8 @@ async def run_backtest(req: BacktestRequest, request: Request, db: AsyncSession 
 
     try:
         # Fetch real historical data from Deriv and cache it, unless CSV was provided
+        if req.news_only or any(v == "pine" for v in req.strategy_versions.values()):
+            raise ValueError("News-only and Pine execution are not modeled by this Python backtest")
         mt5_candles = None
         if req.data_source == 'mt5' and not req.csv_data:
             from app.api.routes.mt5 import get_runner, local_only
@@ -314,6 +321,8 @@ async def run_backtest(req: BacktestRequest, request: Request, db: AsyncSession 
             bt_engine = BacktestEngine(
                 signal_engine=signal_engine,
                 initial_balance=req.initial_balance,
+                slippage_pct=req.slippage_pct, spread_pips=req.spread_price,
+                commission=req.commission,
             )
 
             report = await asyncio.to_thread(bt_engine.run, candles, symbol=symbol, timeframe=req.timeframe)
@@ -334,7 +343,7 @@ async def run_backtest(req: BacktestRequest, request: Request, db: AsyncSession 
                 max_drawdown=report.max_drawdown_pct,
                 total_pnl=report.total_pnl,
                 total_pnl_pct=report.total_pnl_pct,
-                params_json=req.dict(),
+                params_json={**req.model_dump(exclude={"csv_data"}), "provenance": report.metadata},
                 equity_curve_json=report.equity_curve,
                 trades_json=[
                     {
@@ -354,6 +363,7 @@ async def run_backtest(req: BacktestRequest, request: Request, db: AsyncSession 
             results.append(
                 {
                     "run_id": run_id,
+                    "metadata": report.metadata,
                     "symbol": symbol,
                     "total_trades": len(report.trades),
                     "win_rate": report.win_rate,
@@ -370,18 +380,44 @@ async def run_backtest(req: BacktestRequest, request: Request, db: AsyncSession 
 
         await db.commit()
         return results
+    except ValueError as exc:
+        await db.rollback()
+        raise HTTPException(422, str(exc)) from exc
+    except HTTPException:
+        raise
     except Exception as exc:
         await db.rollback()
         logger.exception("Backtest failed | symbols=%s | timeframe=%s", req.symbols, req.timeframe)
         raise HTTPException(status_code=500, detail=f"Backtest failed: {exc}") from exc
 
 
+@router.post("/research")
+async def run_research(req: BacktestRequest):
+    """Bounded offline research; never fetches data or starts a broker worker."""
+    if not req.csv_data:
+        raise HTTPException(422, "Research requires an explicit historical CSV dataset")
+    if req.news_only or any(v == "pine" for v in req.strategy_versions.values()):
+        raise HTTPException(422, "News-only and Pine execution are not modeled in Python research")
+    from app.backtesting.research import research_report
+    candles = rows_to_candles(parse_uploaded_data(req.csv_data))
+    if len(candles) > 10000:
+        raise HTTPException(422, "Research API accepts at most 10,000 candles")
+    names = {f.name for f in fields(EngineConfig)}
+    config = EngineConfig(**{k: v for k, v in req.model_dump().items() if k in names})
+    try:
+        return await asyncio.to_thread(research_report, candles, config, req.symbols[0], req.timeframe,
+            initial_balance=req.initial_balance, slippage_pct=req.slippage_pct,
+            spread_pips=req.spread_price, commission=req.commission)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
 @router.post("/import")
-async def import_backtest_csv(req: BacktestRequest, db: AsyncSession = Depends(get_db)):
+async def import_backtest_csv(req: BacktestRequest, request: Request, db: AsyncSession = Depends(get_db)):
     """Accept raw CSV import data and run a backtest using it."""
     if not req.csv_data:
         raise HTTPException(status_code=400, detail="CSV data is required for import mode")
-    return await run_backtest(req, db)
+    return await run_backtest(req, request, db)
 
 
 @router.get("/results")

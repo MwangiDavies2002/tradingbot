@@ -46,15 +46,16 @@ from __future__ import annotations
 import asyncio
 import logging
 import math
+import time
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
 
 from app.core.engine.signal_engine import TradeDecision
 from app.core.risk.circuit_breaker import CircuitBreaker
 from app.core.risk.position_sizer import PositionSizer
-from app.execution.deriv_client import DerivClient
+from app.execution.deriv_client import DerivClient, BrokerRejectedError
 
 logger = logging.getLogger(__name__)
 
@@ -109,6 +110,11 @@ class Position:
     # Phase 3 Scaling
     order_index:    int                = 0  # 0 for initial, 1+ for safety orders
     parent_trade_id: Optional[str]     = None # Link safety order to original
+    signal_key: Optional[str] = None
+    strategy_hash: Optional[str] = None
+    latency_ms: Optional[float] = None
+    broker_entry_price: Optional[float] = None
+    multiplier: int = 100
 
     @property
     def is_open(self) -> bool:
@@ -156,6 +162,13 @@ class Position:
             "closed_at":       self.closed_at.isoformat() if self.closed_at else None,
             "confluence_score": self.confluence_score,
             "reason_code":     self.reason_code,
+            "order_index": self.order_index,
+            "parent_trade_id": self.parent_trade_id,
+            "signal_key": self.signal_key,
+            "strategy_hash": self.strategy_hash,
+            "latency_ms": self.latency_ms,
+            "broker_entry_price": self.broker_entry_price,
+            "multiplier": self.multiplier,
         }
 
     def __repr__(self) -> str:
@@ -204,18 +217,19 @@ class OrderManager:
         self.ready = False
         self.recovery_error = "Startup reconciliation required"
         self._connection_time = None
+        self.data_errors = {}
 
     # ── Public API ────────────────────────────────────────────────────────────
 
-    async def execute(self, decision: TradeDecision) -> Optional[Position]:
+    async def execute(self, decision: TradeDecision, signal_key=None, strategy_hash=None) -> Optional[Position]:
         async with self._lock:
             try:
-                return await self._execute(decision)
+                return await self._execute(decision, signal_key, strategy_hash)
             except Exception as exc:
                 logger.error("Entry blocked: %s", exc)
                 return None
 
-    async def _execute(self, decision: TradeDecision) -> Optional[Position]:
+    async def _execute(self, decision: TradeDecision, signal_key=None, strategy_hash=None) -> Optional[Position]:
         """
         Execute a trade decision. Returns the opened Position or None on failure.
 
@@ -226,6 +240,8 @@ class OrderManager:
           - Minimum R:R must be met
         """
         if not self.store or not self.ready:
+            return None
+        if signal_key and await self.store.has_signal(signal_key):
             return None
         from app.execution.safety import validate_account
         validate_account(self.settings, self.client.state)
@@ -262,6 +278,8 @@ class OrderManager:
 
         # ── Build position record ─────────────────────────────────────────────
         position = self._build_position(decision)
+        position.signal_key = signal_key
+        position.strategy_hash = strategy_hash
         equity = await self._equity()
         self._validate_risk(position, equity)
         self._positions[position.trade_id] = position
@@ -269,6 +287,7 @@ class OrderManager:
 
         # ── Place the order ───────────────────────────────────────────────────
         submitted = False
+        started = time.perf_counter()
         try:
             async with self.store.entry_gate():
                 submitted = True
@@ -277,8 +296,10 @@ class OrderManager:
             if position.contract_id <= 0:
                 raise RuntimeError("Buy response missing contract id")
             position.status      = PositionStatus.OPEN
+            position.latency_ms = (time.perf_counter() - started) * 1000
             self._open_count    += 1
             self.cb.record_trade_open()
+            self.cb.record_api_success()
             await self.store.save(position, self.cb)
 
             logger.info(
@@ -291,8 +312,10 @@ class OrderManager:
 
         except Exception as exc:
             # A timeout may mean the broker accepted the buy. Never retry it.
-            position.status = PositionStatus.UNKNOWN if submitted else PositionStatus.CANCELLED
-            if submitted:
+            uncertain = submitted and not isinstance(exc, BrokerRejectedError)
+            position.status = PositionStatus.UNKNOWN if uncertain else PositionStatus.CANCELLED
+            self.cb.record_api_error()
+            if uncertain:
                 self.ready = False
                 self.recovery_error = "Uncertain order; broker reconciliation required"
             await self.store.save(position, self.cb)
@@ -452,6 +475,7 @@ class OrderManager:
             stake          = sizing.stake if sizing else 0.0,
             confluence_score = decision.confluence_score,
             reason_code    = decision.reason,
+            multiplier     = self.multiplier,
             order_index    = decision.order_index,
         )
 
@@ -460,22 +484,29 @@ class OrderManager:
         Place the order on Deriv. Includes server-side SL/TP where supported.
         Returns the raw buy response dict from Deriv.
         """
+        def pre_buy_check():
+            from app.execution.safety import validate_account
+            validate_account(self.settings, self.client.state)
+            if not self.ready or self.client.state.connect_time != self._connection_time:
+                raise RuntimeError("Connection changed while preparing proposal")
+
         return await self.client.buy_contract(
             contract_type  = position.contract_type,
             symbol         = position.symbol,
             amount         = position.stake,
             multiplier     = self.multiplier,
             basis          = "stake",
+            pre_buy_check = pre_buy_check,
             limit_order = {
                 "stop_loss": math.floor(self._risk(position) * 100) / 100,
-                "take_profit": round(position.stake * self.multiplier *
+                "take_profit": round(position.stake * position.multiplier *
                                      abs(position.take_profit - position.entry_price) /
                                      position.entry_price, 2),
             },
         )
 
     def _risk(self, p):
-        return min(p.stake, p.stake * self.multiplier *
+        return min(p.stake, p.stake * p.multiplier *
                    abs(p.entry_price - p.stop_loss) / p.entry_price)
 
     async def _equity(self):
@@ -541,7 +572,7 @@ class OrderManager:
                 portfolio = await self.client.get_portfolio()
                 broker_ids = {int(c["contract_id"]) for c in portfolio}
                 known_ids = {p.contract_id for p in self.all_positions if p.contract_id}
-                issues = []
+                issues = list(self.data_errors.values())
                 if broker_ids - known_ids:
                     issues.append("Unowned broker contracts: operator review required")
                 for p in self.all_positions:
@@ -551,6 +582,15 @@ class OrderManager:
                         issues.append(f"Unresolved intent {p.trade_id}; never automatically resubmitted")
                         continue
                     c = await self.client.get_contract(p.contract_id)
+                    if p.status in {PositionStatus.UNKNOWN, PositionStatus.PENDING}:
+                        # Operator-linked IDs must match the original intent.
+                        if (c.get("underlying") != p.symbol or c.get("contract_type") != p.contract_type or
+                                abs(float(c.get("buy_price", -1)) - p.stake) > .01 or
+                                abs(float(c.get("date_start", 0)) - p.opened_at.replace(tzinfo=timezone.utc).timestamp()) > 120):
+                            issues.append(f"Contract {p.contract_id} does not match journal intent")
+                            continue
+                    if c.get("entry_tick") is not None:
+                        p.broker_entry_price = float(c["entry_tick"])
                     if c.get("is_sold"):
                         p.pnl = float(c["profit"])
                         spot = c.get("exit_tick") or c.get("exit_spot") or c.get("sell_spot")

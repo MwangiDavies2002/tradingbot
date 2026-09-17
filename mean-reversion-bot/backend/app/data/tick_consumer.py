@@ -167,7 +167,12 @@ class TickConsumer:
         import time
         boundary = int(time.time()) // timeframe * timeframe
         candles = [c for c in candles if c.timestamp < boundary]
+        from app.data.validation import validate_candles
+        quality = validate_candles(candles, timeframe)
+        if quality["gaps"]:
+            raise ValueError("Historical feed has gaps; repair data before trading")
         self._forming.pop(key, None)
+        self.manager.data_errors.pop(symbol, None)
         self._buffers[key] = deque(candles, maxlen=self.buffer_size)
         logger.info("Bootstrap complete: %d candles loaded for %s %s",
                     len(candles), symbol, TIMEFRAME_LABELS.get(timeframe, f"{timeframe}s"))
@@ -265,6 +270,11 @@ class TickConsumer:
         ohlc = msg.get("ohlc")
         if not ohlc:
             return
+        import time
+        tick_epoch = int(ohlc.get("epoch", 0))
+        if tick_epoch <= 0 or abs(time.time() - tick_epoch) > 30:
+            logger.error("Stale candle update; entries skipped for %s", symbol)
+            return
 
         # Deriv sends the candle's open epoch; a new epoch = new completed candle
         candle_epoch = int(ohlc.get("open_time", ohlc.get("epoch", 0)))
@@ -286,6 +296,8 @@ class TickConsumer:
             close     = float(ohlc.get("close", 0)),
             volume    = float(ohlc.get("volume", 0)),
         )
+        from app.data.validation import validate_candles
+        validate_candles([new_candle])
 
         # Monitor existing positions on every update, but evaluate entries only
         # using the previous candle after a new candle begins.
@@ -293,6 +305,11 @@ class TickConsumer:
         self._forming[key] = new_candle
         if previous is None or candle_epoch == previous.timestamp:
             return
+        if candle_epoch - previous.timestamp != timeframe:
+            self.manager.data_errors[symbol] = f"Market-data gap for {symbol}; rebootstrap required"
+            self.manager.ready = False
+            self.manager.recovery_error = "Market-data gap; rebootstrap required"
+            raise ValueError("Live candle gap detected; rebootstrap required")
         new_candle = previous
         if self._buffers[key] and new_candle.timestamp <= self._buffers[key][-1].timestamp:
             return
@@ -345,11 +362,7 @@ class TickConsumer:
             for p in open_positions:
                 if p.symbol == info.symbol:
                     active_pos = p
-                if hasattr(p, 'risk_pct') and p.risk_pct:
-                    total_risk += p.risk_pct
-                elif p.stake > 0:
-                    # Fallback if risk_pct not on object
-                    total_risk += (p.stake * 100 / self.engine.sizer.account_balance) / 100
+                total_risk += self.manager._risk(p) / max(self.engine.sizer.account_balance, 1)
 
             decision: TradeDecision = self.engine.evaluate(
                 candles         = candles,
@@ -366,6 +379,11 @@ class TickConsumer:
             return
 
         # Publish signal snapshot to Redis regardless of trade decision
+        import hashlib
+        from dataclasses import asdict
+        strategy_hash = hashlib.sha256(json.dumps(asdict(self.engine.cfg), sort_keys=True).encode()).hexdigest()
+        if self.manager.store:
+            await self.manager.store.log_signal(decision, strategy_hash)
         await self._publish_signal(info.symbol, info.tf_label, decision)
 
         if decision.should_trade:
@@ -374,7 +392,9 @@ class TickConsumer:
             self._cooldown[key] = self.cooldown_bars  # Reset cooldown
 
             logger.info("🔔 SIGNAL: %s", decision.log_summary())
-            await self.manager.execute(decision)
+            identity = f"{self.manager.store.scope}:{info.symbol}:{info.timeframe}:{candles[-1].timestamp}:{decision.direction}"
+            fingerprint = hashlib.sha256(identity.encode()).hexdigest()
+            await self.manager.execute(decision, signal_key=fingerprint, strategy_hash=strategy_hash)
         else:
             logger.debug("No trade: %s %s — %s",
                          info.symbol, info.tf_label, decision.reason)

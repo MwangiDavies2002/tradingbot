@@ -225,12 +225,12 @@ class AlertManager:
             body=body,
         ))
 
-    async def bot_started(self, balance: float, symbols: list[str]) -> None:
+    async def bot_started(self, balance: float, symbols: list[str], demo: bool = True) -> None:
         """Alert when the bot starts up."""
         body = (
             f"Balance:  ${balance:.2f}\n"
             f"Symbols:  {', '.join(symbols)}\n"
-            f"Mode:     LIVE TRADING"
+            f"Mode:     {'DEMO' if demo else 'LIVE'} — worker online; check entry controls"
         )
         await self.send(AlertMessage(
             level=AlertLevel.SUCCESS,

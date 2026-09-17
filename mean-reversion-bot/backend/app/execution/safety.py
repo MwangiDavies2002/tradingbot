@@ -5,7 +5,7 @@ from datetime import datetime
 
 from sqlalchemy import select, text
 
-from app.database.models import ExecutionRecord, Trade, TradingControl
+from app.database.models import ExecutionRecord, Trade, TradingControl, DecisionReceipt, Signal
 
 
 def account_scope(settings):
@@ -105,6 +105,8 @@ class ExecutionStore:
                 ExecutionRecord.scope == self.scope))).scalars().all()
             row = await control_row(db, self.scope)
             state = dict(row.risk_state)
+            if records and not state:
+                raise RuntimeError("Journal exists without persisted risk state; operator review required")
             await db.commit()
             return [dict(r.payload) for r in records], state
 
@@ -114,6 +116,8 @@ class ExecutionStore:
         async with self.sessions() as db:
             record = await db.get(ExecutionRecord, position.trade_id)
             if record is None:
+                if position.signal_key:
+                    db.add(DecisionReceipt(fingerprint=position.signal_key, trade_id=position.trade_id))
                 record = ExecutionRecord(trade_id=position.trade_id, scope=self.scope)
                 db.add(record)
             record.payload = payload
@@ -133,6 +137,21 @@ class ExecutionStore:
             trade.pnl_pct = position.pnl_pct
             row = await control_row(db, self.scope)
             row.risk_state = cb.snapshot()
+            await db.commit()
+
+    async def has_signal(self, fingerprint):
+        async with self.sessions() as db:
+            return await db.get(DecisionReceipt, fingerprint) is not None
+
+    async def log_signal(self, decision, strategy_hash):
+        breakdown = decision.confluence.breakdown.to_dict() if decision.confluence else {}
+        async with self.sessions() as db:
+            db.add(Signal(symbol=decision.symbol, timeframe=decision.timeframe,
+                direction=decision.direction, score=decision.confluence_score,
+                fired=decision.should_trade, reason=decision.reason[:128], eval_ms=decision.eval_ms,
+                breakdown_json={"scope": self.scope, "strategy_hash": strategy_hash,
+                                "is_safety_order": decision.is_safety_order,
+                                "order_index": decision.order_index, "score_breakdown": breakdown}))
             await db.commit()
 
     async def heartbeat(self, cb, error):

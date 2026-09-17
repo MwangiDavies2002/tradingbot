@@ -24,7 +24,9 @@ test('single Bollinger indicator supports one point', () => {
 test('context-only, invalid and unsupported configurations are rejected', () => {
   for (const value of [0, -1, 1.5, 21, NaN]) assert.ok(selectionError(DEFAULT_SELECTION, value))
   assert.match(selectionError({ use_volume: true }, 1), /directional/)
-  assert.match(selectionError({ use_lsl: true, use_bb: true }, 1), /does not implement LSL/)
+  assert.match(selectionError({ use_time_series_nn: true, use_bb: true }, 1), /does not implement TIME_SERIES_NN/)
+  assert.match(selectionError({ use_news: true, use_bb: true }, 1), /does not implement NEWS/)
+  assert.equal(selectionError({ use_lsl: true, use_bb: true }, 1), null)
 })
 test('indicator toggles are exported and the symbol is restricted', () => {
   const pine = buildPineStrategy({ use_rsi: true }, 2)
@@ -33,4 +35,6 @@ test('indicator toggles are exported and the symbol is restricted', () => {
   assert.ok(pine.includes('syminfo.tickerid != "DERIV:VOLATILITY_75_1S_INDEX"'))
   assert.ok(pine.includes('barstate.isconfirmed'))
   assert.ok(pine.includes('strategy.exit('))
+  assert.ok(buildPineStrategy({ use_rsi: true }, 2, 'BOOM500').includes('syminfo.tickerid != "DERIV:BOOM_500_INDEX"'))
+  assert.throws(() => buildPineStrategy({ use_rsi: true }, 2, 'bad"symbol'), /Invalid instrument/)
 })

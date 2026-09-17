@@ -3,17 +3,20 @@ export const tradingViewSymbol = (symbol: string) => TV_SYMBOLS[symbol] || `DERI
 export const tradingViewUrl = (symbol = '1HZ75V') => `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(tradingViewSymbol(symbol))}`
 export const TV_SYMBOL = tradingViewSymbol('1HZ75V')
 export const TV_URL = tradingViewUrl()
-export const TV_SUPPORTED = ['use_zscore', 'use_rsi', 'use_bb', 'use_vwap', 'use_stoch', 'use_volume', 'use_news']
+export const TV_SUPPORTED = ['use_zscore', 'use_rsi', 'use_bb', 'use_vwap', 'use_stoch', 'use_volume', 'use_lsl', 'use_smc', 'use_hurst', 'use_linear_regression', 'use_day_levels', 'use_candle_reversal', 'use_candle_continuation', 'use_crt', 'use_tree_model', 'use_smt']
 export type Selection = Record<string, boolean>
 export const DEFAULT_SELECTION: Selection = {
   use_zscore: true, use_rsi: true, use_bb: true, use_vwap: false,
   use_stoch: false, use_volume: false, use_lsl: false, use_smc: false, use_hurst: false,
   use_news: false,
 }
-export const WEIGHTS: Record<string, number> = { use_zscore: 3, use_rsi: 2, use_bb: 1, use_vwap: 1, use_stoch: 1, use_volume: 1 }
+export const WEIGHTS: Record<string, number> = { use_zscore: 3, use_rsi: 2, use_bb: 1, use_vwap: 1, use_stoch: 1, use_volume: 1, use_lsl: 2, use_tree_model: 3, use_smt: 2 }
 
 export function selectionError(selection: Selection, threshold: number): string | null {
   if (!Object.values(selection).some(Boolean)) return 'Select at least one strategy.'
+  const unsupported = Object.entries(selection).find(([key, enabled]) => enabled && !TV_SUPPORTED.includes(key))
+  if (unsupported) return `TradingView does not implement ${unsupported[0].replace(/^use_/, '').toUpperCase()} in this export.`
+  if (!Object.entries(selection).some(([key, enabled]) => enabled && !['use_volume', 'use_hurst'].includes(key))) return 'Select a directional indicator; context filters cannot create entries alone.'
   const maximum = Object.entries(selection).reduce((sum, [key, enabled]) => sum + (enabled ? (WEIGHTS[key] || 1) : 0), 0)
   if (!Number.isInteger(threshold) || threshold < 1 || threshold > maximum) return `Choose a threshold from 1 to ${maximum} for this selection.`
   return null
@@ -22,6 +25,8 @@ export function selectionError(selection: Selection, threshold: number): string 
 export function buildPineStrategy(selection: Selection, threshold: number, symbol = '1HZ75V', startingCapital = 10000): string {
   const error = selectionError(selection, threshold)
   if (error) throw new Error(error)
+  if (!Number.isFinite(startingCapital) || startingCapital <= 0) throw new Error('Starting capital must be positive.')
+  if (!/^[A-Za-z0-9_:. -]+$/.test(symbol)) throw new Error('Invalid instrument symbol.')
   const flag = (key: string) => selection[key] ? 'true' : 'false'
   return `//@version=6
 // Strategy Lab TradingView companion: simulated orders, never broker execution.
@@ -29,6 +34,8 @@ export function buildPineStrategy(selection: Selection, threshold: number, symbo
 // conservative proxy, not a byte-for-byte execution-equivalent port.
 // Recreate TradingView alerts after changing any inputs; alerts retain old settings.
 strategy("Dynamic Confluence Lab - ${symbol}", overlay=true, pyramiding=0, initial_capital=${startingCapital}, default_qty_type=strategy.fixed, default_qty_value=1, calc_on_every_tick=false, process_orders_on_close=false, commission_type=strategy.commission.percent, commission_value=0.02, slippage=2)
+if syminfo.tickerid != "${tradingViewSymbol(symbol)}"
+    runtime.error("Use the instrument selected in Strategy Lab")
 
 threshold = input.int(${threshold}, "Minimum weighted score", minval=1, maxval=20, group="Confluence")
 useZ = input.bool(${flag('use_zscore')}, "Z-Score (2 points; 3 if extreme)", group="Indicators")

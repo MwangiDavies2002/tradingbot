@@ -85,7 +85,7 @@ class BotRunner:
         max_retries = 5
         retry_delay = 10 # seconds
 
-        while retry_count < max_retries:
+        while retry_count < max_retries and not self._shutdown_event.is_set():
             try:
                 await self._setup()
                 await self._main_loop()
@@ -106,7 +106,11 @@ class BotRunner:
                 
                 if retry_count < max_retries:
                     logger.info("Recovery Mode: Waiting %d seconds before restart...", retry_delay)
-                    await asyncio.sleep(retry_delay)
+                    try:
+                        await asyncio.wait_for(self._shutdown_event.wait(), timeout=retry_delay)
+                        break
+                    except asyncio.TimeoutError:
+                        pass
                     # Reset components for clean setup
                     self.client = None
                     self.signal_engine = None
@@ -270,6 +274,7 @@ class BotRunner:
         await self.alert_manager.bot_started(
             balance = self.client.state.balance,
             symbols = settings.ACTIVE_SYMBOLS,
+            demo = settings.DERIV_DEMO,
         )
 
         self._running = True
@@ -290,9 +295,11 @@ class BotRunner:
             await asyncio.sleep(2)
             try:
                 if (self.client.state.authenticated and
-                        self.client.state.connect_time != self._subscribed_connection):
+                        (self.client.state.connect_time != self._subscribed_connection or self.order_manager.data_errors)):
                     self.order_manager.ready = False
                     from app.config import settings
+                    if self.client.state.connect_time == self._subscribed_connection:
+                        await self.tick_consumer.unsubscribe_all()
                     for symbol in settings.ACTIVE_SYMBOLS:
                         await self.tick_consumer.bootstrap(symbol, settings.PRIMARY_TIMEFRAME,
                                                            settings.CANDLE_BUFFER_SIZE)
@@ -392,6 +399,11 @@ def _configure_logging(level: str = "INFO") -> None:
         datefmt = "%Y-%m-%d %H:%M:%S",
         stream  = sys.stdout,
     )
+    from app.config import settings
+    if settings.is_production:
+        from pythonjsonlogger.jsonlogger import JsonFormatter
+        for handler in logging.getLogger().handlers:
+            handler.setFormatter(JsonFormatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
     # Quiet noisy third-party loggers
     for noisy in ("websockets", "asyncio", "sqlalchemy", "httpx", "urllib3"):
         logging.getLogger(noisy).setLevel(logging.WARNING)
