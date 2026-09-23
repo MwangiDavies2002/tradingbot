@@ -223,6 +223,12 @@ def create_app() -> FastAPI:
     app.include_router(metrics.router, prefix="/api", tags=["Monitoring"])
 
     app.include_router(backtest.router, prefix="/api/backtest", tags=["Backtest"])
+    from app.api.routes import institutional
+    app.include_router(institutional.router, prefix="/api/institutional", tags=["Institutional Research"])
+    from app.api.routes import research_registry
+    app.include_router(research_registry.router, prefix="/api/research-registry", tags=["Research Registry"])
+    from app.api.routes import instrument_catalog
+    app.include_router(instrument_catalog.router, prefix="/api/instruments", tags=["Instrument Catalog"])
     app.include_router(news.router, prefix="/api/news", tags=["News"])
     app.include_router(strategies.router, prefix="/api/strategies", tags=["Strategies"])
     if os.name == "nt" and not RUNNING_ON_VERCEL:

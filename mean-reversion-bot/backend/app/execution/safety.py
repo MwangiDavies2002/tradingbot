@@ -6,15 +6,23 @@ from datetime import datetime
 from sqlalchemy import select, text
 
 from app.database.models import ExecutionRecord, Trade, TradingControl, DecisionReceipt, Signal
+from app.execution.broker_registry import validate_broker, require_execution_broker
 
 
 def account_scope(settings):
+    broker = validate_broker(getattr(settings, "BROKER", "deriv"))
+    if broker != "deriv":
+        account = getattr(settings, f"{broker.upper()}_ACCOUNT_ID", "")
+        if not account:
+            raise ValueError(f"{broker.upper()}_ACCOUNT_ID must identify the intended broker account")
+        return f"{broker}:{getattr(settings, f'{broker.upper()}_ENVIRONMENT', 'live')}:{account}"
     if not settings.DERIV_ACCOUNT_ID:
         raise ValueError("DERIV_ACCOUNT_ID must identify the intended broker account")
     return f"deriv:{'demo' if settings.DERIV_DEMO else 'live'}:{settings.DERIV_ACCOUNT_ID}"
 
 
 def validate_account(settings, state):
+    require_execution_broker(settings)
     account_scope(settings)
     if not state.connected or not state.authenticated:
         raise RuntimeError("Broker is not authenticated")

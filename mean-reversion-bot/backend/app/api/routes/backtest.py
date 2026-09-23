@@ -12,7 +12,7 @@ from dataclasses import fields
 from typing import Any, List, Optional, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -253,7 +253,14 @@ class BacktestRequest(BaseModel):
     use_candle_reversal: bool = False
     use_candle_continuation: bool = False
     use_crt: bool = False
-    model_strategy: Literal['none', 'linear_regression', 'tree', 'time_series_nn'] = 'none'
+    model_strategy: Literal['none', 'linear_regression', 'tree', 'time_series_nn', 'logistic_regression'] = 'none'
+
+    @model_validator(mode="after")
+    def validate_model_selection(self):
+        EngineConfig(model_strategy=self.model_strategy,
+                     use_linear_regression=self.use_linear_regression,
+                     use_time_series_nn=self.use_time_series_nn)
+        return self
 
     min_confluence: int = Field(6, ge=1, le=20)
     strategy_versions: dict[str, Literal['python_mt5', 'pine']] = Field(default_factory=dict)
@@ -304,7 +311,7 @@ async def run_backtest(req: BacktestRequest, request: Request, db: AsyncSession 
                 use_volume=req.use_volume,
                 use_hurst=req.use_hurst,
                 use_linear_regression=req.use_linear_regression,
-                use_tree_model=req.use_tree_model,
+                use_tree_model=req.use_tree_model or req.model_strategy == "tree",
                 use_time_series_nn=req.use_time_series_nn,
                 use_smt=req.use_smt,
                 use_day_levels=req.use_day_levels,
@@ -403,8 +410,8 @@ async def run_research(req: BacktestRequest):
     if len(candles) > 10000:
         raise HTTPException(422, "Research API accepts at most 10,000 candles")
     names = {f.name for f in fields(EngineConfig)}
-    config = EngineConfig(**{k: v for k, v in req.model_dump().items() if k in names})
     try:
+        config = EngineConfig(**{k: v for k, v in req.model_dump().items() if k in names})
         return await asyncio.to_thread(research_report, candles, config, req.symbols[0], req.timeframe,
             initial_balance=req.initial_balance, slippage_pct=req.slippage_pct,
             spread_pips=req.spread_price, commission=req.commission)

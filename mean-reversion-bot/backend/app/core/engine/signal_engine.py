@@ -190,6 +190,16 @@ class EngineConfig:
     cb_daily_dd:        float = 0.05
     cb_weekly_dd:       float = 0.10
 
+    def __post_init__(self):
+        if self.use_linear_regression or self.use_time_series_nn or self.model_strategy in (
+            "linear_regression", "time_series_nn"
+        ):
+            raise ValueError("Linear regression and neural-net execution are not implemented; use logistic_regression")
+        if self.model_strategy not in {"none", "tree", "logistic_regression"}:
+            raise ValueError(f"Unsupported model strategy: {self.model_strategy}")
+        if self.model_strategy == "tree":
+            self.use_tree_model = True
+
 
 # ─── Trade Decision ───────────────────────────────────────────────────────────
 
@@ -444,6 +454,14 @@ class SignalEngine:
             ema50 = sum(recent) / len(recent)
             ema200 = sum(long_recent) / len(long_recent)
             direction, _ = classify(zs_result.value, rsi_result.value, atr, candles[-1].close, ema50, ema200)
+
+        # Leakage-safe ML inference shared by backtest and demo/live paths.
+        if self.cfg.model_strategy == "logistic_regression":
+            from app.core.engine.ml_model import predict
+            ml_direction, _ = predict(candles)
+            if ml_direction is None:
+                return _no_trade("model_abstained")
+            direction = ml_direction
 
         # News Impact directionality: If news impact is high and no other direction found,
         # we still allow evaluation for news-only setups.

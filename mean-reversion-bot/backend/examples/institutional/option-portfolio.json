@@ -1,0 +1,55 @@
+{
+  "currency": "USD",
+  "positions": [
+    {
+      "position_id": "synthetic-long-call",
+      "underlying": "SYNTHETIC",
+      "currency": "USD",
+      "contracts": 2,
+      "multiplier": 100,
+      "option": {
+        "kind": "call",
+        "spot": 100,
+        "strike": 100,
+        "years": 0.5,
+        "volatility": 0.25,
+        "rate": 0.04,
+        "dividend_yield": 0.01
+      }
+    },
+    {
+      "position_id": "synthetic-short-call",
+      "underlying": "SYNTHETIC",
+      "currency": "USD",
+      "contracts": -2,
+      "multiplier": 100,
+      "option": {
+        "kind": "call",
+        "spot": 100,
+        "strike": 110,
+        "years": 0.5,
+        "volatility": 0.27,
+        "rate": 0.04,
+        "dividend_yield": 0.01
+      }
+    }
+  ],
+  "scenarios": [
+    {
+      "name": "unchanged",
+      "shocks": {
+        "SYNTHETIC": {}
+      }
+    },
+    {
+      "name": "synthetic-down-vol-up",
+      "elapsed_days": 7,
+      "shocks": {
+        "SYNTHETIC": {
+          "spot_return": -0.15,
+          "volatility_change": 0.1
+        }
+      }
+    }
+  ]
+}

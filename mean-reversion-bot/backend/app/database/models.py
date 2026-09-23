@@ -32,13 +32,82 @@ from datetime import datetime
 
 from sqlalchemy import (
     BigInteger, Boolean, Column, DateTime, Float, Index,
-    Integer, JSON, String, Text, UniqueConstraint,
+    Integer, JSON, String, Text, UniqueConstraint, ForeignKey, DDL, event,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped
 
 
 class Base(DeclarativeBase):
     pass
+
+
+class ResearchFamily(Base):
+    __tablename__ = "research_families"
+    family_id = Column(String(32), primary_key=True)
+    name = Column(String(128), nullable=False, index=True)
+    hypothesis = Column(Text, nullable=False)
+    trial_keys = Column(JSON, nullable=False)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_by_role = Column(String(16), nullable=False)
+
+
+class ResearchRun(Base):
+    __tablename__ = "research_runs"
+    run_id = Column(String(32), primary_key=True)
+    family_id = Column(String(32), ForeignKey("research_families.family_id"), nullable=False, index=True)
+    trial_key = Column(String(64), nullable=False)
+    name = Column(String(128), nullable=False)
+    operation = Column(String(64), nullable=False, index=True)
+    dataset_version = Column(String(256), nullable=False)
+    parent_run_id = Column(String(32), ForeignKey("research_runs.run_id"), nullable=True)
+    request_hash = Column(String(64), nullable=False)
+    implementation_hash = Column(String(64), nullable=False)
+    runtime = Column(JSON, nullable=False)
+    input_payload = Column(JSON, nullable=False)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+    created_by_role = Column(String(16), nullable=False)
+    __table_args__ = (UniqueConstraint("family_id", "trial_key", name="uq_research_family_trial"),)
+
+
+class ResearchOutcome(Base):
+    __tablename__ = "research_outcomes"
+    run_id = Column(String(32), ForeignKey("research_runs.run_id"), primary_key=True)
+    status = Column(String(16), nullable=False, index=True)
+    report = Column(JSON, nullable=True)
+    artifact_hash = Column(String(64), nullable=True)
+    error = Column(Text, nullable=True)
+    completed_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    completed_by_role = Column(String(16), nullable=False)
+
+
+class InstrumentRevision(Base):
+    __tablename__ = "instrument_revisions"
+    spec_hash = Column(String(64), primary_key=True)
+    instrument_id = Column(String(128), nullable=False, index=True)
+    venue = Column(String(64), nullable=False, index=True)
+    venue_symbol = Column(String(64), nullable=False)
+    revision = Column(String(64), nullable=False)
+    spec = Column(JSON, nullable=False)
+    registered_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    registered_by_role = Column(String(16), nullable=False)
+    __table_args__ = (UniqueConstraint("venue", "venue_symbol", "revision", name="uq_instrument_venue_revision"),)
+
+
+# Enforce append-only records for development create_all as well as migrations.
+for _table in (ResearchFamily.__table__, ResearchRun.__table__, ResearchOutcome.__table__, InstrumentRevision.__table__):
+    for _verb in ("UPDATE", "DELETE"):
+        event.listen(_table, "after_create", DDL(
+            f"CREATE TRIGGER {_table.name}_no_{_verb.lower()} BEFORE {_verb} ON {_table.name} "
+            "BEGIN SELECT RAISE(ABORT, 'Research records are append-only'); END"
+        ).execute_if(dialect="sqlite"))
+    event.listen(_table, "after_create", DDL(
+        "CREATE OR REPLACE FUNCTION reject_research_mutation() RETURNS trigger LANGUAGE plpgsql AS $$ "
+        "BEGIN RAISE EXCEPTION 'Research records are append-only'; END; $$"
+    ).execute_if(dialect="postgresql"))
+    event.listen(_table, "after_create", DDL(
+        f"CREATE TRIGGER {_table.name}_immutable BEFORE UPDATE OR DELETE ON {_table.name} "
+        "FOR EACH ROW EXECUTE FUNCTION reject_research_mutation()"
+    ).execute_if(dialect="postgresql"))
 
 
 class TradingControl(Base):

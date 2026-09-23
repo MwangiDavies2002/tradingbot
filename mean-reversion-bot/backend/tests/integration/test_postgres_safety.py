@@ -8,8 +8,35 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from app.database.models import Base
 from app.execution.safety import ExecutionStore, control_row
+from sqlalchemy.exc import DatabaseError
 
 pytestmark = pytest.mark.skipif(not os.getenv("TEST_POSTGRES_URL"), reason="Disposable PostgreSQL URL not configured")
+
+
+@pytest.mark.asyncio
+async def test_registry_concurrency_and_immutability(pg):
+    from app.institutional.registry import FamilyRequest, RunRequest, declare_family, reserve_run, finish_run
+    _, sessions = pg
+    family_id = uuid.uuid4().hex
+    async with sessions() as db:
+        await declare_family(db, FamilyRequest(family_id=family_id, name="PG test", hypothesis="test", trial_keys=["a"]), "operator")
+    request = RunRequest(family_id=family_id, trial_key="a", name="test", operation="option",
+                         dataset_version="synthetic", payload={})
+    async def reserve():
+        async with sessions() as db:
+            run, created = await reserve_run(db, request, "operator")
+            return run.run_id, created
+    results = await asyncio.gather(reserve(), reserve())
+    assert len({r[0] for r in results}) == 1
+    assert sum(r[1] for r in results) == 1
+    async with sessions() as db:
+        await finish_run(db, results[0][0], "operator", error="synthetic invalid input")
+    for table, column in (("research_families", "name"), ("research_runs", "name"), ("research_outcomes", "status")):
+        for statement in (f"UPDATE {table} SET {column}='changed'", f"DELETE FROM {table}"):
+            async with sessions() as db:
+                with pytest.raises(DatabaseError, match="append-only"):
+                    await db.execute(text(statement))
+                await db.rollback()
 
 
 @pytest_asyncio.fixture

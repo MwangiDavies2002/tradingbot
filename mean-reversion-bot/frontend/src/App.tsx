@@ -20,6 +20,8 @@ import Backtest from './pages/Backtest'
 import MT5Panel from './components/MT5Panel'
 import AccessGate from './components/AccessGate'
 import Research from './pages/Research'
+import Institutional from './pages/Institutional'
+import InstrumentCatalog from './pages/InstrumentCatalog'
 
 const NAV = [
   { to: '/',         label: 'Dashboard', icon: LayoutDashboard },
@@ -27,6 +29,8 @@ const NAV = [
   { to: '/signals',  label: 'Deriv Signals', icon: Activity    },
   { to: '/backtest', label: 'Strategy Lab', icon: FlaskConical },
   { to: '/research', label: 'Research validation', icon: FlaskConical },
+  { to: '/institutional', label: 'Institutional lab', icon: FlaskConical },
+  { to: '/instruments', label: 'Instrument catalog', icon: SettingsIcon },
   { to: '/mt5', label: 'MT5 Demo & Journal', icon: TrendingUp },
   { to: '/risk',     label: 'Deriv Risk', icon: Shield         },
   { to: '/settings', label: 'Settings',  icon: SettingsIcon    },
@@ -53,22 +57,24 @@ export default function App() {
       <div className="flex h-[calc(100vh-36px)] bg-slate-900 text-slate-100 overflow-hidden">
 
         {/* ── Sidebar ─────────────────────────────────────────── */}
-        <aside className="w-56 flex-shrink-0 bg-slate-800 border-r border-slate-700 flex flex-col">
+        <aside className="w-16 md:w-56 flex-shrink-0 bg-slate-800 border-r border-slate-700 flex flex-col">
           {/* Logo */}
           <div className="px-5 py-5 border-b border-slate-700">
             <div className="flex items-center gap-2">
               <Zap className="w-5 h-5 text-cyan-400" />
-              <span className="font-bold text-sm text-white">MR Bot</span>
+              <span className="hidden md:inline font-bold text-sm text-white">MR Bot</span>
             </div>
-            <p className="text-xs text-slate-500 mt-0.5">Deriv · Synthetic Indices</p>
+            <p className="hidden md:block text-xs text-slate-500 mt-0.5">Deriv · Synthetic Indices</p>
           </div>
 
           {/* Nav */}
-          <nav className="flex-1 px-3 py-4 space-y-1">
+          <nav className="flex-1 overflow-y-auto px-1 md:px-3 py-4 space-y-1">
             {NAV.map(({ to, label, icon: Icon }) => (
               <NavLink
                 key={to}
                 to={to}
+                aria-label={label}
+                title={label}
                 end={to === '/'}
                 className={({ isActive }) =>
                   `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
@@ -79,25 +85,27 @@ export default function App() {
                 }
               >
                 <Icon className="w-4 h-4 flex-shrink-0" />
-                {label}
+                <span className="hidden md:inline">{label}</span>
               </NavLink>
             ))}
           </nav>
 
           {/* Footer */}
-          <div className="px-5 py-4 border-t border-slate-700">
+          <div className="hidden md:block px-5 py-4 border-t border-slate-700">
             <p className="text-xs text-slate-500">v1.0.0 · protected controls</p>
           </div>
         </aside>
 
         {/* ── Main Content ─────────────────────────────────────── */}
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 min-w-0 overflow-y-auto">
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/trades"   element={<Trades />} />
             <Route path="/signals"  element={<Signals />} />
             <Route path="/backtest" element={<Backtest />} />
             <Route path="/research" element={<Research />} />
+            <Route path="/institutional" element={<Institutional />} />
+            <Route path="/instruments" element={<InstrumentCatalog />} />
             <Route path="/mt5" element={<div className="p-6"><MT5Panel /></div>} />
             <Route path="/risk"     element={<Risk />} />
             <Route path="/settings" element={<Settings />} />

@@ -7,6 +7,67 @@ checkboxes are not evidence that the original roadmap is complete.
 
 ## Implementation audit
 
+### Institutional research extension - 2026-09-23
+
+The Institutional lab adds seventeen **offline** analyses for instrument checks,
+timestamped currency conversion, book replay, point-in-
+time features, routing/schedules/costs, portfolio risk/allocation, model experiments,
+multiple testing, European option portfolio Greeks/full-repricing scenarios and
+inventory-aware market making and explicit order-lifecycle scenarios with inventory
+reservations, partial fills and delayed cancellation. Lifecycle scenarios remain
+separate from broker execution and the automatic quoting simulator.
+The extension has no broker execution authority. Full backend verification now
+reports 211 passed and 3 PostgreSQL skips; frontend build and TradingView tests
+pass. Visual verification is pending because the browser tool could not start.
+
+See [INSTITUTIONAL_LAB.md](INSTITUTIONAL_LAB.md) for operation contracts and
+[CONTINUATION_REPORT.md](CONTINUATION_REPORT.md) for the detailed handoff, prior
+changes, test evidence and remaining production/data work. This extension does
+not complete the deployment and empirical-validation requirements below.
+
+The durable research registry now retains declared trial families, requests and
+successful/failed/aborted outcomes with search, lineage and integrity-checked
+exports. The instrument catalog retains immutable supplied revisions and supports
+single-venue offline plans pinned to exact specification hashes, with session,
+grid, quantity and freshness checks. Migration head is `0003_instrument_catalog`; production startup requires
+it. Back up and migrate the deployment database before using the registry.
+This implementation tested migrations on disposable databases only; it did not
+migrate the configured application database. See INSTITUTIONAL_LAB.md for the
+pending-run recovery procedure and append-only migration/rollback limitations.
+
+### Broker/model continuation - 2026-09-23
+
+- Broker names are normalized and validated. OANDA and FXCM remain registry
+  placeholders: Start, worker setup, and account validation reject their
+  execution before using the Deriv adapter. OANDA credentials do not make its
+  execution adapter available.
+- The experimental classifier is explicitly selected with
+  `model_strategy="logistic_regression"` in the Python backtest/research API or
+  `EngineConfig`. It is not a linear regression or neural network; those Python
+  selections now return validation errors instead of silently running a different
+  model. The existing dashboard has no logistic-model selector.
+- Training requires 80 labeled examples after the 20-candle feature warmup
+  (101 closed candles). Inputs must have positive finite closes and strictly
+  increasing timestamps. The latest closed candle can complete a training label;
+  inference concerns the next candle. Model abstention blocks indicator fallback.
+  Scores are uncalibrated; the classifier has no empirical strategy validation.
+- Regression coverage checks unsupported broker startup, normalized account
+  scopes, model selection, sample counts, invalid history and abstention.
+  Backend verification: 69 passed, 2 PostgreSQL integration tests skipped;
+  targeted Ruff checks and `git diff --check` passed.
+  PostgreSQL deployment checks and forward demo validation remain outstanding.
+
+### Local verification — 2026-09-18
+
+- Backend suite: 54 passed, 2 PostgreSQL integration tests skipped. Docker's
+  Linux engine is unavailable locally; these skips are not deployment evidence.
+- Live-feed regressions cover closed-candle-only evaluation, duplicate updates,
+  stale/invalid updates, gap blocking, and clean unsubscribe/resubscribe state.
+  Unsubscribe now discards the unfinished candle as well as the history buffer.
+- Read-only inspection of `backend/data/local.db` found no stored candles.
+  Historical strategy validation therefore remains pending; no profitability
+  conclusions or live-trading authorization follow from the unit tests.
+
 | Phase | Implemented in the working tree | Validation still required |
 | --- | --- | --- |
 | 1 — Safety | Hashed admin/operator/viewer access keys; protected API and UI; account/mode checks; durable intents, positions and circuit breakers; stopped startup; SQL entry gate; restart reconciliation; cash, symbol and account exposure limits | Demo broker exercise; PostgreSQL ownership and kill-switch concurrency checks on deployment |
@@ -72,7 +133,7 @@ The expanding training window chooses among the selected confluence threshold
 and its neighbors. Each following test window is untouched by that selection.
 Indicator ablations and doubled-cost stress use the initial training half only.
 Monte Carlo bootstraps test-trade cash P&L and explicitly assumes independence.
-These diagnostics do not represent a fitted ML system or a tick-accurate simulator.
+These diagnostics do not by themselves validate a fitted ML model or a tick-accurate simulator.
 Scaling/trailing configurations are rejected by research until their simulator
 has validated parity with execution. Earlier descriptions of martingale risk
 bypasses are not a supported production behavior: all entries face execution limits.

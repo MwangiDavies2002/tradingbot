@@ -25,6 +25,7 @@ from app.database.models import BotEvent, ConfigEntry, EquitySnapshot, Signal, E
 from app.database.session import get_db
 from app.config import settings
 from app.execution.safety import account_scope, control_row
+from app.execution.broker_registry import broker_status, require_execution_broker
 
 
 def scope():
@@ -134,6 +135,7 @@ async def bot_status(db: AsyncSession = Depends(get_db)):
     latest_eq = eq_result.scalar_one_or_none()
 
     return {
+        "broker": broker_status(settings),
         "bot_running": bool(control.enabled and fresh and not control.recovery_error),
         "entries_enabled": control.enabled,
         "worker_online": fresh,
@@ -177,6 +179,10 @@ async def stop_bot(request: Request, db: AsyncSession = Depends(get_db)):
 @bot_control_router.post("/start")
 async def start_bot(request: Request, db: AsyncSession = Depends(get_db)):
     """Signal the bot to start (or resume after a pause)."""
+    try:
+        require_execution_broker(settings)
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from exc
     control = await control_row(db, scope(), lock=True)
     if not settings.DERIV_DEMO and not settings.LIVE_TRADING_ENABLED:
         raise HTTPException(409, "Live trading is disabled in server settings")

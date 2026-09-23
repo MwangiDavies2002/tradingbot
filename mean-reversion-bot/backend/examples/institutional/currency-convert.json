@@ -1,0 +1,9 @@
+{
+  "amount": "-100", "from_currency": "USD", "to_currency": "KES",
+  "as_of_ms": 200, "max_age_ms": 1000,
+  "fx": {
+    "base_currency": "USD", "quote_currency": "KES", "bid": "129", "ask": "130",
+    "event_ms": 100, "available_ms": 110,
+    "source": "Synthetic example; not a current exchange rate"
+  }
+}

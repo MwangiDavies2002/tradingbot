@@ -1,0 +1,18 @@
+{
+  "instrument": {
+    "instrument_id": "SYNTHETIC_GOLD", "venue": "SYNTHETIC_VENUE", "venue_symbol": "TEST_GOLD",
+    "revision": "example-1", "source": "Synthetic example; not a broker specification",
+    "product": "linear_contract", "underlying_unit": "troy_ounce", "quote_currency": "USD",
+    "contract_size": "100", "tick_size": "0.05", "quantity_step": "0.01", "min_quantity": "0.01",
+    "max_quantity": "10", "min_notional": "1", "published_ms": 50, "valid_from_ms": 100,
+    "valid_until_ms": 1000, "sessions": [{"open_ms": 100, "close_ms": 500}, {"open_ms": 600, "close_ms": 1000}]
+  },
+  "book": {
+    "venue": "SYNTHETIC_VENUE", "venue_symbol": "TEST_GOLD", "quote_currency": "USD",
+    "event_ms": 180, "available_ms": 190,
+    "bids": [{"price": "2000", "quantity": "0.02"}, {"price": "1999.95", "quantity": "0.05"}],
+    "asks": [{"price": "2000.05", "quantity": "0.01"}, {"price": "2000.10", "quantity": "0.03"}]
+  },
+  "side": "buy", "quantity": "0.03", "limit_price": "2000.10", "arrival_price": "2000",
+  "fee_bps": "2", "as_of_ms": 200, "max_age_ms": 1000
+}

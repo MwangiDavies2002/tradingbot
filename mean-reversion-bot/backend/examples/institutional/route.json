@@ -1,0 +1,7 @@
+{
+  "venues": [
+    {"book": {"venue": "SYNTHETIC_A", "symbol": "TEST", "currency": "USD", "event_ms": 100, "received_ms": 110, "sequence": 1, "bids": [{"price": 99, "size": 20}], "asks": [{"price": 101, "size": 10}]}, "fee_bps": 2},
+    {"book": {"venue": "SYNTHETIC_B", "symbol": "TEST", "currency": "USD", "event_ms": 100, "received_ms": 110, "sequence": 1, "bids": [{"price": 99, "size": 20}], "asks": [{"price": 100.5, "size": 10}]}, "fee_bps": 5}
+  ],
+  "side": "buy", "quantity": 25, "arrival_price": 100, "as_of_ms": 120
+}

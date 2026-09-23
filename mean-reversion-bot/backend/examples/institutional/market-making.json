@@ -1,0 +1,8 @@
+{
+  "quote_config": {"fair_price": 100, "tick_size": 0.01, "inventory": 0, "inventory_limit": 10, "order_size": 2},
+  "start_ms": 0, "fill_fraction": 0.1,
+  "trades": [
+    {"event_ms": 100, "received_ms": 110, "aggressor": "sell", "price": 99.9, "size": 10, "fair_price": 100},
+    {"event_ms": 200, "received_ms": 210, "aggressor": "buy", "price": 100.2, "size": 10, "fair_price": 100.1}
+  ]
+}

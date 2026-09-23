@@ -123,7 +123,7 @@ async def create_tables() -> None:
         from sqlalchemy import text
         async with engine.connect() as conn:
             revision = await conn.scalar(text("SELECT version_num FROM alembic_version"))
-            if revision != "0001_baseline":
+            if revision != "0003_instrument_catalog":
                 raise RuntimeError("Run alembic upgrade head before starting production services")
         return
     async with engine.begin() as conn:

@@ -2,6 +2,8 @@
 import os
 
 os.environ.update({
+    "BROKER": "deriv", "OANDA_API_TOKEN": "", "OANDA_ACCOUNT_ID": "",
+    "OANDA_ENVIRONMENT": "practice",
     "DERIV_APP_ID": "test", "DERIV_API_TOKEN": "test-no-trading",
     "DERIV_ACCOUNT_ID": "VRTC123", "DERIV_DEMO": "true",
     "LIVE_TRADING_ENABLED": "false", "DATABASE_URL": "sqlite+aiosqlite:///:memory:",

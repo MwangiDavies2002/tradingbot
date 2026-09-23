@@ -132,6 +132,9 @@ class BotRunner:
     async def _setup(self) -> None:
         """Initialise every component in the correct dependency order."""
         from app.config import settings
+        from app.execution.broker_registry import require_execution_broker
+
+        require_execution_broker(settings)
         from app.core.engine.signal_engine import EngineConfig, SignalEngine
         from app.core.risk.circuit_breaker import CircuitBreaker
         from app.core.risk.position_sizer import PositionSizer

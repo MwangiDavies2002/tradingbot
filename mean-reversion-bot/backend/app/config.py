@@ -56,6 +56,11 @@ class Settings(BaseSettings):
     ENVIRONMENT:    str  = "development"    # development | staging | production
     DEBUG:          bool = False
     LOG_LEVEL:      str  = "INFO"
+    BROKER: str = "deriv"
+    OANDA_API_TOKEN: str = ""
+    OANDA_ACCOUNT_ID: str = ""
+    OANDA_ENVIRONMENT: str = "practice"
+    OANDA_API_URL: str = "https://api-fxpractice.oanda.com"
 
     # ── Deriv API ─────────────────────────────────────────────────────────────
     DERIV_APP_ID:       str = Field(..., description="Deriv application ID")
@@ -145,6 +150,20 @@ class Settings(BaseSettings):
         allowed = {"development", "staging", "production"}
         if v not in allowed:
             raise ValueError(f"ENVIRONMENT must be one of {allowed}")
+        return v
+
+    @field_validator("BROKER")
+    @classmethod
+    def validate_broker_name(cls, v: str) -> str:
+        from app.execution.broker_registry import validate_broker
+        return validate_broker(v)
+
+    @field_validator("OANDA_ENVIRONMENT")
+    @classmethod
+    def validate_oanda_environment(cls, v: str) -> str:
+        v = v.strip().lower()
+        if v not in {"practice", "live"}:
+            raise ValueError("OANDA_ENVIRONMENT must be practice or live")
         return v
 
     @field_validator("RISK_PCT", "MAX_RISK_PCT")

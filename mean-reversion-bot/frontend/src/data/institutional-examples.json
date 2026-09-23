@@ -1,0 +1,1565 @@
+{
+  "replay": {
+    "label": "Market depth",
+    "description": "Replay book updates and inspect spread, depth and feed age.",
+    "input": {
+      "events": [
+        {
+          "venue": "Venue A",
+          "symbol": "SYNTHETIC",
+          "currency": "USD",
+          "event_ms": 100,
+          "received_ms": 110,
+          "sequence": 1,
+          "bids": [
+            {
+              "price": 99,
+              "size": 20
+            }
+          ],
+          "asks": [
+            {
+              "price": 101,
+              "size": 10
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "features": {
+    "label": "Point-in-time features",
+    "description": "Use observations only after their publication time.",
+    "input": {
+      "observations": [
+        {
+          "name": "macro",
+          "event_ms": 100,
+          "available_ms": 200,
+          "value": 1.2,
+          "source": "synthetic"
+        }
+      ],
+      "decision_times": [
+        150,
+        250
+      ],
+      "max_age_ms": 500
+    }
+  },
+  "route": {
+    "label": "Execution routing",
+    "description": "Compare fees and displayed liquidity across venues.",
+    "input": {
+      "venues": [
+        {
+          "book": {
+            "venue": "Venue A",
+            "symbol": "SYNTHETIC",
+            "currency": "USD",
+            "event_ms": 100,
+            "received_ms": 110,
+            "sequence": 1,
+            "bids": [
+              {
+                "price": 99,
+                "size": 20
+              }
+            ],
+            "asks": [
+              {
+                "price": 101,
+                "size": 10
+              }
+            ]
+          },
+          "fee_bps": 2
+        },
+        {
+          "book": {
+            "venue": "Venue B",
+            "symbol": "SYNTHETIC",
+            "currency": "USD",
+            "event_ms": 100,
+            "received_ms": 110,
+            "sequence": 1,
+            "bids": [
+              {
+                "price": 99,
+                "size": 20
+              }
+            ],
+            "asks": [
+              {
+                "price": 100.5,
+                "size": 10
+              }
+            ]
+          },
+          "fee_bps": 5
+        }
+      ],
+      "side": "buy",
+      "quantity": 25,
+      "arrival_price": 100,
+      "as_of_ms": 120
+    }
+  },
+  "schedule": {
+    "label": "Order schedules",
+    "description": "Plan TWAP, VWAP or volume-participation slices.",
+    "input": {
+      "method": "twap",
+      "quantity": 100,
+      "start_ms": 0,
+      "interval_ms": 60000,
+      "buckets": 5
+    }
+  },
+  "cost": {
+    "label": "Transaction costs",
+    "description": "Separate spread, fees, slippage, impact and financing.",
+    "input": {
+      "notional": 10000,
+      "spread_bps": 10,
+      "fee_bps": 2,
+      "slippage_bps": 3,
+      "daily_volatility": 0.02,
+      "daily_volume_notional": 1000000,
+      "impact_coefficient": 0.5,
+      "annual_financing_rate": 0.0365,
+      "holding_days": 10
+    }
+  },
+  "risk": {
+    "label": "Portfolio risk",
+    "description": "Estimate historical tail losses and test exposure limits.",
+    "input": {
+      "currency": "USD",
+      "equity": 10000,
+      "positions": [
+        {
+          "symbol": "A",
+          "market_value": 2000,
+          "counterparty": "Venue A"
+        },
+        {
+          "symbol": "B",
+          "market_value": 2000,
+          "counterparty": "Venue B"
+        }
+      ],
+      "returns": {
+        "A": [
+          0.015,
+          -0.01,
+          0.015,
+          -0.01,
+          0.015,
+          -0.01,
+          0.015,
+          -0.01,
+          0.015,
+          -0.01,
+          0.015,
+          -0.01,
+          0.015,
+          -0.01,
+          0.015,
+          -0.01,
+          0.015,
+          -0.01,
+          0.015,
+          -0.01,
+          0.015,
+          -0.01,
+          0.015,
+          -0.01,
+          0.015,
+          -0.01,
+          0.015,
+          -0.01,
+          0.015,
+          -0.01,
+          0.015,
+          -0.01,
+          0.015,
+          -0.01,
+          0.015,
+          -0.01,
+          0.015,
+          -0.01,
+          0.015,
+          -0.01
+        ],
+        "B": [
+          -0.008,
+          0.005,
+          -0.008,
+          0.005,
+          -0.008,
+          0.005,
+          -0.008,
+          0.005,
+          -0.008,
+          0.005,
+          -0.008,
+          0.005,
+          -0.008,
+          0.005,
+          -0.008,
+          0.005,
+          -0.008,
+          0.005,
+          -0.008,
+          0.005,
+          -0.008,
+          0.005,
+          -0.008,
+          0.005,
+          -0.008,
+          0.005,
+          -0.008,
+          0.005,
+          -0.008,
+          0.005,
+          -0.008,
+          0.005,
+          -0.008,
+          0.005,
+          -0.008,
+          0.005,
+          -0.008,
+          0.005,
+          -0.008,
+          0.005
+        ]
+      },
+      "scenarios": {
+        "selloff": {
+          "A": -0.1,
+          "B": -0.15
+        }
+      }
+    }
+  },
+  "allocate": {
+    "label": "Portfolio allocation",
+    "description": "Allocate by inverse volatility with caps and a turnover budget.",
+    "input": {
+      "returns": {
+        "A": [
+          0.015,
+          -0.01,
+          0.015,
+          -0.01,
+          0.015,
+          -0.01,
+          0.015,
+          -0.01,
+          0.015,
+          -0.01,
+          0.015,
+          -0.01,
+          0.015,
+          -0.01,
+          0.015,
+          -0.01,
+          0.015,
+          -0.01,
+          0.015,
+          -0.01,
+          0.015,
+          -0.01,
+          0.015,
+          -0.01,
+          0.015,
+          -0.01,
+          0.015,
+          -0.01,
+          0.015,
+          -0.01,
+          0.015,
+          -0.01,
+          0.015,
+          -0.01,
+          0.015,
+          -0.01,
+          0.015,
+          -0.01,
+          0.015,
+          -0.01
+        ],
+        "B": [
+          -0.008,
+          0.005,
+          -0.008,
+          0.005,
+          -0.008,
+          0.005,
+          -0.008,
+          0.005,
+          -0.008,
+          0.005,
+          -0.008,
+          0.005,
+          -0.008,
+          0.005,
+          -0.008,
+          0.005,
+          -0.008,
+          0.005,
+          -0.008,
+          0.005,
+          -0.008,
+          0.005,
+          -0.008,
+          0.005,
+          -0.008,
+          0.005,
+          -0.008,
+          0.005,
+          -0.008,
+          0.005,
+          -0.008,
+          0.005,
+          -0.008,
+          0.005,
+          -0.008,
+          0.005,
+          -0.008,
+          0.005,
+          -0.008,
+          0.005
+        ]
+      },
+      "max_weight": 0.6,
+      "gross_budget": 1,
+      "max_turnover": 1
+    }
+  },
+  "experiment": {
+    "label": "Model experiments",
+    "description": "Fit ridge regression using chronological, label-available training data.",
+    "input": {
+      "name": "synthetic-example",
+      "feature_names": [
+        "synthetic_factor"
+      ],
+      "samples": [
+        {
+          "decision_ms": 0,
+          "features_available_ms": 0,
+          "target_available_ms": 200,
+          "features": [
+            -5
+          ],
+          "target_return": -0.005
+        },
+        {
+          "decision_ms": 100,
+          "features_available_ms": 100,
+          "target_available_ms": 300,
+          "features": [
+            -4
+          ],
+          "target_return": -0.004
+        },
+        {
+          "decision_ms": 200,
+          "features_available_ms": 200,
+          "target_available_ms": 400,
+          "features": [
+            -3
+          ],
+          "target_return": -0.003
+        },
+        {
+          "decision_ms": 300,
+          "features_available_ms": 300,
+          "target_available_ms": 500,
+          "features": [
+            -2
+          ],
+          "target_return": -0.002
+        },
+        {
+          "decision_ms": 400,
+          "features_available_ms": 400,
+          "target_available_ms": 600,
+          "features": [
+            -1
+          ],
+          "target_return": -0.001
+        },
+        {
+          "decision_ms": 500,
+          "features_available_ms": 500,
+          "target_available_ms": 700,
+          "features": [
+            0
+          ],
+          "target_return": 0
+        },
+        {
+          "decision_ms": 600,
+          "features_available_ms": 600,
+          "target_available_ms": 800,
+          "features": [
+            1
+          ],
+          "target_return": 0.001
+        },
+        {
+          "decision_ms": 700,
+          "features_available_ms": 700,
+          "target_available_ms": 900,
+          "features": [
+            2
+          ],
+          "target_return": 0.002
+        },
+        {
+          "decision_ms": 800,
+          "features_available_ms": 800,
+          "target_available_ms": 1000,
+          "features": [
+            3
+          ],
+          "target_return": 0.003
+        },
+        {
+          "decision_ms": 900,
+          "features_available_ms": 900,
+          "target_available_ms": 1100,
+          "features": [
+            4
+          ],
+          "target_return": 0.004
+        },
+        {
+          "decision_ms": 1000,
+          "features_available_ms": 1000,
+          "target_available_ms": 1200,
+          "features": [
+            -5
+          ],
+          "target_return": -0.005
+        },
+        {
+          "decision_ms": 1100,
+          "features_available_ms": 1100,
+          "target_available_ms": 1300,
+          "features": [
+            -4
+          ],
+          "target_return": -0.004
+        },
+        {
+          "decision_ms": 1200,
+          "features_available_ms": 1200,
+          "target_available_ms": 1400,
+          "features": [
+            -3
+          ],
+          "target_return": -0.003
+        },
+        {
+          "decision_ms": 1300,
+          "features_available_ms": 1300,
+          "target_available_ms": 1500,
+          "features": [
+            -2
+          ],
+          "target_return": -0.002
+        },
+        {
+          "decision_ms": 1400,
+          "features_available_ms": 1400,
+          "target_available_ms": 1600,
+          "features": [
+            -1
+          ],
+          "target_return": -0.001
+        },
+        {
+          "decision_ms": 1500,
+          "features_available_ms": 1500,
+          "target_available_ms": 1700,
+          "features": [
+            0
+          ],
+          "target_return": 0
+        },
+        {
+          "decision_ms": 1600,
+          "features_available_ms": 1600,
+          "target_available_ms": 1800,
+          "features": [
+            1
+          ],
+          "target_return": 0.001
+        },
+        {
+          "decision_ms": 1700,
+          "features_available_ms": 1700,
+          "target_available_ms": 1900,
+          "features": [
+            2
+          ],
+          "target_return": 0.002
+        },
+        {
+          "decision_ms": 1800,
+          "features_available_ms": 1800,
+          "target_available_ms": 2000,
+          "features": [
+            3
+          ],
+          "target_return": 0.003
+        },
+        {
+          "decision_ms": 1900,
+          "features_available_ms": 1900,
+          "target_available_ms": 2100,
+          "features": [
+            4
+          ],
+          "target_return": 0.004
+        },
+        {
+          "decision_ms": 2000,
+          "features_available_ms": 2000,
+          "target_available_ms": 2200,
+          "features": [
+            -5
+          ],
+          "target_return": -0.005
+        },
+        {
+          "decision_ms": 2100,
+          "features_available_ms": 2100,
+          "target_available_ms": 2300,
+          "features": [
+            -4
+          ],
+          "target_return": -0.004
+        },
+        {
+          "decision_ms": 2200,
+          "features_available_ms": 2200,
+          "target_available_ms": 2400,
+          "features": [
+            -3
+          ],
+          "target_return": -0.003
+        },
+        {
+          "decision_ms": 2300,
+          "features_available_ms": 2300,
+          "target_available_ms": 2500,
+          "features": [
+            -2
+          ],
+          "target_return": -0.002
+        },
+        {
+          "decision_ms": 2400,
+          "features_available_ms": 2400,
+          "target_available_ms": 2600,
+          "features": [
+            -1
+          ],
+          "target_return": -0.001
+        },
+        {
+          "decision_ms": 2500,
+          "features_available_ms": 2500,
+          "target_available_ms": 2700,
+          "features": [
+            0
+          ],
+          "target_return": 0
+        },
+        {
+          "decision_ms": 2600,
+          "features_available_ms": 2600,
+          "target_available_ms": 2800,
+          "features": [
+            1
+          ],
+          "target_return": 0.001
+        },
+        {
+          "decision_ms": 2700,
+          "features_available_ms": 2700,
+          "target_available_ms": 2900,
+          "features": [
+            2
+          ],
+          "target_return": 0.002
+        },
+        {
+          "decision_ms": 2800,
+          "features_available_ms": 2800,
+          "target_available_ms": 3000,
+          "features": [
+            3
+          ],
+          "target_return": 0.003
+        },
+        {
+          "decision_ms": 2900,
+          "features_available_ms": 2900,
+          "target_available_ms": 3100,
+          "features": [
+            4
+          ],
+          "target_return": 0.004
+        },
+        {
+          "decision_ms": 3000,
+          "features_available_ms": 3000,
+          "target_available_ms": 3200,
+          "features": [
+            -5
+          ],
+          "target_return": -0.005
+        },
+        {
+          "decision_ms": 3100,
+          "features_available_ms": 3100,
+          "target_available_ms": 3300,
+          "features": [
+            -4
+          ],
+          "target_return": -0.004
+        },
+        {
+          "decision_ms": 3200,
+          "features_available_ms": 3200,
+          "target_available_ms": 3400,
+          "features": [
+            -3
+          ],
+          "target_return": -0.003
+        },
+        {
+          "decision_ms": 3300,
+          "features_available_ms": 3300,
+          "target_available_ms": 3500,
+          "features": [
+            -2
+          ],
+          "target_return": -0.002
+        },
+        {
+          "decision_ms": 3400,
+          "features_available_ms": 3400,
+          "target_available_ms": 3600,
+          "features": [
+            -1
+          ],
+          "target_return": -0.001
+        },
+        {
+          "decision_ms": 3500,
+          "features_available_ms": 3500,
+          "target_available_ms": 3700,
+          "features": [
+            0
+          ],
+          "target_return": 0
+        },
+        {
+          "decision_ms": 3600,
+          "features_available_ms": 3600,
+          "target_available_ms": 3800,
+          "features": [
+            1
+          ],
+          "target_return": 0.001
+        },
+        {
+          "decision_ms": 3700,
+          "features_available_ms": 3700,
+          "target_available_ms": 3900,
+          "features": [
+            2
+          ],
+          "target_return": 0.002
+        },
+        {
+          "decision_ms": 3800,
+          "features_available_ms": 3800,
+          "target_available_ms": 4000,
+          "features": [
+            3
+          ],
+          "target_return": 0.003
+        },
+        {
+          "decision_ms": 3900,
+          "features_available_ms": 3900,
+          "target_available_ms": 4100,
+          "features": [
+            4
+          ],
+          "target_return": 0.004
+        },
+        {
+          "decision_ms": 4000,
+          "features_available_ms": 4000,
+          "target_available_ms": 4200,
+          "features": [
+            -5
+          ],
+          "target_return": -0.005
+        },
+        {
+          "decision_ms": 4100,
+          "features_available_ms": 4100,
+          "target_available_ms": 4300,
+          "features": [
+            -4
+          ],
+          "target_return": -0.004
+        },
+        {
+          "decision_ms": 4200,
+          "features_available_ms": 4200,
+          "target_available_ms": 4400,
+          "features": [
+            -3
+          ],
+          "target_return": -0.003
+        },
+        {
+          "decision_ms": 4300,
+          "features_available_ms": 4300,
+          "target_available_ms": 4500,
+          "features": [
+            -2
+          ],
+          "target_return": -0.002
+        },
+        {
+          "decision_ms": 4400,
+          "features_available_ms": 4400,
+          "target_available_ms": 4600,
+          "features": [
+            -1
+          ],
+          "target_return": -0.001
+        },
+        {
+          "decision_ms": 4500,
+          "features_available_ms": 4500,
+          "target_available_ms": 4700,
+          "features": [
+            0
+          ],
+          "target_return": 0
+        },
+        {
+          "decision_ms": 4600,
+          "features_available_ms": 4600,
+          "target_available_ms": 4800,
+          "features": [
+            1
+          ],
+          "target_return": 0.001
+        },
+        {
+          "decision_ms": 4700,
+          "features_available_ms": 4700,
+          "target_available_ms": 4900,
+          "features": [
+            2
+          ],
+          "target_return": 0.002
+        },
+        {
+          "decision_ms": 4800,
+          "features_available_ms": 4800,
+          "target_available_ms": 5000,
+          "features": [
+            3
+          ],
+          "target_return": 0.003
+        },
+        {
+          "decision_ms": 4900,
+          "features_available_ms": 4900,
+          "target_available_ms": 5100,
+          "features": [
+            4
+          ],
+          "target_return": 0.004
+        },
+        {
+          "decision_ms": 5000,
+          "features_available_ms": 5000,
+          "target_available_ms": 5200,
+          "features": [
+            -5
+          ],
+          "target_return": -0.005
+        },
+        {
+          "decision_ms": 5100,
+          "features_available_ms": 5100,
+          "target_available_ms": 5300,
+          "features": [
+            -4
+          ],
+          "target_return": -0.004
+        },
+        {
+          "decision_ms": 5200,
+          "features_available_ms": 5200,
+          "target_available_ms": 5400,
+          "features": [
+            -3
+          ],
+          "target_return": -0.003
+        },
+        {
+          "decision_ms": 5300,
+          "features_available_ms": 5300,
+          "target_available_ms": 5500,
+          "features": [
+            -2
+          ],
+          "target_return": -0.002
+        },
+        {
+          "decision_ms": 5400,
+          "features_available_ms": 5400,
+          "target_available_ms": 5600,
+          "features": [
+            -1
+          ],
+          "target_return": -0.001
+        },
+        {
+          "decision_ms": 5500,
+          "features_available_ms": 5500,
+          "target_available_ms": 5700,
+          "features": [
+            0
+          ],
+          "target_return": 0
+        },
+        {
+          "decision_ms": 5600,
+          "features_available_ms": 5600,
+          "target_available_ms": 5800,
+          "features": [
+            1
+          ],
+          "target_return": 0.001
+        },
+        {
+          "decision_ms": 5700,
+          "features_available_ms": 5700,
+          "target_available_ms": 5900,
+          "features": [
+            2
+          ],
+          "target_return": 0.002
+        },
+        {
+          "decision_ms": 5800,
+          "features_available_ms": 5800,
+          "target_available_ms": 6000,
+          "features": [
+            3
+          ],
+          "target_return": 0.003
+        },
+        {
+          "decision_ms": 5900,
+          "features_available_ms": 5900,
+          "target_available_ms": 6100,
+          "features": [
+            4
+          ],
+          "target_return": 0.004
+        },
+        {
+          "decision_ms": 6000,
+          "features_available_ms": 6000,
+          "target_available_ms": 6200,
+          "features": [
+            -5
+          ],
+          "target_return": -0.005
+        },
+        {
+          "decision_ms": 6100,
+          "features_available_ms": 6100,
+          "target_available_ms": 6300,
+          "features": [
+            -4
+          ],
+          "target_return": -0.004
+        },
+        {
+          "decision_ms": 6200,
+          "features_available_ms": 6200,
+          "target_available_ms": 6400,
+          "features": [
+            -3
+          ],
+          "target_return": -0.003
+        },
+        {
+          "decision_ms": 6300,
+          "features_available_ms": 6300,
+          "target_available_ms": 6500,
+          "features": [
+            -2
+          ],
+          "target_return": -0.002
+        },
+        {
+          "decision_ms": 6400,
+          "features_available_ms": 6400,
+          "target_available_ms": 6600,
+          "features": [
+            -1
+          ],
+          "target_return": -0.001
+        },
+        {
+          "decision_ms": 6500,
+          "features_available_ms": 6500,
+          "target_available_ms": 6700,
+          "features": [
+            0
+          ],
+          "target_return": 0
+        },
+        {
+          "decision_ms": 6600,
+          "features_available_ms": 6600,
+          "target_available_ms": 6800,
+          "features": [
+            1
+          ],
+          "target_return": 0.001
+        },
+        {
+          "decision_ms": 6700,
+          "features_available_ms": 6700,
+          "target_available_ms": 6900,
+          "features": [
+            2
+          ],
+          "target_return": 0.002
+        },
+        {
+          "decision_ms": 6800,
+          "features_available_ms": 6800,
+          "target_available_ms": 7000,
+          "features": [
+            3
+          ],
+          "target_return": 0.003
+        },
+        {
+          "decision_ms": 6900,
+          "features_available_ms": 6900,
+          "target_available_ms": 7100,
+          "features": [
+            4
+          ],
+          "target_return": 0.004
+        },
+        {
+          "decision_ms": 7000,
+          "features_available_ms": 7000,
+          "target_available_ms": 7200,
+          "features": [
+            -5
+          ],
+          "target_return": -0.005
+        },
+        {
+          "decision_ms": 7100,
+          "features_available_ms": 7100,
+          "target_available_ms": 7300,
+          "features": [
+            -4
+          ],
+          "target_return": -0.004
+        },
+        {
+          "decision_ms": 7200,
+          "features_available_ms": 7200,
+          "target_available_ms": 7400,
+          "features": [
+            -3
+          ],
+          "target_return": -0.003
+        },
+        {
+          "decision_ms": 7300,
+          "features_available_ms": 7300,
+          "target_available_ms": 7500,
+          "features": [
+            -2
+          ],
+          "target_return": -0.002
+        },
+        {
+          "decision_ms": 7400,
+          "features_available_ms": 7400,
+          "target_available_ms": 7600,
+          "features": [
+            -1
+          ],
+          "target_return": -0.001
+        },
+        {
+          "decision_ms": 7500,
+          "features_available_ms": 7500,
+          "target_available_ms": 7700,
+          "features": [
+            0
+          ],
+          "target_return": 0
+        },
+        {
+          "decision_ms": 7600,
+          "features_available_ms": 7600,
+          "target_available_ms": 7800,
+          "features": [
+            1
+          ],
+          "target_return": 0.001
+        },
+        {
+          "decision_ms": 7700,
+          "features_available_ms": 7700,
+          "target_available_ms": 7900,
+          "features": [
+            2
+          ],
+          "target_return": 0.002
+        },
+        {
+          "decision_ms": 7800,
+          "features_available_ms": 7800,
+          "target_available_ms": 8000,
+          "features": [
+            3
+          ],
+          "target_return": 0.003
+        },
+        {
+          "decision_ms": 7900,
+          "features_available_ms": 7900,
+          "target_available_ms": 8100,
+          "features": [
+            4
+          ],
+          "target_return": 0.004
+        },
+        {
+          "decision_ms": 8000,
+          "features_available_ms": 8000,
+          "target_available_ms": 8200,
+          "features": [
+            -5
+          ],
+          "target_return": -0.005
+        },
+        {
+          "decision_ms": 8100,
+          "features_available_ms": 8100,
+          "target_available_ms": 8300,
+          "features": [
+            -4
+          ],
+          "target_return": -0.004
+        },
+        {
+          "decision_ms": 8200,
+          "features_available_ms": 8200,
+          "target_available_ms": 8400,
+          "features": [
+            -3
+          ],
+          "target_return": -0.003
+        },
+        {
+          "decision_ms": 8300,
+          "features_available_ms": 8300,
+          "target_available_ms": 8500,
+          "features": [
+            -2
+          ],
+          "target_return": -0.002
+        },
+        {
+          "decision_ms": 8400,
+          "features_available_ms": 8400,
+          "target_available_ms": 8600,
+          "features": [
+            -1
+          ],
+          "target_return": -0.001
+        },
+        {
+          "decision_ms": 8500,
+          "features_available_ms": 8500,
+          "target_available_ms": 8700,
+          "features": [
+            0
+          ],
+          "target_return": 0
+        },
+        {
+          "decision_ms": 8600,
+          "features_available_ms": 8600,
+          "target_available_ms": 8800,
+          "features": [
+            1
+          ],
+          "target_return": 0.001
+        },
+        {
+          "decision_ms": 8700,
+          "features_available_ms": 8700,
+          "target_available_ms": 8900,
+          "features": [
+            2
+          ],
+          "target_return": 0.002
+        },
+        {
+          "decision_ms": 8800,
+          "features_available_ms": 8800,
+          "target_available_ms": 9000,
+          "features": [
+            3
+          ],
+          "target_return": 0.003
+        },
+        {
+          "decision_ms": 8900,
+          "features_available_ms": 8900,
+          "target_available_ms": 9100,
+          "features": [
+            4
+          ],
+          "target_return": 0.004
+        },
+        {
+          "decision_ms": 9000,
+          "features_available_ms": 9000,
+          "target_available_ms": 9200,
+          "features": [
+            -5
+          ],
+          "target_return": -0.005
+        },
+        {
+          "decision_ms": 9100,
+          "features_available_ms": 9100,
+          "target_available_ms": 9300,
+          "features": [
+            -4
+          ],
+          "target_return": -0.004
+        },
+        {
+          "decision_ms": 9200,
+          "features_available_ms": 9200,
+          "target_available_ms": 9400,
+          "features": [
+            -3
+          ],
+          "target_return": -0.003
+        },
+        {
+          "decision_ms": 9300,
+          "features_available_ms": 9300,
+          "target_available_ms": 9500,
+          "features": [
+            -2
+          ],
+          "target_return": -0.002
+        },
+        {
+          "decision_ms": 9400,
+          "features_available_ms": 9400,
+          "target_available_ms": 9600,
+          "features": [
+            -1
+          ],
+          "target_return": -0.001
+        },
+        {
+          "decision_ms": 9500,
+          "features_available_ms": 9500,
+          "target_available_ms": 9700,
+          "features": [
+            0
+          ],
+          "target_return": 0
+        },
+        {
+          "decision_ms": 9600,
+          "features_available_ms": 9600,
+          "target_available_ms": 9800,
+          "features": [
+            1
+          ],
+          "target_return": 0.001
+        },
+        {
+          "decision_ms": 9700,
+          "features_available_ms": 9700,
+          "target_available_ms": 9900,
+          "features": [
+            2
+          ],
+          "target_return": 0.002
+        },
+        {
+          "decision_ms": 9800,
+          "features_available_ms": 9800,
+          "target_available_ms": 10000,
+          "features": [
+            3
+          ],
+          "target_return": 0.003
+        },
+        {
+          "decision_ms": 9900,
+          "features_available_ms": 9900,
+          "target_available_ms": 10100,
+          "features": [
+            4
+          ],
+          "target_return": 0.004
+        }
+      ],
+      "cost_bps": 5
+    }
+  },
+  "multiple-testing": {
+    "label": "Multiple testing",
+    "description": "Adjust a complete family of valid hypothesis p-values.",
+    "input": {
+      "p_values": {
+        "alpha_a": 0.01,
+        "alpha_b": 0.04,
+        "alpha_c": 0.03,
+        "alpha_d": 0.2
+      },
+      "false_discovery_rate": 0.05
+    }
+  },
+  "option": {
+    "label": "Option pricing & Greeks",
+    "description": "Price a European option under constant volatility and rates.",
+    "input": {
+      "kind": "call",
+      "spot": 100,
+      "strike": 100,
+      "years": 1,
+      "volatility": 0.2,
+      "rate": 0.04,
+      "dividend_yield": 0.01
+    }
+  },
+  "quote": {
+    "label": "Inventory-aware quotes",
+    "description": "Inspect how inventory shifts bid and ask prices.",
+    "input": {
+      "fair_price": 100,
+      "tick_size": 0.01,
+      "inventory": 5,
+      "inventory_limit": 10,
+      "order_size": 2
+    }
+  },
+  "market-making": {
+    "label": "Market-making simulation",
+    "description": "Replay trade prints against prior quotes under an explicit fill assumption.",
+    "input": {
+      "quote_config": {
+        "fair_price": 100,
+        "tick_size": 0.01,
+        "inventory": 0,
+        "inventory_limit": 10,
+        "order_size": 2
+      },
+      "start_ms": 0,
+      "fill_fraction": 0.1,
+      "trades": [
+        {
+          "event_ms": 100,
+          "received_ms": 110,
+          "aggressor": "sell",
+          "price": 99.9,
+          "size": 10,
+          "fair_price": 100
+        },
+        {
+          "event_ms": 200,
+          "received_ms": 210,
+          "aggressor": "buy",
+          "price": 100.2,
+          "size": 10,
+          "fair_price": 100.1
+        }
+      ]
+    }
+  },
+  "instrument-order": {
+    "label": "Instrument & order checks",
+    "description": "Validate metadata availability, sessions, tick/lot sizes and reference exposure.",
+    "input": {
+      "instrument": {
+        "instrument_id": "SYNTHETIC_GOLD",
+        "venue": "SYNTHETIC_VENUE",
+        "venue_symbol": "TEST_GOLD",
+        "revision": "example-1",
+        "source": "Synthetic example; not a broker specification",
+        "product": "linear_contract",
+        "underlying_unit": "troy_ounce",
+        "quote_currency": "USD",
+        "contract_size": "100",
+        "tick_size": "0.05",
+        "quantity_step": "0.01",
+        "min_quantity": "0.01",
+        "max_quantity": "10",
+        "min_notional": "1",
+        "published_ms": 50,
+        "valid_from_ms": 100,
+        "valid_until_ms": 1000,
+        "sessions": [
+          {
+            "open_ms": 100,
+            "close_ms": 500
+          },
+          {
+            "open_ms": 600,
+            "close_ms": 1000
+          }
+        ]
+      },
+      "side": "buy",
+      "quantity": "0.03",
+      "price": "2000.05",
+      "as_of_ms": 200,
+      "reporting_currency": "USD"
+    }
+  },
+  "currency-convert": {
+    "label": "Currency conversion",
+    "description": "Convert signed cash using an available bid/ask quote and explicit currencies.",
+    "input": {
+      "amount": "-100",
+      "from_currency": "USD",
+      "to_currency": "KES",
+      "as_of_ms": 200,
+      "max_age_ms": 1000,
+      "fx": {
+        "base_currency": "USD",
+        "quote_currency": "KES",
+        "bid": "129",
+        "ask": "130",
+        "event_ms": 100,
+        "available_ms": 110,
+        "source": "Synthetic example; not a current exchange rate"
+      }
+    }
+  },
+  "instrument-plan": {
+    "label": "Instrument-aware execution",
+    "description": "Project a single-venue limit order with exact tick, lot and session checks.",
+    "input": {
+      "instrument": {
+        "instrument_id": "SYNTHETIC_GOLD",
+        "venue": "SYNTHETIC_VENUE",
+        "venue_symbol": "TEST_GOLD",
+        "revision": "example-1",
+        "source": "Synthetic example; not a broker specification",
+        "product": "linear_contract",
+        "underlying_unit": "troy_ounce",
+        "quote_currency": "USD",
+        "contract_size": "100",
+        "tick_size": "0.05",
+        "quantity_step": "0.01",
+        "min_quantity": "0.01",
+        "max_quantity": "10",
+        "min_notional": "1",
+        "published_ms": 50,
+        "valid_from_ms": 100,
+        "valid_until_ms": 1000,
+        "sessions": [
+          {
+            "open_ms": 100,
+            "close_ms": 500
+          },
+          {
+            "open_ms": 600,
+            "close_ms": 1000
+          }
+        ]
+      },
+      "book": {
+        "venue": "SYNTHETIC_VENUE",
+        "venue_symbol": "TEST_GOLD",
+        "quote_currency": "USD",
+        "event_ms": 180,
+        "available_ms": 190,
+        "bids": [
+          {
+            "price": "2000",
+            "quantity": "0.02"
+          },
+          {
+            "price": "1999.95",
+            "quantity": "0.05"
+          }
+        ],
+        "asks": [
+          {
+            "price": "2000.05",
+            "quantity": "0.01"
+          },
+          {
+            "price": "2000.10",
+            "quantity": "0.03"
+          }
+        ]
+      },
+      "side": "buy",
+      "quantity": "0.03",
+      "limit_price": "2000.10",
+      "arrival_price": "2000",
+      "fee_bps": "2",
+      "as_of_ms": 200,
+      "max_age_ms": 1000
+    }
+  },
+  "option-portfolio": {
+    "label": "Option portfolio scenarios",
+    "description": "Aggregate signed European option positions and fully reprice supplied spot, volatility, rate and time shocks. Synthetic example; horizons must precede expiry.",
+    "input": {
+      "currency": "USD",
+      "positions": [
+        {
+          "position_id": "synthetic-long-call",
+          "underlying": "SYNTHETIC",
+          "currency": "USD",
+          "contracts": 2,
+          "multiplier": 100,
+          "option": {
+            "kind": "call",
+            "spot": 100,
+            "strike": 100,
+            "years": 0.5,
+            "volatility": 0.25,
+            "rate": 0.04,
+            "dividend_yield": 0.01
+          }
+        },
+        {
+          "position_id": "synthetic-short-call",
+          "underlying": "SYNTHETIC",
+          "currency": "USD",
+          "contracts": -2,
+          "multiplier": 100,
+          "option": {
+            "kind": "call",
+            "spot": 100,
+            "strike": 110,
+            "years": 0.5,
+            "volatility": 0.27,
+            "rate": 0.04,
+            "dividend_yield": 0.01
+          }
+        }
+      ],
+      "scenarios": [
+        {
+          "name": "unchanged",
+          "shocks": {
+            "SYNTHETIC": {}
+          }
+        },
+        {
+          "name": "synthetic-down-vol-up",
+          "elapsed_days": 7,
+          "shocks": {
+            "SYNTHETIC": {
+              "spot_return": -0.15,
+              "volatility_change": 0.1
+            }
+          }
+        }
+      ]
+    }
+  },
+  "order-lifecycle": {
+    "label": "Order lifecycle simulator",
+    "description": "Synthetic order events with pending-size inventory reservations, partial fills and delayed cancellation. No broker orders are sent.",
+    "input": {
+      "inventory_limit": "3",
+      "initial_inventory": "0",
+      "initial_mark": "100",
+      "final_mark": "100",
+      "end_ms": 100,
+      "submit_latency_ms": 5,
+      "cancel_latency_ms": 20,
+      "fee_bps": "2",
+      "fill_fraction": "0.5",
+      "events": [
+        {
+          "kind": "submit",
+          "at_ms": 0,
+          "order_id": "synthetic-bid",
+          "side": "buy",
+          "price": "99",
+          "quantity": "2"
+        },
+        {
+          "kind": "cancel",
+          "at_ms": 10,
+          "order_id": "synthetic-bid"
+        },
+        {
+          "kind": "submit",
+          "at_ms": 11,
+          "order_id": "replacement-too-early",
+          "side": "buy",
+          "price": "98",
+          "quantity": "2"
+        },
+        {
+          "kind": "trade",
+          "at_ms": 20,
+          "aggressor": "sell",
+          "price": "98",
+          "quantity": "2"
+        },
+        {
+          "kind": "submit",
+          "at_ms": 30,
+          "order_id": "replacement",
+          "side": "buy",
+          "price": "98",
+          "quantity": "2"
+        }
+      ]
+    }
+  }
+}

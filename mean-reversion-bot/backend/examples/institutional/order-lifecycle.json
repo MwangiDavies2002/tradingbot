@@ -1,0 +1,49 @@
+{
+  "inventory_limit": "3",
+  "initial_inventory": "0",
+  "initial_mark": "100",
+  "final_mark": "100",
+  "end_ms": 100,
+  "submit_latency_ms": 5,
+  "cancel_latency_ms": 20,
+  "fee_bps": "2",
+  "fill_fraction": "0.5",
+  "events": [
+    {
+      "kind": "submit",
+      "at_ms": 0,
+      "order_id": "synthetic-bid",
+      "side": "buy",
+      "price": "99",
+      "quantity": "2"
+    },
+    {
+      "kind": "cancel",
+      "at_ms": 10,
+      "order_id": "synthetic-bid"
+    },
+    {
+      "kind": "submit",
+      "at_ms": 11,
+      "order_id": "replacement-too-early",
+      "side": "buy",
+      "price": "98",
+      "quantity": "2"
+    },
+    {
+      "kind": "trade",
+      "at_ms": 20,
+      "aggressor": "sell",
+      "price": "98",
+      "quantity": "2"
+    },
+    {
+      "kind": "submit",
+      "at_ms": 30,
+      "order_id": "replacement",
+      "side": "buy",
+      "price": "98",
+      "quantity": "2"
+    }
+  ]
+}

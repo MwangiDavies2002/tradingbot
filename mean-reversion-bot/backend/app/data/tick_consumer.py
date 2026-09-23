@@ -229,6 +229,7 @@ class TickConsumer:
             await self.client.forget_subscription(info.subscription_id)
         self._buffers.pop(key, None)
         self._cooldown.pop(key, None)
+        self._forming.pop(key, None)
         logger.info("Unsubscribed: %s %s", symbol, timeframe)
 
     async def unsubscribe_all(self) -> None:
