@@ -1,6 +1,6 @@
 # Institutional capability expansion - continuation report
 
-Last checkpoint: 2026-09-24. Status: eighth offline implementation checkpoint
+Last checkpoint: 2026-09-24. Status: twelfth offline implementation checkpoint
 verified; broader production expansion is NOT complete.
 
 ## User request and working agreement
@@ -52,7 +52,7 @@ Existing uncommitted changes must be preserved. No commits made by this session.
 | 5 | Model research infrastructure: point-in-time cross-asset features, expanding validation, experiment registry, multiple-testing controls | Point-in-time joins, purged ridge folds, BH adjustment and searchable append-only trial registry implemented; broader models and curated data remain |
 | 6 | European option pricing/Greeks and hedging scenarios | BSM price/Greeks, signed position aggregation by underlying and pre-expiry full-repricing scenarios implemented; option chains, settlement and executable hedging remain |
 | 7 | Inventory-aware market-making simulator and quote/fill analytics | Quotes/print replay plus separate explicit order-lifecycle scenarios with reservations, delayed cancel, partial fills and cash/fee accounting implemented; real queue/hedging/adverse-selection calibration remains |
-| 8 | Protected API, dashboard, offline CLI, reproducible artifacts and observability for new modules | Seventeen analyses, saved trials, protected API and exports implemented; desktop/mobile lifecycle and catalog browser flows verified; durable workers, broader UI coverage and dedicated telemetry remain |
+| 8 | Protected API, dashboard, offline CLI, reproducible artifacts and observability for new modules | Eighteen analyses, saved trials, protected API and exports implemented; desktop/mobile lifecycle, automatic quoting and catalog browser flows verified; durable workers, broader UI coverage and dedicated telemetry remain |
 | 9 | Licensed feeds, venue/broker adapters, instrument metadata, currency conversion and real cost calibration | Supplied metadata catalog, pinned single-venue planning, order checks and timestamped bid/ask conversion implemented; provider adapters and real calibration remain external dependencies |
 | 10 | Durable multi-venue order lifecycle, cancel/replace, reconciliation, permission/audit controls, resilience and deployment exercises | Pending; existing Deriv controls cannot imply multi-venue support |
 | 11 | Multi-regime empirical validation, stress/capacity studies and forward demo acceptance | Requires representative real datasets and demo access |
@@ -100,6 +100,122 @@ toggle. Do not remove those guards without implementing and testing an explicit
 research-to-execution contract. No new analytics are used to admit real orders.
 
 ## Latest verification and environment constraints
+
+### Twelfth checkpoint: fee rebates and terminal exit-cost projections
+
+- Backend verification: **259 tests passed, 3 PostgreSQL checks skipped** (no
+  disposable URL), 61 seconds, 20,397 warnings. Targeted Ruff passed. Desktop/mobile
+  browser flows cover blocked and complete exit panels; screenshots inspected.
+  Four TradingView tests pass. Existing Vite bundle warning remains at about 714 kB.
+- Screenshot review found cash values wrapping on narrow metric cards; reduced
+  mobile metric font size while preserving exact decimal text and larger desktop
+  type. Browser flows and production build were rerun after that adjustment.
+- Lifecycle/automatic quoting now accept signed `fee_bps` (-1,000 to +1,000).
+  Negative fees credit rebates; separate positive `fees_charged`/`rebates_earned`
+  reconcile to signed net fees. Client cash/fees still update on acknowledgement.
+  These supplied rates do not establish maker eligibility or actual venue pricing.
+- Added `liquidation.py`: optional terminal bid/ask, available exit-side quantity,
+  timestamp/age, adverse slippage and nonnegative taker-fee scenario. Projection
+  blocks if disconnected, halted, unresolved reservations/messages/cancels exist,
+  or the quote is stale/unavailable at the horizon. It does not mutate the ledger.
+- Ready projections distinguish flat, partial and complete exits. Long positions
+  sell at bid less slippage; shorts buy at ask plus slippage. Limited liquidity
+  preserves residual marked inventory. Outputs include cash effect, taker fee,
+  slippage cost, signed cost versus final mark and projected marked P&L after exit.
+  This is hypothetical exit-cost attribution, not a submitted or executed close.
+- Thirteen new test cases cover long/short arithmetic, partial/zero liquidity,
+  flat exposure, readiness blockers, quote timestamps, signed rebate acknowledgement,
+  conservation of marked P&L and invalid inputs. Canonical examples now include a
+  blocked lifecycle projection and a complete automatic-quoting projection.
+- UI displays net fees, charged fees/rebates and a separate exit-cost panel, including
+  blockers and a clear unchanged-ledger statement. Browser checks cover both states
+  at desktop/mobile sizes. No schema migration, live trading or deployment.
+
+### Eleventh checkpoint: client order-session disconnect/recovery
+
+- Verification: **246 backend tests passed, 3 PostgreSQL checks skipped** (no
+  disposable URL), 57 seconds and 20,397 warnings. Targeted Ruff and whitespace
+  checks passed. Two desktop/mobile browser flows passed; current screenshots were
+  inspected. Frontend build and four TradingView tests passed. Existing Vite bundle
+  warning remains at about 712 kB. Test servers stopped after browser QA.
+- Added `connection` events to both lifecycle and automatic quoting. Client
+  disconnect is independent of matching halt: existing venue orders keep filling,
+  transmitted cancels still execute, and new client submits are locally rejected.
+  Unsent cancel requests queue once; cancel latency starts on reconnect transmission.
+- Fill acknowledgements and terminal cancel/reject confirmations buffer offline.
+  Conservative client reservations retain both unreceived terminal remainders and
+  unacknowledged fills. Reconnect delivers due messages before sending queued cancels;
+  future-due fills remain pending. Repeated reconnect does not duplicate accounting.
+  Full fills/terminal orders make queued cancels obsolete.
+- Reports add connected state, queued cancel/pending terminal counts and actual fill
+  delivery timestamps alongside nominal due times. UI displays those fields.
+  Automatic expiry queues cancellation during disconnect; reconnect alone never
+  submits replacement quotes. The synthetic automatic example exercises this flow.
+- Seven new regression cases cover matching while disconnected, buffered cash,
+  partial message delivery, duplicate commands, cancellation transmission latency,
+  unreceived terminal confirmations, full-fill/cancel races and automatic expiry
+  through reconnect. Existing browser flows assert connection audit and delivery UI.
+- Limits remain explicit: reliable buffering only, no message loss/reordering,
+  broker reconciliation, uncertain submit outcomes or executable/live adapter.
+  No schema change, application database migration, broker call or deployment.
+
+### Tenth checkpoint: automatic quote expiry
+
+- Verification: **239 backend tests passed, 3 PostgreSQL checks skipped** (no
+  disposable URL), 59 seconds, 20,397 warnings. Targeted Ruff and whitespace checks
+  passed. Two desktop/mobile browser flows passed with expiry assertions; screenshots
+  inspected. Frontend build and four TradingView tests passed. Existing Vite bundle
+  warning remains at about 712 kB. No test servers left running by Playwright.
+- Added internal `QuoteTimer` events and an ordered timer heap to the shared
+  lifecycle engine. Automatic quoting schedules a cancellation decision at the
+  earlier of fair receipt plus `quote_ttl_ms` and observed time plus maximum age
+  plus one millisecond. TTL defaults to 1,000 ms, bounded to 1–60,000 ms.
+- Eligible refresh renews the deadline; generation numbers invalidate older timers.
+  Timers run before same-time source events, including a fresh fair receipt, and
+  continue during quiet periods up through `end_ms`. Source age remains inclusive
+  at `max_fair_age_ms`. Timers never submit replacements or use future fair values.
+- Cancellation still obeys venue halt, submit/cancel latency and unknown-fill
+  reservation rules. An expired quote may still fill before cancellation takes
+  effect. Unacknowledged fills stay reserved after cancellation. Timers after the
+  simulation horizon remain unprocessed.
+- Seven new regressions cover no-input expiry, exact-deadline ordering, timer
+  supersession versus source freshness, halted cancellation, horizon boundaries,
+  unacknowledged fill retention and cancellation before activation.
+- UI decision table adds Trigger and Expiry columns; the synthetic example has a
+  30 ms TTL and expires during its final quiet interval. Desktop/mobile browser
+  assertions cover the visible expiry row and column. No new operation/schema,
+  live orders, deployment or application database migration was introduced.
+
+### Ninth checkpoint: causal automatic quoting
+
+- Verification: **232 backend tests passed, 3 PostgreSQL checks skipped** (no
+  disposable URL), 61 seconds and 20,397 warnings. Targeted Ruff and whitespace
+  checks passed. Desktop/mobile browser flows passed with automatic quoting added;
+  screenshots inspected. Frontend build and four TradingView tests passed; existing
+  Vite bundle warning remains at about 712 kB. Test servers shut down after QA.
+- Added `auto_quoting.py`, the `auto-quoting` service operation and canonical lab/CLI
+  synthetic example. The authenticated API and existing saved-trial dispatch expose
+  it. UI reuses lifecycle metrics/tables and adds a quote-decision table.
+- Extended the shared lifecycle engine with bounded generated commands at explicit
+  fair receipt events. Controller receives only client-known inventory/reservations,
+  own order prices/cancel requests and venue state, not venue fill totals/status.
+  Source events are fair receipts, prints and matching halt/resume; direct manual
+  submissions/rejections are excluded from this automatic operation.
+- Decimal inventory skew, outward tick rounding and downward quantity-step rounding
+  determine target orders. Unchanged orders stay in place; changed/stale orders
+  request cancellation and replacement waits for a later fair receipt after all
+  same-side reservations clear. Known opposite pending orders block crossing quotes.
+- Input limit: 1,000 source events, 500 generated orders. Future fair observations
+  are rejected. Fair freshness is checked at decision events only. No autonomous
+  timer/expiry or acknowledgement-triggered refresh; final marks never drive quotes.
+  Historical standalone `market-making` behavior remains unchanged.
+- New tests check grid/size constraints, zero capacity, unchanged quote retention,
+  future-data/final-mark independence, hidden fill state, delayed cancellation,
+  stale observations, matching halts and prevention of crossing own pending orders.
+  API/CLI tests include the new operation. Browser flows include rendering the
+  automatic decision report at desktop and mobile widths.
+- No broker integration, production migration or performance validation. Real data,
+  queue calibration, autonomous timer semantics and executable acceptance remain.
 
 ### Eighth checkpoint: delayed fill acknowledgements
 
@@ -401,9 +517,13 @@ research-to-execution contract. No new analytics are used to admit real orders.
    scenarios. Checkpoint six adds explicit outstanding-order inventory reservations
    and delayed cancellation scenarios. Checkpoint seven adds matching halt/resume
    and remainder rejection. Checkpoint eight adds delayed fill acknowledgement and
-   conservative client-known reservations. Next independent implementation is a
-   causal automatic-quoting controller using those client-known values, followed
-   by queue/fill calibration against suitable supplied data (item 6).
+   conservative client-known reservations. Checkpoint nine adds a causal quoting
+   controller driven by explicit fair receipts. Checkpoint ten adds automatic
+   quote-expiry timers with cancel-latency handling. Checkpoint eleven adds client
+   disconnect/recovery and buffered message delivery. Checkpoint twelve adds signed
+   fee/rebate scenarios and explicit end-of-run exit-cost projections. Next independent
+   work can add deterministic queue-ahead scenarios with explicit supplied assumptions;
+   empirical queue/fill calibration still requires suitable supplied data (item 6).
 4. **Data-backed validation:** load representative licensed histories, audit
    missing/outlier/corporate-action data and publication lags, calibrate fees,
    spreads, slippage, impact/financing, then run cross-asset/regime experiments.
@@ -414,8 +534,9 @@ research-to-execution contract. No new analytics are used to admit real orders.
    pre-expiry full-repricing shocks are complete at checkpoint five. Keep
    regulatory capital out of scope until jurisdiction/product rules are specified.
 6. **Execution simulator:** add queue position/trade-print reconciliation,
-   maker/taker fees/rebates, message loss/reordering and disconnect recovery,
-   hedges and final liquidation costs. Explicit outstanding-order reservations and
+   calibrated maker/taker fees, queue-ahead scenarios, message loss/reordering,
+   hedges and simulated executable liquidation. Signed fee/rebate and terminal
+   exit-cost projections are implemented at checkpoint twelve. Outstanding reservations and
    delayed cancel/replacement scenarios are implemented at checkpoint six;
    integration with automatic quoting remains.
 7. **Live adapter contract:** design capabilities and durable parent/child order

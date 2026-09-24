@@ -125,14 +125,84 @@ validity, genuine preregistration, profitability or trading approval.
 
 ## API and operations
 
+### Automatic quoting
+
+Select **Automatic quoting**, use `POST /api/institutional/auto-quoting`, or run
+`institutional_cli.py auto-quoting examples/institutional/auto-quoting.json --output
+auto-quoting-report.json` with the backend virtual-environment Python. Saved trials
+use the same operation name. The supplied example is synthetic.
+
+This controller shares the order-lifecycle ledger and latency settings. Supply
+`fair`, `trade`, `venue` and `connection` events in chronological order (same-time events retain
+input order). A fair event has receipt `at_ms`, source `observed_ms` and `price`.
+Only a fair receipt can create new quotes; expiry timers request cancellation.
+Future observations are rejected and stale fair receipts request cancellation.
+No initial quote is inferred from the initial
+mark; no future fair value or final mark is used to choose orders.
+
+The fair price is skewed using acknowledged client inventory and
+`inventory_skew_bps`. Bid/ask are rounded outward to supplied `tick_size`; sizes
+round down to `quantity_step` and respect `order_size` and conservative client
+capacity. Unchanged quotes remain in place. Changed quotes cancel first, and
+replacement waits until a subsequent fair event with zero same-side reservations.
+Unacknowledged fills remain reserved. A new quote cannot cross a known outstanding
+opposite order, including one awaiting cancellation.
+
+Reports include the lifecycle tables plus **Quote decisions**, showing the fair
+price, known inventory, target prices and actions at each receipt. Maximum: 1,000
+source events and 500 generated orders; exceeding the order budget rejects the
+analysis. Tick/quantity inputs are hypothetical, not verified instrument metadata.
+`quote_ttl_ms` (default 1,000; range 1–60,000 ms) schedules cancellation at the
+earlier of receipt time plus TTL and source observation time plus
+`max_fair_age_ms + 1`. Source age remains valid at the inclusive maximum; the next
+integer millisecond is stale. Eligible fair refreshes renew the timer, including
+unchanged quotes. Superseded deadlines are ignored. Timers run before same-time
+source inputs and through `end_ms`, even if no further inputs arrive. The decision
+table records `fair`/`expiry` triggers and the scheduled expiry timestamp.
+
+Expiry requests cancellation, not immediate order removal: quotes may still fill
+during cancel latency or remain reserved through a venue halt. A timer before
+submission activation retains the existing pre-activation cancellation rules.
+Timers and acknowledgements do not create replacement orders; another eligible
+fair receipt is required. Deadlines beyond `end_ms` are not processed. This is an
+offline quoting experiment, not a validated market-making
+strategy, exchange queue model or broker integration.
+
 ### Order lifecycle simulator
+
+#### Fee/rebate and exit-cost scenarios
+
+For `order-lifecycle` and `auto-quoting`, `fee_bps` is signed: positive charges,
+negative credits (range -1,000 to +1,000 bps). `fees` is the net signed amount;
+`fees_charged` and `rebates_earned` show positive totals separately. Client cash
+and fee totals reflect rebates only after fill acknowledgement, just like charges.
+This is a supplied resting-fill rate, not proof of exchange maker status or a
+calibrated fee schedule.
+
+Optional `liquidation` inputs provide bid/ask, available exit-side quantity,
+quote `event_ms`/`available_ms`, maximum age, adverse `slippage_bps` and nonnegative
+`taker_fee_bps`. Projection requires a connected client, online venue, no unresolved
+reservations/messages/cancels, and a quote available and fresh at `end_ms`.
+Otherwise status is `blocked`, with reasons and no projected P&L.
+
+Long inventory projects a sale at bid minus slippage; short inventory projects a
+buy at ask plus slippage. Available quantity caps the exit: `partial` retains a
+marked residual, `complete` projects zero inventory, and `flat` has no exit or fee.
+Results include projected quantity/price, residual, cash change, slippage cost,
+taker fee, signed execution cost versus final mark, and projected marked P&L after
+exit. Cost versus mark may be negative when the quote is more favorable than that
+mark. Hypothetical exit prices do not guarantee fills.
+
+This projection never changes the replayed ledger, fill history, cash or headline
+inventory. It is a terminal cost estimate, not an executed closing trade. Financing,
+margin, contract settlement and calibrated depth/impact remain unmodeled.
 
 Select **Order lifecycle simulator**, call `POST /api/institutional/order-lifecycle`,
 or run `institutional_cli.py order-lifecycle examples/institutional/order-lifecycle.json
 --output lifecycle-report.json` from the backend with its virtual-environment Python.
 The operation also supports saved research trials through the existing registry.
 
-Supply a single instrument's explicit `submit`, `cancel`, `trade`, `venue` and `reject` scenario
+Supply a single instrument's explicit `submit`, `cancel`, `trade`, `venue`, `reject` and `connection` scenario
 events in nondecreasing `at_ms` order. Equal timestamps execute in input order;
 cancellations already effective at that timestamp settle before each input.
 Order IDs cannot be reused, including after rejection. Maximum: 5,000 events
@@ -149,7 +219,7 @@ and must pass capacity checks while its predecessor remains outstanding.
 
 Eligible trade-through fills consume one shared `trade.quantity * fill_fraction`
 budget across simulated orders in price/time order. Orders fill at their own limit
-price, with supplied nonnegative bps fees. Fills arriving before cancellation takes
+price, with supplied signed bps fees (negative values are hypothetical rebates). Fills arriving before cancellation takes
 effect still count; a fully filled order remains filled. `end_ms` processes due
 cancellations and preserves outstanding reservations. It does not close inventory.
 The report includes order states, fills, cancellation audit, inventory bounds,
@@ -177,13 +247,31 @@ rejection acknowledgement releases only the unfilled remainder; pending fills
 remain reserved. Acknowledgements due exactly at an event time are processed before
 that event; zero-delay fills are acknowledged immediately. End time processes only
 acknowledgements due by `end_ms`, leaving later ones pending. Delivery continues
-during a matching halt. This assumes reliable, fixed-delay delivery, not a network
-disconnect or message loss/reordering. Cancel/reject acknowledgements do not reveal
+during a matching halt if the client is connected. Delivery assumes reliable
+buffering, without message loss/reordering. Cancel/reject acknowledgements do not reveal
 cumulative fills in this intentionally conservative scenario model.
+
+`connection` events use `connected: false/true` to disconnect/reconnect the client
+order session, independently of the venue matching state. A disconnect does not
+stop venue fills or already-transmitted cancellations. New client submissions are
+locally rejected. Unsent cancellations queue, and their cancel latency starts only
+when transmitted after reconnection; duplicate requests do not restart the timer.
+Full fills or terminal orders make queued cancels obsolete.
+
+During disconnects, due fill and cancel/reject confirmations remain buffered.
+Unreceived terminal confirmations retain the remaining quantity reservation as
+well as any unacknowledged fills. Reconnect delivers due messages before transmitting
+queued cancels; future-due fill messages still wait. Fill `ack_at_ms` records the
+nominal due time and `delivered_at_ms` the actual receipt (null if still pending).
+The report shows connection state, queued cancellations and pending terminal
+confirmations. Equal-time messages due before a connection event are processed first.
+Automatic quote expiry can queue cancellations offline, but reconnect itself does
+not place quotes: a subsequent eligible fair receipt is required. This models
+reliable reconnect replay, not broker reconciliation, lost messages or a live adapter.
 
 This is a hypothetical single-instrument ledger, not exchange queue reconstruction
 or an automatic quoting strategy. Market-data
-delay, client disconnects, self-trade prevention, instrument grids, hedges,
+delay, message loss/reordering, self-trade prevention, instrument grids, hedges,
 margin, financing and final exit costs are not modeled. The existing `market-making`
 operation retains its original instantaneous replacement assumptions.
 

@@ -9,16 +9,18 @@ checkboxes are not evidence that the original roadmap is complete.
 
 ### Institutional research extension - 2026-09-23
 
-The Institutional lab adds seventeen **offline** analyses for instrument checks,
+The Institutional lab adds eighteen **offline** analyses for instrument checks,
 timestamped currency conversion, book replay, point-in-
 time features, routing/schedules/costs, portfolio risk/allocation, model experiments,
 multiple testing, European option portfolio Greeks/full-repricing scenarios and
 inventory-aware market making and explicit order-lifecycle scenarios with inventory
-reservations, partial fills and delayed cancellation. Lifecycle scenarios remain
-separate from broker execution and the automatic quoting simulator.
+reservations, partial fills, delayed cancellation and fill acknowledgements. A new
+automatic quoting controller uses this ledger and client-known inventory at explicit
+fair receipt events, with automatic expiry cancellation timers that preserve
+cancel-latency and pending-fill reservations. Both remain separate from broker execution.
 The extension has no broker execution authority. Full backend verification now
-reports 221 passed and 3 PostgreSQL skips; frontend build and TradingView tests
-pass. Two Edge browser flows verify lifecycle/catalog behavior at desktop/mobile
+reports 259 passed and 3 PostgreSQL skips; frontend build and TradingView tests
+pass. Two Edge browser flows verify lifecycle/automatic-quoting/catalog behavior at desktop/mobile
 sizes against an isolated test API. Screenshots were inspected; mobile catalog
 overflow was fixed. Broader dashboard and deployed UI verification remain.
 

@@ -63,8 +63,8 @@ export default function Institutional() {
       <div className="flex flex-wrap gap-3 justify-between items-center"><h2 className="font-semibold text-lg">{examples[report.operation]?.label || report.operation} report</h2><button onClick={download} className="rounded bg-slate-700 px-4 py-2">Download reproducible report</button></div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">{metrics.map(([name, value]) => <div key={name} className="bg-slate-900 rounded p-3"><div className="text-xs text-slate-400">{name.replace(/_/g, ' ')}</div><div className="text-lg font-mono mt-1">{Number(value).toLocaleString(undefined, { maximumFractionDigits: 6 })}</div></div>)}</div>
       <p className="text-xs text-slate-400 break-all">Report ID: {report.report_id}</p>
-      {report.operation === 'order-lifecycle' && <LifecycleReport result={report.result} />}
-      <details open={report.operation !== 'order-lifecycle'}><summary className="cursor-pointer text-sm">Full results and assumptions</summary><pre className="mt-3 p-4 bg-slate-950 rounded text-xs overflow-auto max-h-[500px]">{JSON.stringify(report.result, null, 2)}</pre></details>
+      {['order-lifecycle', 'auto-quoting'].includes(report.operation) && <LifecycleReport result={report.result} />}
+      <details open={!['order-lifecycle', 'auto-quoting'].includes(report.operation)}><summary className="cursor-pointer text-sm">Full results and assumptions</summary><pre className="mt-3 p-4 bg-slate-950 rounded text-xs overflow-auto max-h-[500px]">{JSON.stringify(report.result, null, 2)}</pre></details>
     </section>}
   </div>
 }

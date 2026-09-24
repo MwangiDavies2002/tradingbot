@@ -1596,7 +1596,98 @@
           "reason": "Synthetic venue rule rejection"
         }
       ],
-      "fill_ack_latency_ms": 100
+      "fill_ack_latency_ms": 100,
+      "liquidation": {
+        "bid": "100.9",
+        "ask": "101.1",
+        "available_quantity": "10",
+        "event_ms": 95,
+        "available_ms": 96,
+        "slippage_bps": "2",
+        "taker_fee_bps": "3"
+      }
+    }
+  },
+  "auto-quoting": {
+    "label": "Automatic quoting",
+    "description": "Synthetic fair-price receipts drive inventory-skewed quotes using acknowledged client inventory, conservative reservations and delayed cancellation. Offline simulation only.",
+    "input": {
+      "inventory_limit": "3",
+      "initial_inventory": "0",
+      "initial_mark": "100",
+      "final_mark": "101",
+      "end_ms": 100,
+      "tick_size": "0.1",
+      "quantity_step": "0.5",
+      "order_size": "2",
+      "half_spread_bps": "10",
+      "inventory_skew_bps": "10",
+      "submit_latency_ms": 2,
+      "cancel_latency_ms": 10,
+      "fill_ack_latency_ms": 20,
+      "max_fair_age_ms": 1000,
+      "fee_bps": "-1",
+      "fill_fraction": "1",
+      "events": [
+        {
+          "kind": "fair",
+          "at_ms": 0,
+          "observed_ms": 0,
+          "price": "100"
+        },
+        {
+          "kind": "trade",
+          "at_ms": 5,
+          "aggressor": "sell",
+          "price": "99",
+          "quantity": "1"
+        },
+        {
+          "kind": "fair",
+          "at_ms": 6,
+          "observed_ms": 6,
+          "price": "100"
+        },
+        {
+          "kind": "fair",
+          "at_ms": 25,
+          "observed_ms": 25,
+          "price": "101"
+        },
+        {
+          "kind": "fair",
+          "at_ms": 35,
+          "observed_ms": 35,
+          "price": "101"
+        },
+        {
+          "kind": "connection",
+          "at_ms": 40,
+          "connected": false
+        },
+        {
+          "kind": "trade",
+          "at_ms": 70,
+          "aggressor": "sell",
+          "price": "100",
+          "quantity": "0.5"
+        },
+        {
+          "kind": "connection",
+          "at_ms": 80,
+          "connected": true
+        }
+      ],
+      "quote_ttl_ms": 30,
+      "liquidation": {
+        "bid": "100.9",
+        "ask": "101.1",
+        "available_quantity": "10",
+        "event_ms": 95,
+        "available_ms": 96,
+        "slippage_bps": "2",
+        "taker_fee_bps": "3"
+      }
     }
   }
 }

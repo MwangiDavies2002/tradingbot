@@ -82,5 +82,14 @@
       "reason": "Synthetic venue rule rejection"
     }
   ],
-  "fill_ack_latency_ms": 100
+  "fill_ack_latency_ms": 100,
+  "liquidation": {
+    "bid": "100.9",
+    "ask": "101.1",
+    "available_quantity": "10",
+    "event_ms": 95,
+    "available_ms": 96,
+    "slippage_bps": "2",
+    "taker_fee_bps": "3"
+  }
 }

@@ -15,6 +15,7 @@ from app.institutional.instruments import ConversionRequest, InstrumentOrderRequ
 from app.institutional.instrument_planning import InstrumentPlanRequest, plan_instrument_order
 from app.institutional.option_portfolio import OptionPortfolioRequest, option_portfolio
 from app.institutional.order_lifecycle import LifecycleRequest, simulate_lifecycle
+from app.institutional.auto_quoting import AutoQuoteRequest, simulate_auto_quotes
 
 
 class ReplayRequest(Record):
@@ -29,6 +30,7 @@ class FeatureRequest(Record):
 
 
 OPERATIONS = {
+    "auto-quoting": (AutoQuoteRequest, simulate_auto_quotes),
     "order-lifecycle": (LifecycleRequest, simulate_lifecycle),
     "option-portfolio": (OptionPortfolioRequest, option_portfolio),
     "instrument-plan": (InstrumentPlanRequest, plan_instrument_order),

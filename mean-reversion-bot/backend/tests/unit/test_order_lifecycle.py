@@ -188,3 +188,58 @@ def test_zero_delay_preserves_immediate_client_ledger():
     assert result["client_reservations"] == result["ending_reservations"]
     assert result["client_cash_change"] == result["cash_change"]
     assert result["fills"][0]["ack_at_ms"] == 1
+
+
+def connection(time, connected):
+    return dict(kind="connection", at_ms=time, connected=connected)
+
+
+def test_disconnect_does_not_stop_matching_and_buffers_fill_cash():
+    result = run([submit("a"), connection(1, False), trade(2)], fee_bps="10")
+    assert result["ending_inventory"] == "1"
+    assert result["client_inventory"] == "0"
+    assert result["client_cash_change"] == "0"
+    assert result["client_reservations"]["buy"] == "2"
+    assert result["fills"][0]["delivered_at_ms"] is None
+    assert result["client_connected"] is False
+
+
+def test_reconnect_delivers_due_fills_once_and_retains_future_ack():
+    result = run([submit("a"), connection(1, False), trade(2), trade(9),
+                  connection(12, True), connection(13, True)], fill_ack_latency_ms=10, end_ms=13)
+    assert result["client_inventory"] == "1"
+    assert result["fills"][0]["delivered_at_ms"] == 12
+    assert result["fills"][1]["delivered_at_ms"] is None
+    assert len([a for a in result["audit"] if a["event"] == "fill_acknowledged"]) == 1
+
+
+def test_queued_cancel_latency_starts_on_reconnect_and_submit_is_rejected():
+    result = run([submit("a"), connection(1, False), cancel("a", 2), cancel("a", 3),
+                  submit("blocked", 4), connection(10, True), trade(14), trade(15)], cancel_latency_ms=5)
+    assert result["orders"][0]["cancel_effective_ms"] == 15
+    assert [f["at_ms"] for f in result["fills"]] == [14]
+    assert result["orders"][1]["status"] == "rejected"
+    assert len([a for a in result["audit"] if a["event"] == "queued_cancel_sent"]) == 1
+
+
+@pytest.mark.parametrize("terminal", ["cancel", "reject"])
+def test_unreceived_terminal_confirmation_keeps_remaining_reserved(terminal):
+    events = [submit("a"), cancel("a", 0), connection(1, False), trade(2)] if terminal == "cancel" else [
+        submit("a"), connection(1, False), trade(2), dict(kind="reject", at_ms=3, order_id="a", reason="test")]
+    before = run(events, cancel_latency_ms=5, end_ms=6)
+    assert before["ending_reservations"]["buy"] == "0"
+    assert before["client_reservations"]["buy"] == "2"
+    assert before["pending_terminal_acknowledgements"] == 1
+    after = run(events + [connection(7, True)], cancel_latency_ms=5)
+    assert after["client_inventory"] == "1"
+    assert after["client_reservations"]["buy"] == "0"
+    assert after["pending_terminal_acknowledgements"] == 0
+    assert after["client_cash_change"] == after["cash_change"]
+
+
+def test_full_fill_makes_queued_cancel_obsolete_on_recovery():
+    result = run([submit("a"), connection(1, False), cancel("a", 2), trade(3, "2"), connection(4, True)])
+    assert result["orders"][0]["status"] == "filled"
+    assert result["queued_cancellations"] == 0
+    assert result["client_inventory"] == "2"
+    assert any(a["event"] == "queued_cancel_obsolete" for a in result["audit"])

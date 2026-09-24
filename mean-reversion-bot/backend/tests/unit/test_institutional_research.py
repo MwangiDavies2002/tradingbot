@@ -59,7 +59,7 @@ def test_reports_reproducible_and_self_contained():
     assert first["live_authorized"] is False
 
 
-@pytest.mark.parametrize("operation", ["option", "option-portfolio", "order-lifecycle"])
+@pytest.mark.parametrize("operation", ["option", "option-portfolio", "order-lifecycle", "auto-quoting"])
 def test_api_permissions_validation_and_size(monkeypatch, operation):
     app = FastAPI()
     app.middleware("http")(protect_api)
@@ -82,7 +82,7 @@ def test_api_permissions_validation_and_size(monkeypatch, operation):
     assert response.json()["live_authorized"] is False
 
 
-@pytest.mark.parametrize("operation", ["option", "option-portfolio", "order-lifecycle"])
+@pytest.mark.parametrize("operation", ["option", "option-portfolio", "order-lifecycle", "auto-quoting"])
 def test_cli_writes_report_and_refuses_overwrite(tmp_path, operation):
     source = tmp_path / "input.json"
     output = tmp_path / "report.json"
