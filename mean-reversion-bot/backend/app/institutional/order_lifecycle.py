@@ -1,5 +1,6 @@
 """Offline single-instrument order ledger with explicit event and latency scenarios."""
 from decimal import Decimal, localcontext
+from collections import deque
 from typing import Annotated, Literal
 
 from pydantic import Field, model_validator
@@ -45,13 +46,14 @@ class Reject(Record):
 
 
 class LifecycleRequest(Record):
-    initial_inventory: Decimal = Field(default=0, ge=-Decimal("1e12"), le=Decimal("1e12"), max_digits=30, decimal_places=12)
+    initial_inventory: Decimal = Field(default=Decimal(0), ge=-Decimal("1e12"), le=Decimal("1e12"), max_digits=30, decimal_places=12)
     inventory_limit: Positive
     initial_mark: Positive
     final_mark: Positive
     end_ms: int = Field(ge=0, strict=True)
     submit_latency_ms: int = Field(default=0, ge=0, le=60000, strict=True)
     cancel_latency_ms: int = Field(default=0, ge=0, le=60000, strict=True)
+    fill_ack_latency_ms: int = Field(default=0, ge=0, le=60000, strict=True)
     fee_bps: Nonnegative = Field(default=Decimal(0), le=1000)
     fill_fraction: Positive = Field(default=Decimal(1), le=1)
     events: list[Annotated[Submit | Cancel | Print | VenueState | Reject, Field(discriminator="kind")]] = Field(min_length=1, max_length=5000)
@@ -86,6 +88,9 @@ def simulate_lifecycle(request: LifecycleRequest) -> dict:
 def _simulate(request):
     orders, fills, audit, path = {}, [], [], []
     inventory, cash, fees = request.initial_inventory, Decimal(0), Decimal(0)
+    client_inventory, client_cash, client_fees = inventory, Decimal(0), Decimal(0)
+    pending_fills = deque()
+    unacknowledged = {"buy": Decimal(0), "sell": Decimal(0)}
     venue_online = True
     resumed_ms = 0
 
@@ -96,6 +101,23 @@ def _simulate(request):
         return {side: sum((o["remaining"] for o in outstanding() if o["side"] == side), Decimal(0))
                 for side in ("buy", "sell")}
 
+    def client_reservations():
+        resting = reservations()
+        return {side: resting[side] + unacknowledged[side] for side in ("buy", "sell")}
+
+    def acknowledge(at_ms):
+        nonlocal client_inventory, client_cash, client_fees
+        while pending_fills and pending_fills[0]["ack_at_ms"] <= at_ms:
+            fill = pending_fills.popleft()
+            sign = Decimal(1) if fill["side"] == "buy" else Decimal(-1)
+            client_inventory += sign * fill["quantity"]
+            client_cash -= sign * fill["quantity"] * fill["price"] + fill["fee"]
+            client_fees += fill["fee"]
+            unacknowledged[fill["side"]] -= fill["quantity"]
+            orders[fill["order_id"]]["acknowledged_filled"] += fill["quantity"]
+            fill["acknowledged"] = True
+            audit.append({"at_ms": fill["ack_at_ms"], "order_id": fill["order_id"], "event": "fill_acknowledged"})
+
     def settle(at_ms):
         if not venue_online:
             return
@@ -105,6 +127,7 @@ def _simulate(request):
                 audit.append({"at_ms": max(order["cancel_effective_ms"], resumed_ms), "order_id": order["order_id"], "event": "canceled"})
 
     for index, event in enumerate(request.events):
+        acknowledge(event.at_ms)
         settle(event.at_ms)
         if isinstance(event, VenueState):
             if event.online and not venue_online:
@@ -120,13 +143,13 @@ def _simulate(request):
             audit.append({"at_ms": event.at_ms, "order_id": event.order_id,
                           "event": "venue_rejected" if effective else "reject_noop", "reason": event.reason})
         elif isinstance(event, Submit):
-            reserved = reservations()
-            capacity = (request.inventory_limit - inventory - reserved["buy"] if event.side == "buy"
-                        else request.inventory_limit + inventory - reserved["sell"])
+            reserved = client_reservations()
+            capacity = (request.inventory_limit - client_inventory - reserved["buy"] if event.side == "buy"
+                        else request.inventory_limit + client_inventory - reserved["sell"])
             accepted = venue_online and event.quantity <= capacity
             orders[event.order_id] = {"order_id": event.order_id, "side": event.side,
                 "price": event.price, "quantity": event.quantity, "remaining": event.quantity,
-                "filled": Decimal(0), "submitted_ms": event.at_ms,
+                "filled": Decimal(0), "acknowledged_filled": Decimal(0), "submitted_ms": event.at_ms,
                 "active_ms": event.at_ms + request.submit_latency_ms, "sequence": index,
                 "cancel_effective_ms": None, "status": "open" if accepted else "rejected"}
             audit.append({"at_ms": event.at_ms, "order_id": event.order_id,
@@ -161,18 +184,32 @@ def _simulate(request):
                 order["filled"] += size
                 if order["remaining"] == 0:
                     order["status"] = "filled"
-                fills.append({"at_ms": event.at_ms, "order_id": order["order_id"], "side": side,
-                              "quantity": size, "price": order["price"], "fee": fee})
+                fill = {"at_ms": event.at_ms, "order_id": order["order_id"], "side": side,
+                        "quantity": size, "price": order["price"], "fee": fee,
+                        "ack_at_ms": event.at_ms + request.fill_ack_latency_ms, "acknowledged": False}
+                fills.append(fill)
+                pending_fills.append(fill)
+                unacknowledged[side] += size
+        acknowledge(event.at_ms)
         reserved = reservations()
+        client_reserved = client_reservations()
         path.append({"at_ms": event.at_ms, "event_index": index, "inventory": inventory,
                      "reserved_buy": reserved["buy"], "reserved_sell": reserved["sell"],
                      "maximum_inventory": inventory + reserved["buy"],
-                     "minimum_inventory": inventory - reserved["sell"], "venue_online": venue_online})
+                     "minimum_inventory": inventory - reserved["sell"], "venue_online": venue_online,
+                     "client_inventory": client_inventory, "client_reserved_buy": client_reserved["buy"],
+                     "client_reserved_sell": client_reserved["sell"],
+                     "client_maximum_inventory": client_inventory + client_reserved["buy"],
+                     "client_minimum_inventory": client_inventory - client_reserved["sell"]})
+    acknowledge(request.end_ms)
     settle(request.end_ms)
     result = {"mode": "offline_order_lifecycle", "live_authorized": False,
         "orders": list(orders.values()), "fills": fills, "audit": sorted(audit, key=lambda row: row["at_ms"]),
         "inventory_path": path, "ending_inventory": inventory, "ending_reservations": reservations(),
         "cash_change": cash, "fees": fees,
+        "client_inventory": client_inventory, "client_cash_change": client_cash, "client_fees": client_fees,
+        "client_reservations": client_reservations(), "unacknowledged_quantity": unacknowledged,
+        "pending_fill_acknowledgements": len(pending_fills),
         "venue_online": venue_online,
         "marked_pnl": cash + inventory * request.final_mark - request.initial_inventory * request.initial_mark,
         "limitations": ["One instrument in underlying units and one quote currency; no margin or instrument-grid validation.",
@@ -181,7 +218,9 @@ def _simulate(request):
             "Trade-through and a shared fill fraction are hypothetical; price/time priority applies only among simulated orders, not an exchange queue.",
             "Venue offline means a simulated matching halt: no fills/new submissions, outstanding reservations retained, cancel acknowledgements wait for resume. It is not a client network disconnect.",
             "Explicit reject events acknowledge rejection of the remaining order quantity, even during a halt; prior fills remain booked.",
-            "Fill acknowledgement is immediate. No market-data delay, hidden liquidity, self-trade prevention or hedging model.",
+            "Admission uses acknowledged client inventory plus resting and unacknowledged fill quantities on each side, without netting unknown fills.",
+            "Fill acknowledgement delay is fixed and reliable, including during a matching halt. Cancel/reject acknowledgements release only unfilled remainder, never pending fill reservations.",
+            "Orders/status, cash_change and marked_pnl describe venue truth; client fields include only acknowledged fills. No message loss/reordering, market-data delay, hidden liquidity, self-trade prevention or hedging model.",
             "No automatic terminal cancellation or liquidation; open orders retain reservations at end_ms. Final mark is supplied, without exit costs."]}
 
     def serialize(value):

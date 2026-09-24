@@ -8,7 +8,8 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "test:tradingview": "node --test tests/tradingview.test.cjs",
-    "lint": "eslint src --ext .ts,.tsx"
+    "lint": "eslint src --ext .ts,.tsx",
+    "test:visual": "playwright test"
   },
   "dependencies": {
     "clsx": "^2.1.1",

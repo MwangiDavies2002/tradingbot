@@ -1,6 +1,6 @@
 # Institutional capability expansion - continuation report
 
-Last checkpoint: 2026-09-23. Status: sixth offline implementation checkpoint
+Last checkpoint: 2026-09-24. Status: eighth offline implementation checkpoint
 verified; broader production expansion is NOT complete.
 
 ## User request and working agreement
@@ -52,7 +52,7 @@ Existing uncommitted changes must be preserved. No commits made by this session.
 | 5 | Model research infrastructure: point-in-time cross-asset features, expanding validation, experiment registry, multiple-testing controls | Point-in-time joins, purged ridge folds, BH adjustment and searchable append-only trial registry implemented; broader models and curated data remain |
 | 6 | European option pricing/Greeks and hedging scenarios | BSM price/Greeks, signed position aggregation by underlying and pre-expiry full-repricing scenarios implemented; option chains, settlement and executable hedging remain |
 | 7 | Inventory-aware market-making simulator and quote/fill analytics | Quotes/print replay plus separate explicit order-lifecycle scenarios with reservations, delayed cancel, partial fills and cash/fee accounting implemented; real queue/hedging/adverse-selection calibration remains |
-| 8 | Protected API, dashboard, offline CLI, reproducible artifacts and observability for new modules | Seventeen analyses, saved trial families/history, protected API and report exports implemented; durable job workers and dedicated telemetry remain; visual QA blocked by browser tool |
+| 8 | Protected API, dashboard, offline CLI, reproducible artifacts and observability for new modules | Seventeen analyses, saved trials, protected API and exports implemented; desktop/mobile lifecycle and catalog browser flows verified; durable workers, broader UI coverage and dedicated telemetry remain |
 | 9 | Licensed feeds, venue/broker adapters, instrument metadata, currency conversion and real cost calibration | Supplied metadata catalog, pinned single-venue planning, order checks and timestamped bid/ask conversion implemented; provider adapters and real calibration remain external dependencies |
 | 10 | Durable multi-venue order lifecycle, cancel/replace, reconciliation, permission/audit controls, resilience and deployment exercises | Pending; existing Deriv controls cannot imply multi-venue support |
 | 11 | Multi-regime empirical validation, stress/capacity studies and forward demo acceptance | Requires representative real datasets and demo access |
@@ -100,6 +100,77 @@ toggle. Do not remove those guards without implementing and testing an explicit
 research-to-execution contract. No new analytics are used to admit real orders.
 
 ## Latest verification and environment constraints
+
+### Eighth checkpoint: delayed fill acknowledgements
+
+- Verification: **221 backend tests passed, 3 PostgreSQL checks skipped** (no
+  disposable URL), 51 seconds, 20,397 warnings. Targeted Ruff and whitespace checks
+  passed. Two browser flows at 1440x1000 and 390x844 passed, with current screenshots
+  inspected. Frontend build and four TradingView tests passed; existing Vite bundle
+  warning remains at about 711 kB. Isolated browser test servers stopped after QA.
+- `order_lifecycle.py` now accepts bounded `fill_ack_latency_ms` (default zero).
+  Venue inventory/cash/fees and client-acknowledged inventory/cash/fees are separate.
+  A FIFO acknowledgement queue processes due fills before each input, immediately
+  after zero-delay fills, and at simulation end. Each fill records its due time
+  and acknowledgement flag; orders retain acknowledged filled quantity.
+- Admission uses client inventory and separate buy/sell reservations comprising
+  outstanding size plus unacknowledged fills. Cancel/reject acknowledgements only
+  release unfilled remainder, including after partial fills. Unknown opposing
+  fills do not net and unconfirmed risk reduction cannot fund new capacity.
+- Reports expose client exposure bounds per input, terminal client reservations,
+  unacknowledged quantities and pending acknowledgements. Existing headline values
+  and order states remain venue truth. Fixed reliable delivery continues during
+  matching halts; message loss/reordering and disconnect recovery are not modeled.
+- Added six regression cases for exact acknowledgement timing, conservative
+  capacity, cancel/reject races, opposing fills, partial end-time acknowledgement,
+  halt delivery, zero-delay parity and client/venue cash/fee reconciliation.
+  Corrected default zero inventory to a Decimal so untouched ledgers serialize
+  consistently as decimal strings.
+- Lifecycle UI adds an explicit client acknowledgement panel and fill due-time/
+  acknowledgement columns. Synthetic example deliberately ends with one pending
+  acknowledgement. Browser assertions verify both visible client state and the
+  client/venue discrepancy in the downloaded report at desktop/mobile sizes.
+- No schema change, broker connection or production migration. This remains an
+  explicit offline scenario model; automatic quoting integration is still pending.
+
+### Seventh checkpoint: venue events, readable reports and visual UI verification
+
+- `order_lifecycle.py` accepts explicit `venue` matching-halt/resume and `reject`
+  remainder-rejection events. Halts prevent fills/new admission but preserve
+  outstanding reservations; due cancellation acknowledgements wait for resume.
+  Explicit rejection releases the remaining quantity while preserving prior fills.
+  This is a matching halt, not a network disconnect. Fill acknowledgements remain
+  immediate; delayed fill knowledge and automatic quoting integration remain next.
+- Added four lifecycle regressions and updated the synthetic example. Full backend
+  verification: **215 passed, 3 PostgreSQL skips**, 50 seconds, 20,396 warnings.
+  Targeted Ruff passed. Frontend production build and four TradingView tests pass;
+  existing bundle-size warning remains (about 710 kB).
+- `LifecycleReport.tsx` displays decimal metrics, order states, fills, event audit
+  and assumptions; raw JSON/export remains available. Navigation collapses to
+  labeled icons on mobile. Browser testing found catalog fieldset/search overflow;
+  fixed minimum widths and stacked search controls on narrow screens.
+- **Visual verification completed** using standalone headless Microsoft Edge via
+  Playwright after the in-app browser again failed on `sandboxPolicy`. Two browser
+  tests passed at 1440x1000 and 390x844. Inspected actual screenshots at both sizes.
+  Verified sign-in, malformed JSON, real lifecycle analysis, visible rejection,
+  JSON download contents, catalog registration/planning, sign-out, no page errors
+  and no horizontal page/main overflow. Wide report tables scroll within their cards.
+- Reproduce with `npm run test:visual` in frontend. `playwright.config.ts` starts
+  isolated loopback API/frontend servers on 8017/4173 and stops them after tests.
+  `backend/tests/visual_api.py` uses a disposable SQLite database and dummy access
+  key, avoids loading application `.env`, and includes only real research/catalog
+  routes plus test identity/health endpoints. It never starts broker services.
+  Defaults to installed Edge and backend Windows virtualenv; `UI_BROWSER_CHANNEL`
+  and `UI_PYTHON` can override those for other environments.
+- Screenshots: `frontend/test-results/research-research-lifecycle-and-catalog-at-1440px/`
+  and corresponding `...-390px/`, each with `lifecycle.png` and `catalog.png`.
+  Test artifacts are ignored by Git and regenerated on each run. Added Playwright
+  development dependency. npm reported 8 dependency advisories; no broad dependency
+  upgrade was attempted in this milestone.
+- Scope: these browser checks cover lifecycle/catalog workflows against the isolated
+  test API, not the full trading dashboard, deployment or all saved-registry flows.
+  No production migration, live order or deployment occurred. Work already present
+  was preserved; no commit or push was made by this agent.
 
 ### Sixth checkpoint: explicit offline order lifecycle
 
@@ -310,9 +381,9 @@ research-to-execution contract. No new analytics are used to admit real orders.
 
 ## Next concrete work, in priority order
 
-1. **Close UI verification:** restore the Browser tool, use an isolated local API
-   with dummy credentials and synthetic inputs, and verify selection, malformed
-   JSON handling, report download, signed-out access and responsive layout.
+1. **Broaden UI verification:** checkpoint seven verifies lifecycle/catalog flows
+   at desktop/mobile sizes against an isolated real API. Extend browser coverage
+   to saved-family/trial history, role-specific permissions and other lab operations.
 2. **Instrument/data integration:** the supplied metadata/session/tick/lot/FX
    contracts are implemented and tested at checkpoint two; checkpoint four adds
    persistent supplied revisions and pinned single-venue execution planning. Build
@@ -328,9 +399,11 @@ research-to-execution contract. No new analytics are used to admit real orders.
    Provider ingestion requires explicit provider selection and specifications;
    checkpoint five implements option position aggregation and full-repricing
    scenarios. Checkpoint six adds explicit outstanding-order inventory reservations
-   and delayed cancellation scenarios. Next independent offline work can extend
-   that ledger with venue rejection/outage events and delayed fill acknowledgement,
-   before integrating it with automatic quoting (item 6).
+   and delayed cancellation scenarios. Checkpoint seven adds matching halt/resume
+   and remainder rejection. Checkpoint eight adds delayed fill acknowledgement and
+   conservative client-known reservations. Next independent implementation is a
+   causal automatic-quoting controller using those client-known values, followed
+   by queue/fill calibration against suitable supplied data (item 6).
 4. **Data-backed validation:** load representative licensed histories, audit
    missing/outlier/corporate-action data and publication lags, calibrate fees,
    spreads, slippage, impact/financing, then run cross-asset/regime experiments.
@@ -341,7 +414,7 @@ research-to-execution contract. No new analytics are used to admit real orders.
    pre-expiry full-repricing shocks are complete at checkpoint five. Keep
    regulatory capital out of scope until jurisdiction/product rules are specified.
 6. **Execution simulator:** add queue position/trade-print reconciliation,
-   maker/taker fees/rebates, delayed fill acknowledgement, rejection/outage handling,
+   maker/taker fees/rebates, message loss/reordering and disconnect recovery,
    hedges and final liquidation costs. Explicit outstanding-order reservations and
    delayed cancel/replacement scenarios are implemented at checkpoint six;
    integration with automatic quoting remains.

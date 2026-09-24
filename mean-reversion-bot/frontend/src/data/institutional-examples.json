@@ -1511,7 +1511,7 @@
   },
   "order-lifecycle": {
     "label": "Order lifecycle simulator",
-    "description": "Synthetic order events with pending-size inventory reservations, partial fills and delayed cancellation. No broker orders are sent.",
+    "description": "Synthetic orders with inventory reservations, partial fills, delayed cancellation, a matching halt and an explicit venue rejection.",
     "input": {
       "inventory_limit": "3",
       "initial_inventory": "0",
@@ -1558,8 +1558,45 @@
           "side": "buy",
           "price": "98",
           "quantity": "2"
+        },
+        {
+          "kind": "venue",
+          "at_ms": 31,
+          "online": false
+        },
+        {
+          "kind": "trade",
+          "at_ms": 32,
+          "aggressor": "sell",
+          "price": "97",
+          "quantity": "2"
+        },
+        {
+          "kind": "cancel",
+          "at_ms": 33,
+          "order_id": "replacement"
+        },
+        {
+          "kind": "venue",
+          "at_ms": 60,
+          "online": true
+        },
+        {
+          "kind": "submit",
+          "at_ms": 61,
+          "order_id": "venue-rule-example",
+          "side": "buy",
+          "price": "98",
+          "quantity": "2"
+        },
+        {
+          "kind": "reject",
+          "at_ms": 68,
+          "order_id": "venue-rule-example",
+          "reason": "Synthetic venue rule rejection"
         }
-      ]
+      ],
+      "fill_ack_latency_ms": 100
     }
   }
 }

@@ -17,8 +17,10 @@ inventory-aware market making and explicit order-lifecycle scenarios with invent
 reservations, partial fills and delayed cancellation. Lifecycle scenarios remain
 separate from broker execution and the automatic quoting simulator.
 The extension has no broker execution authority. Full backend verification now
-reports 211 passed and 3 PostgreSQL skips; frontend build and TradingView tests
-pass. Visual verification is pending because the browser tool could not start.
+reports 221 passed and 3 PostgreSQL skips; frontend build and TradingView tests
+pass. Two Edge browser flows verify lifecycle/catalog behavior at desktop/mobile
+sizes against an isolated test API. Screenshots were inspected; mobile catalog
+overflow was fixed. Broader dashboard and deployed UI verification remain.
 
 See [INSTITUTIONAL_LAB.md](INSTITUTIONAL_LAB.md) for operation contracts and
 [CONTINUATION_REPORT.md](CONTINUATION_REPORT.md) for the detailed handoff, prior

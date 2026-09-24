@@ -44,6 +44,43 @@
       "side": "buy",
       "price": "98",
       "quantity": "2"
+    },
+    {
+      "kind": "venue",
+      "at_ms": 31,
+      "online": false
+    },
+    {
+      "kind": "trade",
+      "at_ms": 32,
+      "aggressor": "sell",
+      "price": "97",
+      "quantity": "2"
+    },
+    {
+      "kind": "cancel",
+      "at_ms": 33,
+      "order_id": "replacement"
+    },
+    {
+      "kind": "venue",
+      "at_ms": 60,
+      "online": true
+    },
+    {
+      "kind": "submit",
+      "at_ms": 61,
+      "order_id": "venue-rule-example",
+      "side": "buy",
+      "price": "98",
+      "quantity": "2"
+    },
+    {
+      "kind": "reject",
+      "at_ms": 68,
+      "order_id": "venue-rule-example",
+      "reason": "Synthetic venue rule rejection"
     }
-  ]
+  ],
+  "fill_ack_latency_ms": 100
 }

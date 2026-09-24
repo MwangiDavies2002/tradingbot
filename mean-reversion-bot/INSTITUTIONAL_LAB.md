@@ -132,7 +132,7 @@ or run `institutional_cli.py order-lifecycle examples/institutional/order-lifecy
 --output lifecycle-report.json` from the backend with its virtual-environment Python.
 The operation also supports saved research trials through the existing registry.
 
-Supply a single instrument's explicit `submit`, `cancel` and `trade` scenario
+Supply a single instrument's explicit `submit`, `cancel`, `trade`, `venue` and `reject` scenario
 events in nondecreasing `at_ms` order. Equal timestamps execute in input order;
 cancellations already effective at that timestamp settle before each input.
 Order IDs cannot be reused, including after rejection. Maximum: 5,000 events
@@ -155,9 +155,35 @@ cancellations and preserves outstanding reservations. It does not close inventor
 The report includes order states, fills, cancellation audit, inventory bounds,
 cash, fees and final marked P&L using the explicit `initial_mark`/`final_mark`.
 
+`venue` events carry `online: false/true` to simulate a matching halt/resume.
+While halted, fills stop and new submissions are rejected; existing reservations
+remain and cancellation acknowledgements wait for resume. This does not simulate
+a client network disconnect while a venue continues matching. `reject` events
+carry `order_id` and `reason`, acknowledging rejection of any remaining quantity;
+earlier fills remain booked. A late rejection of a terminal order is a no-op.
+
+The lifecycle report includes readable metric cards and order/fill/audit tables.
+Tables scroll horizontally on narrow screens; the complete JSON remains downloadable.
+
+`fill_ack_latency_ms` adds a fixed acknowledgement delay (default zero, maximum
+60,000 ms). Venue fills immediately affect `ending_inventory`, `cash_change`, fees
+and marked P&L. Client inventory/cash/fees change only at each fill's `ack_at_ms`.
+The acknowledgement panel and downloaded report show both views, per-fill
+acknowledgement flags, pending count and unacknowledged quantities by side.
+
+Admission uses client-known inventory plus outstanding quantity and unacknowledged
+fills, separately for buys and sells. Unknown opposing fills never net. Cancel or
+rejection acknowledgement releases only the unfilled remainder; pending fills
+remain reserved. Acknowledgements due exactly at an event time are processed before
+that event; zero-delay fills are acknowledged immediately. End time processes only
+acknowledgements due by `end_ms`, leaving later ones pending. Delivery continues
+during a matching halt. This assumes reliable, fixed-delay delivery, not a network
+disconnect or message loss/reordering. Cancel/reject acknowledgements do not reveal
+cumulative fills in this intentionally conservative scenario model.
+
 This is a hypothetical single-instrument ledger, not exchange queue reconstruction
-or an automatic quoting strategy. Fill acknowledgements are immediate; market-data
-delay, venue outages/rejections, self-trade prevention, instrument grids, hedges,
+or an automatic quoting strategy. Market-data
+delay, client disconnects, self-trade prevention, instrument grids, hedges,
 margin, financing and final exit costs are not modeled. The existing `market-making`
 operation retains its original instantaneous replacement assumptions.
 

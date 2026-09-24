@@ -24,6 +24,8 @@ def run(events, **changes):
     for row in result["inventory_path"]:
         assert Decimal(row["maximum_inventory"]) <= limit
         assert Decimal(row["minimum_inventory"]) >= -limit
+        assert Decimal(row["client_maximum_inventory"]) <= limit
+        assert Decimal(row["client_minimum_inventory"]) >= -limit
     for order in result["orders"]:
         assert Decimal(order["filled"]) + Decimal(order["remaining"]) == Decimal(order["quantity"])
     return result
@@ -98,3 +100,91 @@ def test_full_fill_wins_cancel_race_and_no_later_release():
 def test_invalid_event_scenarios_rejected(events, changes):
     with pytest.raises(ValueError):
         run(events, **changes)
+
+
+def test_matching_halt_retains_capacity_and_defers_cancel_acknowledgement():
+    result = run([submit("a"), dict(kind="venue", at_ms=1, online=False), cancel("a", 2),
+                  trade(10), submit("b", 11), dict(kind="venue", at_ms=20, online=True),
+                  submit("c", 20)], cancel_latency_ms=5)
+    assert result["fills"] == []
+    assert result["inventory_path"][3]["reserved_buy"] == "2"
+    assert result["orders"][1]["status"] == "rejected"
+    assert result["orders"][2]["status"] == "open"
+    assert next(a["at_ms"] for a in result["audit"] if a["event"] == "canceled") == 20
+
+
+def test_venue_rejection_preserves_prior_fills_and_releases_remainder():
+    result = run([submit("a"), trade(1), dict(kind="reject", at_ms=2, order_id="a", reason="synthetic venue rule"),
+                  trade(3), submit("b", 4)])
+    assert result["ending_inventory"] == "1"
+    assert result["orders"][0]["status"] == "venue_rejected"
+    assert result["orders"][0]["filled"] == "1"
+    assert result["orders"][1]["status"] == "open"
+
+
+def test_halt_at_end_keeps_due_cancels_reserved():
+    result = run([submit("a"), dict(kind="venue", at_ms=1, online=False), cancel("a", 2)])
+    assert result["venue_online"] is False
+    assert result["ending_reservations"]["buy"] == "2"
+
+
+def test_rejection_after_fill_is_noop_and_unknown_reference_invalid():
+    result = run([submit("a"), trade(1, "2"), dict(kind="reject", at_ms=2, order_id="a", reason="late")])
+    assert result["orders"][0]["status"] == "filled"
+    assert result["audit"][-1]["event"] == "reject_noop"
+    with pytest.raises(ValueError, match="earlier submitted"):
+        run([dict(kind="reject", at_ms=0, order_id="missing", reason="invalid")])
+
+
+def test_delayed_sell_fill_does_not_let_client_spend_unconfirmed_buy_capacity():
+    result = run([submit("sell", quantity="3", side="sell", price="101"),
+                  trade(1, "3", "buy", "102"), submit("too-soon", 2, quantity="4"),
+                  submit("after-ack", 11, quantity="4")], fill_ack_latency_ms=10)
+    assert result["orders"][1]["status"] == "rejected"
+    assert result["orders"][2]["status"] == "open"
+    assert result["inventory_path"][1]["inventory"] == "-3"
+    assert result["inventory_path"][1]["client_inventory"] == "0"
+    assert result["inventory_path"][1]["client_reserved_sell"] == "3"
+    assert result["client_inventory"] == "-3"
+
+
+@pytest.mark.parametrize("terminal", ["cancel", "reject"])
+def test_terminal_ack_never_releases_unacknowledged_fills(terminal):
+    event = cancel("a", 2) if terminal == "cancel" else dict(kind="reject", at_ms=2, order_id="a", reason="test")
+    result = run([submit("a"), trade(1), event, submit("replacement", 3, quantity="3")],
+                 fill_ack_latency_ms=20, end_ms=10)
+    assert result["ending_reservations"]["buy"] == "0"
+    assert result["client_reservations"]["buy"] == "1"
+    assert result["orders"][1]["status"] == "rejected"
+    assert result["pending_fill_acknowledgements"] == 1
+    assert result["fills"][0]["acknowledged"] is False
+    assert result["client_inventory"] == "0"
+
+
+def test_acknowledgements_settle_during_halt_and_reconcile_cash_fees():
+    result = run([submit("a"), trade(1), trade(2), dict(kind="venue", at_ms=3, online=False)],
+                 fill_ack_latency_ms=10, fee_bps="10", end_ms=12)
+    assert result["client_inventory"] == result["ending_inventory"] == "2"
+    assert result["client_cash_change"] == result["cash_change"] == "-198.198"
+    assert result["client_fees"] == result["fees"] == "0.198"
+    assert result["orders"][0]["acknowledged_filled"] == "2"
+    assert result["pending_fill_acknowledgements"] == 0
+    assert [a["at_ms"] for a in result["audit"] if a["event"] == "fill_acknowledged"] == [11, 12]
+
+
+def test_unknown_opposite_fills_do_not_net_and_partial_ack_at_end():
+    result = run([submit("buy"), submit("sell", side="sell", price="101"),
+                  trade(1), trade(2, aggressor="buy", price="102")], fill_ack_latency_ms=10, end_ms=11)
+    assert result["ending_inventory"] == "0"
+    assert result["client_inventory"] == "1"
+    assert result["unacknowledged_quantity"] == {"buy": "0", "sell": "1"}
+    assert result["client_reservations"] == {"buy": "1", "sell": "2"}
+    assert result["pending_fill_acknowledgements"] == 1
+
+
+def test_zero_delay_preserves_immediate_client_ledger():
+    result = run([submit("a"), trade(1)], fee_bps="1")
+    assert result["client_inventory"] == result["ending_inventory"]
+    assert result["client_reservations"] == result["ending_reservations"]
+    assert result["client_cash_change"] == result["cash_change"]
+    assert result["fills"][0]["ack_at_ms"] == 1
