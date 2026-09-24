@@ -24,8 +24,8 @@ from app.api.security import protect_api
 from app.api.routes import institutional, instrument_catalog, research_registry
 
 settings.API_ADMIN_KEY_HASH = hashlib.sha256(b"visual-test-admin-key-0000000000000000").hexdigest()
-settings.API_OPERATOR_KEY_HASH = ""
-settings.API_VIEWER_KEY_HASH = ""
+settings.API_OPERATOR_KEY_HASH = hashlib.sha256(b"visual-test-operator-key-0000000000000000").hexdigest()
+settings.API_VIEWER_KEY_HASH = hashlib.sha256(b"visual-test-viewer-key-0000000000000000").hexdigest()
 
 
 @asynccontextmanager

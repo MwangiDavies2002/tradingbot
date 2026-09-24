@@ -7,6 +7,27 @@ checkboxes are not evidence that the original roadmap is complete.
 
 ## Implementation audit
 
+### TradingView chart lifecycle - 2026-09-24
+
+Chart embeds now use a separate iframe document so delayed script execution
+cannot reference a container removed by platform/timeframe changes. Added Reload
+chart and a visible script-load failure message. Production build, four Pine
+tests, two deterministic desktop/mobile lifecycle/recovery tests, and the two
+MT5 historical-source UI tests passed. A separate opt-in check rendered real
+public TradingView V75 candles after platform switching; screenshot inspected.
+Provider availability remains external. No broker or backend behavior changed.
+
+### MT5 historical source selection - 2026-09-24
+
+Strategy Lab now explicitly selects Deriv or connected MT5 historical candles.
+MT5 history is restricted to V75 1s and supported timeframes at both UI/API
+boundaries; imported files override the selected provider. New results retain
+and display the effective source. 22 targeted backend tests, the frontend build,
+targeted Ruff, and two desktop/mobile Edge tests passed. MT5/backtest endpoints
+were stubbed in browser QA; no live-terminal or order verification is implied.
+The external TradingView embed was blocked in those isolated MT5 browser tests;
+its load/unmount race was subsequently fixed and checked as described above.
+
 ### Institutional research extension - 2026-09-23
 
 The Institutional lab adds eighteen **offline** analyses for instrument checks,
@@ -19,7 +40,7 @@ automatic quoting controller uses this ledger and client-known inventory at expl
 fair receipt events, with automatic expiry cancellation timers that preserve
 cancel-latency and pending-fill reservations. Both remain separate from broker execution.
 The extension has no broker execution authority. Full backend verification now
-reports 259 passed and 3 PostgreSQL skips; frontend build and TradingView tests
+reports 267 passed and 3 PostgreSQL skips; frontend build and TradingView tests
 pass. Two Edge browser flows verify lifecycle/automatic-quoting/catalog behavior at desktop/mobile
 sizes against an isolated test API. Screenshots were inspected; mobile catalog
 overflow was fixed. Broader dashboard and deployed UI verification remain.

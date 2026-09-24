@@ -6,6 +6,7 @@ type Result = {
   pending_fill_acknowledgements?: number;
   client_connected?: boolean; pending_terminal_acknowledgements?: number; queued_cancellations?: number;
   fees_charged?: string; rebates_earned?: string;
+  queue_quantity_consumed?: string; queue_depletions?: Row[]; trade_allocations?: Row[];
   liquidation_projection?: { status: string; blockers: string[]; projected_exit_quantity?: string;
     projected_exit_price?: string | null; projected_remaining_inventory?: string; taker_fee?: string;
     execution_cost_vs_mark?: string; projected_marked_pnl_after_exit?: string };
@@ -30,6 +31,7 @@ export default function LifecycleReport({ result }: { result: Record<string, unk
     <p className="text-sm text-cyan-200">Venue at end: {data.venue_online === false ? 'Halted' : 'Online'} · Offline scenario</p>
     <div className="grid grid-cols-2 xl:grid-cols-3 gap-3">{metrics.map(([label, value]) => <div key={label} className="rounded bg-slate-900 p-3 min-w-0"><p className="text-xs text-slate-400">{label}</p><p className="font-mono text-sm sm:text-lg break-all">{value}</p></div>)}</div>
     {data.fees_charged !== undefined && <p className="text-sm text-slate-400">Resting-fill fees charged: {data.fees_charged}; rebates earned: {data.rebates_earned}. Negative net fees represent rebates.</p>}
+    {data.queue_quantity_consumed !== undefined && <p aria-label="Queue scenario summary" className="text-sm text-slate-400">Queue volume consumed: {data.queue_quantity_consumed}. Supplied per-order queue assumptions; consuming this volume is not a fill.</p>}
     {data.client_inventory !== undefined && <section aria-label="Client acknowledgement state" className="rounded border border-cyan-800 p-3 text-sm space-y-2">
       <h3 className="font-semibold">Client acknowledgement state</h3>
       {data.client_connected !== undefined && <p>Order connection: <strong>{data.client_connected ? 'Connected' : 'Disconnected'}</strong>. Queued cancellations: {data.queued_cancellations}. Pending terminal confirmations: {data.pending_terminal_acknowledgements}.</p>}
@@ -50,7 +52,9 @@ export default function LifecycleReport({ result }: { result: Record<string, unk
       </dl>}
       <p className="text-slate-400">Uses supplied liquidity, slippage and fees. The order ledger and headline inventory are unchanged; no closing order was executed.</p>
     </section>}
-    <Table title="Orders" rows={data.orders} columns={[["order_id", "Order"], ["side", "Side"], ["status", "State"], ["quantity", "Quantity"], ["filled", "Filled"], ["remaining", "Remaining"]]} />
+    <Table title="Orders" rows={data.orders} columns={[["order_id", "Order"], ["side", "Side"], ["status", "State"], ["quantity", "Quantity"], ["filled", "Filled"], ["remaining", "Remaining"], ["queue_ahead_remaining", "Queue ahead left"]]} />
+    {data.queue_depletions && data.queue_depletions.length > 0 && <Table title="Queue consumption" rows={data.queue_depletions} columns={[["at_ms", "Time (ms)"], ["order_id", "Order"], ["quantity", "Consumed"], ["queue_remaining", "Queue ahead left"]]} />}
+    {data.trade_allocations && <details><summary className="cursor-pointer text-sm">Trade volume allocation</summary><Table title="Trade allocations" rows={data.trade_allocations} columns={[["at_ms", "Time (ms)"], ["scenario_budget", "Budget"], ["queue_consumed", "Queue"], ["filled_quantity", "Our fills"], ["unused_budget", "Unused"]]} /></details>}
     {data.quote_decisions && <Table title="Quote decisions" rows={data.quote_decisions.map(row => ({ at_ms: row.at_ms, fair: row.fair_price,
       trigger: row.trigger ?? 'fair', expires: row.expires_at_ms ?? null,
       inventory: row.client_inventory, bid: row.bid, ask: row.ask, buy: row.actions.buy, sell: row.actions.sell }))}

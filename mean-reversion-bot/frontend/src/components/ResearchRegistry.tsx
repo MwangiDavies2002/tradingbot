@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api/client'
+import { usePermissions } from '../auth/identity'
 
 type Report = { operation: string; report_id: string; result: Record<string, unknown> }
 type Family = { family_id: string; name: string; hypothesis: string; trial_keys: string[] }
@@ -8,8 +9,9 @@ type ExportedRun = { registry: Run; input_payload: object; report: Report | null
 const newId = () => crypto.randomUUID().replace(/-/g, '')
 
 export default function ResearchRegistry({ operation, input, disabled, onReport, onBusyChange }: {
-  operation: string; input: string; disabled: boolean; onReport: (report: Report) => void; onBusyChange: (busy: boolean) => void
+  operation: string; input: string; disabled: boolean; onReport: (report: Report | null) => void; onBusyChange: (busy: boolean) => void
 }) {
+  const { canRunResearch } = usePermissions()
   const [families, setFamilies] = useState<Family[]>([])
   const [familyId, setFamilyId] = useState('')
   const [trial, setTrial] = useState('')
@@ -57,6 +59,7 @@ export default function ResearchRegistry({ operation, input, disabled, onReport,
     setDraftId(newId()); setMessage('Family declared. Its hypothesis and trial list are now immutable.')
   }
   async function saveRun() {
+    onReport(null)
     const result = await api.post('/api/research-registry/runs', {
       family_id: familyId, trial_key: trial, name: runName, operation,
       dataset_version: dataset, parent_run_id: parent.trim() || null, payload: JSON.parse(input),
@@ -70,6 +73,7 @@ export default function ResearchRegistry({ operation, input, disabled, onReport,
     }
   }
   async function exportRun(run: Run, display: boolean) {
+    if (display) onReport(null)
     const saved = await api.get(`/api/research-registry/runs/${run.run_id}/export`) as ExportedRun
     if (display) {
       if (saved.report) onReport(saved.report)
@@ -80,17 +84,18 @@ export default function ResearchRegistry({ operation, input, disabled, onReport,
     const link = document.createElement('a'); link.href = url; link.download = `research-${run.run_id}.json`; link.click()
     setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
-  return <section className="bg-slate-800 rounded-xl p-5 space-y-4" aria-label="Research registry">
+  return <section className="bg-slate-800 rounded-xl p-5 space-y-4 min-w-0" aria-label="Research registry">
     <h2 className="font-semibold text-lg">Research registry</h2>
     <p className="text-sm text-slate-400">Declare the full trial family before running it. Saved requests and outcomes cannot be edited or deleted. Failed trials remain in history.</p>
-    <fieldset disabled={busy || disabled} className="space-y-4">
+    {!canRunResearch && <p className="text-sm text-slate-400">Read-only registry access. You can check family completeness, view outcomes and export saved trials.</p>}
+    <fieldset disabled={busy || disabled} className="space-y-4 min-w-0">
     <details><summary className="cursor-pointer">Declare a new trial family</summary>
       <div className="grid md:grid-cols-2 gap-3 mt-3">
         <label>Family name<input className={control} value={familyName} maxLength={128} onChange={e => setFamilyName(e.target.value)} /></label>
         <label>Trial keys, comma-separated<input className={control} value={trialKeys} onChange={e => setTrialKeys(e.target.value)} /></label>
         <label className="md:col-span-2">Hypothesis<textarea className={control} value={hypothesis} maxLength={4000} onChange={e => setHypothesis(e.target.value)} /></label>
       </div>
-      <button disabled={busy || disabled || !familyName || !hypothesis} onClick={() => void act(declare)} className="mt-3 px-4 py-2 rounded bg-slate-700 disabled:opacity-50">Declare family</button>
+      <button disabled={busy || disabled || !canRunResearch || !familyName || !hypothesis} onClick={() => void act(declare)} className="mt-3 px-4 py-2 rounded bg-slate-700 disabled:opacity-50">Declare family</button>
     </details>
     <div className="grid md:grid-cols-2 gap-3 text-sm">
       <label>Declared family<select className={control} value={familyId} onChange={e => {
@@ -103,7 +108,7 @@ export default function ResearchRegistry({ operation, input, disabled, onReport,
     </div>
     {selected && <p className="text-sm text-slate-300">Declared hypothesis: {selected.hypothesis}</p>}
     <div className="flex flex-wrap gap-2">
-      <button disabled={busy || disabled || !familyId || !trial || !runName || !dataset} onClick={() => void act(saveRun)} className="px-4 py-2 rounded bg-cyan-700 disabled:opacity-50">Run current scenario &amp; save trial</button>
+      <button disabled={busy || disabled || !canRunResearch || !familyId || !trial || !runName || !dataset} onClick={() => void act(saveRun)} className="px-4 py-2 rounded bg-cyan-700 disabled:opacity-50">Run current scenario &amp; save trial</button>
       <button disabled={busy || !familyId} onClick={() => void act(async () => setManifest(await api.get(`/api/research-registry/families/${familyId}`) as typeof manifest))} className="px-4 py-2 rounded bg-slate-700 disabled:opacity-50">Check family completeness</button>
     </div>
     {manifest && <p className="text-sm text-slate-300">{manifest.all_trials_terminal ? 'All declared trials have terminal outcomes.' : `Unattempted trials: ${manifest.unattempted_trial_keys.join(', ') || 'none'}. Pending: ${manifest.runs.filter(r => r.status === 'pending').length}.`} Completeness does not establish a valid strategy.</p>}
@@ -114,7 +119,7 @@ export default function ResearchRegistry({ operation, input, disabled, onReport,
     </div>
     {error && <p role="alert" className="text-red-300 text-sm whitespace-pre-wrap break-words">{error}</p>}
     {message && <p role="status" className="text-cyan-200 text-sm break-words">{message}</p>}
-    <div className="overflow-auto"><table className="w-full text-sm text-left"><thead className="text-slate-400"><tr><th className="p-2">Run</th><th className="p-2">Trial</th><th className="p-2">Status</th><th className="p-2">Actions</th></tr></thead>
+    <div className="overflow-auto"><table aria-label="Saved trials" className="w-full text-sm text-left"><thead className="text-slate-400"><tr><th className="p-2">Run</th><th className="p-2">Trial</th><th className="p-2">Status</th><th className="p-2">Actions</th></tr></thead>
       <tbody>{runs.map(run => <tr key={run.run_id} className="border-t border-slate-700"><td className="p-2">{run.name}<div className="text-xs text-slate-400">{run.operation} · {run.created_at}</div><div className="text-xs font-mono">{run.run_id}</div></td><td className="p-2">{run.trial_key}</td><td className="p-2">{run.status}</td><td className="p-2 whitespace-nowrap"><button disabled={busy} onClick={() => void act(() => exportRun(run, true))} className="mr-3 text-cyan-300">View</button><button disabled={busy} onClick={() => void act(() => exportRun(run, false))} className="text-cyan-300">Export</button></td></tr>)}</tbody>
     </table></div>
     {!runs.length && <p className="text-sm text-slate-400">No matching saved trials.</p>}

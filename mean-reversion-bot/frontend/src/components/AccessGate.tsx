@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode, type FormEvent } from 'react'
 import { api, setAccessKey } from '../api/client'
+import { IdentityContext } from '../auth/identity'
 
 const ACCESS_KEY_STORAGE = 'mr-bot-access-key'
 
@@ -45,6 +46,6 @@ export default function AccessGate({ children }: { children: ReactNode }) {
       <span>{identity.demo ? 'Deriv demo' : 'Deriv LIVE'} · {identity.account_id || 'Account not configured'} · {identity.role}</span>
       <button onClick={() => { setAccessKey(''); localStorage.removeItem(ACCESS_KEY_STORAGE); setIdentity(null) }}>Sign out</button>
     </div>
-    {children}
+    <IdentityContext.Provider value={identity}>{children}</IdentityContext.Provider>
   </div>
 }

@@ -1,7 +1,76 @@
 # Institutional capability expansion - continuation report
 
-Last checkpoint: 2026-09-24. Status: twelfth offline implementation checkpoint
-verified; broader production expansion is NOT complete.
+Last checkpoint: 2026-09-24. Status: fifteenth implementation checkpoint
+verified (TradingView chart lifecycle); broader production expansion is NOT complete.
+
+## Checkpoint fifteen: TradingView chart lifecycle and reload
+
+Fixed the pending external-script/unmounted-container race from checkpoint fourteen.
+TradingViewPanel now renders the embed inside a dedicated iframe document keyed
+by symbol, timeframe and reload revision. Switching platforms, changing chart
+inputs, or reloading destroys the previous document and its script context.
+The new `frontend/src/tradingview/widget.ts` builds the document and escapes
+JSON configuration against script-tag termination. Failed script loads show a
+visible message inside the chart; Reload chart and the external chart link remain
+available. The existing provider configuration and Pine generation are preserved.
+
+Validation: frontend production build and all four Pine-generation tests passed.
+Two deterministic Edge tests at 1440px/390px cover delayed script arrival after
+unmount, rapid timeframe replacement, symbol changes, failed loads and recovery;
+both passed with no page errors or main-container overflow. The two existing
+historical-source browser tests also passed. Broker endpoints were stubbed.
+An opt-in public-CDN smoke test additionally passed: the real provider rendered
+V75 1s candles on M15 after platform switching, with no page errors. Its screenshot
+and desktop/mobile failure/recovery screenshots were inspected. Initial smoke
+assertions were strengthened from frame presence to actual symbol content/canvas;
+a wrong expected provider text was corrected using the observed chart content.
+
+Reproduce deterministic checks with `npm run test:visual -- tradingview.spec.ts
+backtest.spec.ts`. The public provider check is skipped by default; opt in using
+`$env:UI_REAL_TV='1'; npm run test:visual -- tradingview.spec.ts` in PowerShell.
+It depends on external provider availability. The in-app browser bootstrap still
+fails before connecting; verification used isolated headless Edge. The existing
+Vite large-bundle warning remains. No backend code changed in this checkpoint,
+so the backend suite was not rerun. No terminal access or trading actions occurred.
+
+Next concrete work: extend UI verification to saved-family/trial history and
+role-specific permissions. The bounded sensitivity-study roadmap remains open.
+
+## Checkpoint fourteen: explicit historical sources in Strategy Lab
+
+Following the connected-MT5 user guide, resolved its identified source-selection
+gap. In MT5 / Python mode, Historical data source now explicitly selects Deriv
+or connected MT5 history. Deriv remains the default; choosing MT5 locks the
+instrument to 1HZ75V, including after switching platforms. Imported files override
+the history selection. MT5 history errors do not fall back to Deriv.
+
+The backend rejects unsupported MT5 history symbols/timeframes before reading
+the terminal. New backtests persist `input_source` in existing params JSON and
+return the effective source in immediate/recent results; the UI labels it.
+Older runs without the field remain `Not recorded` instead of inferring provenance.
+No schema migration is needed. Header controls now wrap on small screens.
+
+Validation: 22 targeted backend tests passed (7 new routing/validation cases,
+15 existing MT5 cases); targeted Ruff and frontend production build passed.
+Two Edge browser tests passed at 1440px and 390px, with screenshots inspected
+and no main-container overflow. Browser tests use real isolated sign-in but
+stub backtest/MT5 responses, and block the external TradingView embed. They
+verify Deriv/MT5 request selection, symbol lock, missing-terminal error and file
+override. They do not verify the user's terminal or execute broker orders.
+The in-app browser bootstrap still fails before connecting. An initial unblocked
+Edge run revealed an existing TradingView embed `querySelector` error when its
+asynchronous script runs after switching platforms (fixed at checkpoint fifteen); do
+not count the isolated MT5 test as validation of that widget. Existing Vite bundle
+size warning remains. Full backend suite was not rerun for this scoped change.
+
+Updated MT5_SETUP.md and regenerated docs/Mean_Reversion_Bot_User_Guide.docx.
+Document structural checks passed; rendered document QA remains unavailable
+because LibreOffice is missing. Trading was not started, application databases
+were not migrated, and existing uncommitted work was preserved.
+
+Next concrete work at that checkpoint: fix the TradingView widget unmount/load race, then extend
+UI verification to saved-family/trial history and role-specific permissions.
+The bounded sensitivity-study and other offline roadmap work below remain.
 
 ## User request and working agreement
 
@@ -100,6 +169,31 @@ toggle. Do not remove those guards without implementing and testing an explicit
 research-to-execution contract. No new analytics are used to admit real orders.
 
 ## Latest verification and environment constraints
+
+### Thirteenth checkpoint: deterministic queue-ahead volume scenarios
+
+- Verification: **267 backend tests passed, 3 PostgreSQL checks skipped** (no
+  disposable URL), 40 seconds, 20,397 warnings. Targeted Ruff and whitespace checks
+  passed. Two desktop/mobile browser flows passed; screenshots inspected. Frontend
+  build and four TradingView tests passed. Existing Vite bundle warning remains at
+  about 716 kB. Playwright stopped its isolated servers after QA.
+- Added optional nonnegative `queue_ahead_quantity` per manual submit and as an
+  automatic-quoting default for generated orders. Default zero preserves the old
+  fill rule. Unchanged quotes retain progress; replacement orders start afresh.
+- Eligible prints consume one shared fractional volume budget across queue amounts
+  and simulated fills in price/time order. Queue depletion does not change cash,
+  inventory, fees or acknowledgement state. Reports retain initial/remaining/
+  consumed queue amounts, depletion events and budget/fill/unused reconciliation.
+- These are incremental independent per-order volume hurdles, excluding earlier
+  simulated orders. Canceled/rejected orders retire residual hurdles. They are not
+  cumulative depth, a shared external order book or calibrated exchange queues.
+- Eight new regression cases cover queue-first fills, shared budget conservation,
+  priority, activation/price/halt eligibility, cancel latency, disconnect behavior,
+  replacement/reset semantics, invalid inputs and default-zero parity. UI adds
+  queue summary/columns, consumption events and expandable trade allocations.
+  Synthetic automatic example and desktop/mobile browser assertions include queues.
+- No schema, deployment or live-execution changes. Empirical queue calibration
+  remains dependent on representative provider data and actual venue rules.
 
 ### Twelfth checkpoint: fee rebates and terminal exit-cost projections
 
@@ -522,7 +616,9 @@ research-to-execution contract. No new analytics are used to admit real orders.
    quote-expiry timers with cancel-latency handling. Checkpoint eleven adds client
    disconnect/recovery and buffered message delivery. Checkpoint twelve adds signed
    fee/rebate scenarios and explicit end-of-run exit-cost projections. Next independent
-   work can add deterministic queue-ahead scenarios with explicit supplied assumptions;
+   work at checkpoint thirteen adds deterministic per-order queue-ahead scenarios.
+   Next self-contained work can compare supplied fill/latency/cost assumptions in
+   a bounded sensitivity study with reproducible reports and worst-case summaries;
    empirical queue/fill calibration still requires suitable supplied data (item 6).
 4. **Data-backed validation:** load representative licensed histories, audit
    missing/outlier/corporate-action data and publication lags, calibrate fees,

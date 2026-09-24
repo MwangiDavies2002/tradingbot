@@ -1,33 +1,14 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { buildPineStrategy, selectionError, tradingViewSymbol, tradingViewUrl, type Selection } from '../tradingview/strategy'
+import { chartDocument } from '../tradingview/widget'
 
 export default function TradingViewPanel({ selection, threshold, timeframe, symbol, startingCapital }: { selection: Selection; threshold: number; timeframe: string; symbol: string; startingCapital: number }) {
-  const chart = useRef<HTMLDivElement>(null)
+  const [chartRevision, setChartRevision] = useState(0)
   const [message, setMessage] = useState('')
-  const [scriptError, setScriptError] = useState(false)
   const error = selectionError(selection, threshold)
   const tvSymbol = tradingViewSymbol(symbol)
   const tvUrl = tradingViewUrl(symbol)
   const source = error ? '' : buildPineStrategy(selection, threshold, symbol, startingCapital)
-  useEffect(() => {
-    const container = chart.current
-    if (!container) return
-    setScriptError(false)
-    const widget = document.createElement('div')
-    widget.className = 'tradingview-widget-container__widget'
-    widget.style.height = '100%'
-    container.replaceChildren(widget)
-    const script = document.createElement('script')
-    script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js'
-    script.async = true
-    script.textContent = JSON.stringify({ autosize: true, symbol: tvSymbol,
-      interval: String(Number(timeframe.slice(1)) * (timeframe.startsWith('H') ? 60 : 1)),
-      timezone: 'Etc/UTC', theme: 'dark', style: '1', locale: 'en',
-      allow_symbol_change: false, hide_side_toolbar: false, calendar: false, support_host: 'https://www.tradingview.com' })
-    script.onerror = () => setScriptError(true)
-    container.appendChild(script)
-    return () => { script.onerror = null; container.replaceChildren() }
-  }, [timeframe, tvSymbol])
   const download = () => {
     const url = URL.createObjectURL(new Blob([source], { type: 'text/plain;charset=utf-8' }))
     const link = document.createElement('a')
@@ -45,9 +26,10 @@ export default function TradingViewPanel({ selection, threshold, timeframe, symb
         <p className="text-sm text-slate-400">Selected threshold: {threshold} points · change it whenever you want.</p></div>
       <a href={tvUrl} target="_blank" rel="noopener noreferrer" className="rounded bg-cyan-500 px-4 py-2 text-slate-950 font-semibold">Open {symbol} in TradingView ↗</a>
     </div>
-    <div ref={chart} className="tradingview-widget-container h-[460px] w-full" />
+    <iframe key={`${tvSymbol}:${timeframe}:${chartRevision}`} title="TradingView price chart"
+      srcDoc={chartDocument(tvSymbol, timeframe)} className="h-[460px] w-full border-0" />
+    <button onClick={() => setChartRevision(value => value + 1)} className="px-3 py-2 rounded bg-slate-700 hover:bg-slate-600">Reload chart</button>
     <p className="text-xs text-slate-400"><a href={tvUrl} target="_blank" rel="noopener noreferrer" className="text-cyan-300">{symbol} chart by TradingView</a>. This embedded chart shows market prices. Your Pine strategy's trade markers appear on the full TradingView chart after you add the script.</p>
-    {scriptError && <p role="alert" className="text-amber-300">The chart could not load. Open the full TradingView chart using the link above.</p>}
     <p className="text-xs text-slate-400">If TradingView restricts this symbol in embedded charts, use Open V75 1s. No MT5 connection is needed for this workflow.</p>
     <div className="flex flex-wrap gap-3">
       <button disabled={!!error} onClick={download} className="px-4 py-2 bg-cyan-600 rounded disabled:opacity-40">Download Pine strategy</button>

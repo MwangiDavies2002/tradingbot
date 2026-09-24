@@ -257,6 +257,11 @@ class BacktestRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_model_selection(self):
+        if self.data_source == 'mt5' and not self.csv_data:
+            if self.symbols != ['1HZ75V']:
+                raise ValueError('MT5 history supports only 1HZ75V (Volatility 75 (1s) Index)')
+            if self.timeframe not in ('M1', 'M5', 'M15', 'M30', 'H1', 'H4'):
+                raise ValueError('MT5 history requires M1/M5/M15/M30/H1/H4')
         EngineConfig(model_strategy=self.model_strategy,
                      use_linear_regression=self.use_linear_regression,
                      use_time_series_nn=self.use_time_series_nn)
@@ -350,7 +355,9 @@ async def run_backtest(req: BacktestRequest, request: Request, db: AsyncSession 
                 max_drawdown=report.max_drawdown_pct,
                 total_pnl=report.total_pnl,
                 total_pnl_pct=report.total_pnl_pct,
-                params_json={**req.model_dump(exclude={"csv_data"}), "provenance": report.metadata},
+                params_json={**req.model_dump(exclude={"csv_data"}),
+                             "input_source": 'import' if req.csv_data else req.data_source,
+                             "provenance": report.metadata},
                 equity_curve_json=report.equity_curve,
                 trades_json=[
                     {
@@ -370,6 +377,7 @@ async def run_backtest(req: BacktestRequest, request: Request, db: AsyncSession 
             results.append(
                 {
                     "run_id": run_id,
+                    "data_source": 'import' if req.csv_data else req.data_source,
                     "metadata": report.metadata,
                     "symbol": symbol,
                     "total_trades": len(report.trades),
@@ -436,6 +444,7 @@ async def get_backtest_results(db: AsyncSession = Depends(get_db)):
     return [
         {
             "run_id": item.run_id,
+            "data_source": (item.params_json or {}).get('input_source', 'unknown'),
             "symbol": item.symbol,
             "timeframe": item.timeframe,
             "run_at": item.run_at.isoformat() if item.run_at else None,

@@ -7,7 +7,7 @@ from typing import Annotated, Literal
 from pydantic import Field, model_validator
 
 from app.institutional.data import Record
-from app.institutional.instruments import Positive, decimal_text
+from app.institutional.instruments import Positive, Nonnegative, decimal_text
 from app.institutional.liquidation import LiquidationScenario, project_liquidation
 
 
@@ -18,6 +18,7 @@ class Submit(Record):
     side: Literal["buy", "sell"]
     price: Positive
     quantity: Positive
+    queue_ahead_quantity: Nonnegative = Decimal(0)
 
 
 class Cancel(Record):
@@ -124,6 +125,7 @@ def _simulate(request, controller=None):
     reconnected_ms = 0
     resumed_ms = 0
     decisions = []
+    queue_depletions, trade_allocations = [], []
 
     def outstanding():
         return [order for order in orders.values() if order["status"] in ("open", "cancel_pending")]
@@ -239,6 +241,8 @@ def _simulate(request, controller=None):
             orders[event.order_id] = {"order_id": event.order_id, "side": event.side,
                 "price": event.price, "quantity": event.quantity, "remaining": event.quantity,
                 "filled": Decimal(0), "acknowledged_filled": Decimal(0), "submitted_ms": event.at_ms,
+                "queue_ahead_initial": event.queue_ahead_quantity,
+                "queue_ahead_remaining": event.queue_ahead_quantity, "queue_consumed": Decimal(0),
                 "active_ms": event.at_ms + request.submit_latency_ms, "sequence": index,
                 "cancel_effective_ms": None, "client_cancel_requested": False,
                 "cancel_queued": False, "terminal_acknowledged": True,
@@ -260,13 +264,22 @@ def _simulate(request, controller=None):
                 settle(event.at_ms)
             else:
                 audit.append({"at_ms": event.at_ms, "order_id": event.order_id, "event": "cancel_noop"})
-        elif venue_online:
+        elif isinstance(event, Print):
             side = "sell" if event.aggressor == "buy" else "buy"
-            candidates = [o for o in outstanding() if o["side"] == side and o["active_ms"] <= event.at_ms
+            candidates = [o for o in outstanding() if venue_online and o["side"] == side and o["active_ms"] <= event.at_ms
                           and (event.price >= o["price"] if side == "sell" else event.price <= o["price"])]
             candidates.sort(key=lambda o: (o["price"] if side == "sell" else -o["price"], o["active_ms"], o["sequence"]))
             available = event.quantity * request.fill_fraction
+            consumed_queue, filled_quantity = Decimal(0), Decimal(0)
             for order in candidates:
+                queue_size = min(order["queue_ahead_remaining"], available)
+                if queue_size > 0:
+                    order["queue_ahead_remaining"] -= queue_size
+                    order["queue_consumed"] += queue_size
+                    consumed_queue += queue_size
+                    available -= queue_size
+                    queue_depletions.append({"at_ms": event.at_ms, "order_id": order["order_id"],
+                        "quantity": queue_size, "queue_remaining": order["queue_ahead_remaining"]})
                 size = min(order["remaining"], available)
                 if size <= 0:
                     break
@@ -276,6 +289,7 @@ def _simulate(request, controller=None):
                 cash -= sign * size * order["price"] + fee
                 fees += fee
                 available -= size
+                filled_quantity += size
                 order["remaining"] -= size
                 order["filled"] += size
                 if order["remaining"] == 0:
@@ -287,6 +301,9 @@ def _simulate(request, controller=None):
                 fills.append(fill)
                 pending_fills.append(fill)
                 unacknowledged[side] += size
+            trade_allocations.append({"at_ms": event.at_ms, "event_index": index,
+                "scenario_budget": event.quantity * request.fill_fraction, "queue_consumed": consumed_queue,
+                "filled_quantity": filled_quantity, "unused_budget": available})
         acknowledge(event.at_ms)
         reserved = reservations()
         client_reserved = client_reservations()
@@ -310,6 +327,8 @@ def _simulate(request, controller=None):
         "client_inventory": client_inventory, "client_cash_change": client_cash, "client_fees": client_fees,
         "client_reservations": client_reservations(), "unacknowledged_quantity": unacknowledged,
         "pending_fill_acknowledgements": len(pending_fills),
+        "queue_depletions": queue_depletions, "trade_allocations": trade_allocations,
+        "queue_quantity_consumed": sum((row["quantity"] for row in queue_depletions), Decimal(0)),
         "venue_online": venue_online,
         "client_connected": client_connected,
         "pending_terminal_acknowledgements": sum(not o["terminal_acknowledged"] for o in orders.values()),
@@ -331,6 +350,7 @@ def _simulate(request, controller=None):
     if request.liquidation is not None:
         result["liquidation_projection"] = project_liquidation(request, result)
     result["limitations"].append("fee_bps is a signed hypothetical resting-fill rate: positive charge, negative rebate. It does not verify maker eligibility. Optional exit projections do not mutate this ledger.")
+    result["limitations"].append("Queue-ahead quantities are independent per-order incremental volume hurdles, consumed before that order's fills within one shared print budget. They exclude prior simulated orders. Canceled/rejected orders retire their residual hurdle; no shared external book, external cancellations, hidden liquidity or calibrated queue priority is inferred.")
 
     def serialize(value):
         if isinstance(value, Decimal):

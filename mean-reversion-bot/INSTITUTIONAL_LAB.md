@@ -170,6 +170,31 @@ strategy, exchange queue model or broker integration.
 
 ### Order lifecycle simulator
 
+#### Deterministic queue-ahead scenarios
+
+Each manual `submit` may supply nonnegative `queue_ahead_quantity` (default zero).
+For `auto-quoting`, the same optional top-level field applies to every newly
+generated order. An unchanged quote preserves queue progress; a replacement gets
+a new supplied amount. Queue assumptions are not inferred from market data.
+
+For each eligible print, `quantity * fill_fraction` is one shared scenario budget.
+In simulated price/time order, consume an order's remaining queue-ahead amount
+first, then its own remaining quantity, before proceeding to later orders. The
+budget equals queue consumed plus our fills plus unused volume. Queue consumption
+does not change inventory, cash, fees or client acknowledgements.
+
+These are independent **incremental per-order volume assumptions**, excluding
+earlier simulated orders; do not enter cumulative exchange depth for each order.
+There is no shared external queue reconstruction. Canceled/rejected orders retire
+their residual queue assumption. No external cancellation, queue replenishment,
+hidden liquidity or calibrated priority is modeled. Non-crossing prints, orders
+before activation and matching halts do not advance queues; client disconnects
+do not stop eligible venue-side queue consumption.
+
+Reports/UI show consumed queue volume, remaining queue amount per order, queue
+consumption events and trade-volume allocation. Default zero reproduces the prior
+fill rule. Limits remain hypothetical and should not be interpreted as real fills.
+
 #### Fee/rebate and exit-cost scenarios
 
 For `order-lifecycle` and `auto-quoting`, `fee_bps` is signed: positive charges,

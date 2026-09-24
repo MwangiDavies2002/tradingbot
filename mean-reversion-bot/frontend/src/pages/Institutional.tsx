@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { api } from '../api/client'
 import ResearchRegistry from '../components/ResearchRegistry'
 import LifecycleReport from '../components/LifecycleReport'
+import { usePermissions } from '../auth/identity'
 
 import exampleData from '../data/institutional-examples.json'
 
@@ -10,6 +11,7 @@ const examples: Record<string, { label: string; description: string; input: obje
 type Report = { operation: string; report_id: string; result: Record<string, unknown> }
 
 export default function Institutional() {
+  const { canRunResearch } = usePermissions()
   const [operation, setOperation] = useState('route')
   const [input, setInput] = useState(JSON.stringify(examples.route.input, null, 2))
   const [report, setReport] = useState<Report | null>(null)
@@ -54,7 +56,8 @@ export default function Institutional() {
           catch { setError('Could not read scenario file.') }
         }} /></label>
         <label className="block text-sm">Scenario<textarea aria-label="Scenario JSON" disabled={blocked} spellCheck={false} value={input} onChange={e => { setInput(e.target.value); setReport(null) }} className="mt-2 w-full h-72 rounded bg-slate-950 border border-slate-600 p-3 font-mono text-xs" /></label>
-        <button disabled={blocked} onClick={run} className="rounded bg-cyan-700 px-4 py-2 disabled:opacity-50">{busy ? 'Analyzing...' : 'Run offline analysis'}</button>
+        <button disabled={blocked || !canRunResearch} onClick={run} className="rounded bg-cyan-700 px-4 py-2 disabled:opacity-50">{busy ? 'Analyzing...' : 'Run offline analysis'}</button>
+        {!canRunResearch && <p className="text-sm text-slate-400">Viewer access: browse saved trials and export reports. Running analyses requires an operator or administrator.</p>}
         {error && <p role="alert" className="text-red-300 whitespace-pre-wrap break-words text-sm">{error}</p>}
       </section>
     </div>

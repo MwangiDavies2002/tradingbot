@@ -46,6 +46,8 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
     await expect(page.getByLabel('Client acknowledgement state')).toContainText('Order connection: Connected')
     await expect(page.getByLabel('Fills table').getByRole('columnheader', { name: 'Delivered (ms)' })).toBeVisible()
     await expect(page.getByLabel('Exit cost projection')).toContainText('Projection status: complete')
+    await expect(page.getByLabel('Queue scenario summary')).toContainText('Queue volume consumed: 0.5')
+    await expect(page.getByLabel('Queue consumption table')).toBeVisible()
     await page.getByLabel('Order lifecycle results').evaluate(el => el.scrollIntoView({ block: 'start' }))
     await page.screenshot({ path: testInfo.outputPath('auto-quoting.png') })
     expect(await page.locator('main').evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)

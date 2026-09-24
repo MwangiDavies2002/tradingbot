@@ -40,6 +40,7 @@ export default function Backtest() {
     try { return JSON.parse(localStorage.getItem('v751s-strategy-lab-v2') || '{}') || {} } catch { return {} }
   });
   const [platform, setPlatform] = useState<'tradingview' | 'mt5'>('tradingview');
+  const [dataSource, setDataSource] = useState<'deriv' | 'mt5'>('deriv');
   const [selectedStrategies, setSelectedStrategies] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(STRATEGIES.map(s => [s.id, typeof savedLab.selection?.[s.id] === 'boolean' ? savedLab.selection[s.id] : DEFAULT_SELECTION[s.id]])));
   const [selectedSymbols, setSelectedSymbols] = useState<string[]>(['1HZ75V']);
@@ -59,6 +60,10 @@ export default function Backtest() {
   useEffect(() => {
     if (platform === 'mt5') fetchRecentRuns();
   }, [platform]);
+
+  useEffect(() => {
+    if (platform === 'mt5' && dataSource === 'mt5') setSelectedSymbols(['1HZ75V']);
+  }, [platform, dataSource]);
 
   useEffect(() => {
     try { localStorage.setItem('v751s-strategy-lab-v2', JSON.stringify({ selection: selectedStrategies, threshold: minConfluence, timeframe })) } catch { /* Download still works without browser storage. */ }
@@ -86,7 +91,7 @@ export default function Backtest() {
     setLoading(true);
     try {
       const payload = {
-        data_source: 'deriv',
+        data_source: dataSource,
         symbols: selectedSymbols,
         timeframe,
         days,
@@ -130,17 +135,17 @@ export default function Backtest() {
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-2">
             <FlaskConical className="text-cyan-400" />
             Strategy Lab
           </h1>
           <p className="text-slate-400 text-sm mt-1">
-            Choose one instrument and test it with the Python/Deriv data pipeline.
+            Choose one instrument and a historical data source for a simulated test.
           </p>
         </div>
-        {platform === 'mt5' && <div className="flex items-center gap-3">
+        {platform === 'mt5' && <div className="flex flex-wrap items-center gap-3">
           <label className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700 cursor-pointer">
             <Upload className="w-4 h-4" />
             Import CSV / Excel
@@ -164,6 +169,23 @@ export default function Backtest() {
           </button>
         </div>}
       </div>
+      {platform === 'mt5' && <section aria-label="Historical data source" className="rounded-xl border border-slate-700 bg-slate-800 p-4 space-y-2">
+        <label className="block text-sm">Historical data source
+          <select aria-label="Historical data source" value={dataSource} disabled={loading}
+            onChange={e => {
+              const source = e.target.value as 'deriv' | 'mt5';
+              setDataSource(source);
+              if (source === 'mt5') setSelectedSymbols(['1HZ75V']);
+            }} className="block mt-2 max-w-full bg-slate-900 border border-slate-600 rounded p-2">
+            <option value="deriv">Deriv history</option>
+            <option value="mt5">Connected MT5 history (V75 1s)</option>
+          </select>
+        </label>
+        <p className="text-sm text-slate-300">{dataSource === 'mt5'
+          ? 'Requires the local connected demo terminal. Reads closed Volatility 75 (1s) candles; unavailable history produces an error, with no Deriv fallback.'
+          : 'Run Combined Test loads Deriv history for the selected instrument.'}</p>
+        <p className="text-xs text-slate-400">Import CSV / Excel uses your file instead of either history source. Results use simulated fills, not MT5 broker execution. Running a test does not start demo entries.</p>
+      </section>}
 
       <div className="flex flex-wrap items-center gap-3">
         <label className="text-sm">Platform <select aria-label="Platform" value={platform} onChange={e => setPlatform(e.target.value as 'tradingview' | 'mt5')} className="ml-2 bg-slate-800 border border-slate-600 rounded p-2">
@@ -238,8 +260,9 @@ export default function Backtest() {
               {SYMBOLS.map(symbol => (
                 <button
                   key={symbol}
-                  onClick={() => toggleSymbol(symbol)}
-                  className={`px-3 py-1.5 rounded-md text-xs font-semibold border transition-all ${
+                  disabled={platform === 'mt5' && dataSource === 'mt5' && symbol !== '1HZ75V'}
+                  onClick={() => platform === 'mt5' && dataSource === 'mt5' ? setSelectedSymbols(['1HZ75V']) : toggleSymbol(symbol)}
+                  className={`px-3 py-1.5 rounded-md text-xs font-semibold border transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
                     selectedSymbols.includes(symbol)
                       ? 'bg-cyan-500 border-cyan-500 text-slate-900'
                       : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:border-slate-600'
@@ -305,6 +328,7 @@ export default function Backtest() {
                     </div>
                     <div>
                       <h3 className="font-bold text-white text-lg">{res.symbol} Analysis</h3>
+                      <p className="text-xs text-cyan-300">Historical source: {res.data_source === 'mt5' ? 'MT5' : res.data_source === 'import' ? 'Imported file' : res.data_source === 'deriv' ? 'Deriv' : 'Not recorded'}</p>
                       <p className="text-xs text-slate-500">Backtest Period: {days} days · Timeframe: {timeframe}</p>
                     </div>
                   </div>
@@ -423,7 +447,8 @@ export default function Backtest() {
           </div>
 
           {selectedRun && (
-            <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 space-y-4">
+              <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 space-y-4">
+                <p className="text-xs text-cyan-300">Historical source: {selectedRun.data_source === 'mt5' ? 'MT5' : selectedRun.data_source === 'import' ? 'Imported file' : selectedRun.data_source === 'deriv' ? 'Deriv' : 'Not recorded'}</p>
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-[10px] uppercase tracking-wider text-slate-500">Selected Experiment</div>

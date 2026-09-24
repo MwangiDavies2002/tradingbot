@@ -74,5 +74,6 @@
     "available_ms": 96,
     "slippage_bps": "2",
     "taker_fee_bps": "3"
-  }
+  },
+  "queue_ahead_quantity": "0.25"
 }

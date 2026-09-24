@@ -66,7 +66,13 @@ does not run on Vercel. Use one backend process with one worker, no reload.
    displayed. Select indicators, timeframe and the minimum weighted score.
    Six points does not require six different indicators to agree: some
    conditions contribute multiple points. Hurst also acts as a regime filter.
-5. Run a backtest using MT5 history, or import an OHLCV CSV. For missing
+5. Under **MT5 / Python**, choose **Historical data source → Connected MT5
+   history (V75 1s)**, then **Run Combined Test**, or import an OHLCV CSV.
+   The source defaults to Deriv history; choosing the platform alone does not
+   select MT5 candles. MT5 history locks the instrument to `1HZ75V`, rejects
+   unsupported instruments/timeframes at the API, and never falls back to Deriv.
+   Imports override the history source. New results retain their effective source;
+   older saved runs without that field show **Not recorded**. For missing
    history, increase MT5's **Max bars in chart**, open/scroll the chart, or
    request fewer days. Incomplete history produces an error, not fake results.
 6. Choose demo risk settings, click **Save lab selection**, then **Start demo**.

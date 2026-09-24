@@ -12,6 +12,7 @@ class AutoQuoteRequest(LifecycleRequest):
     tick_size: Positive
     quantity_step: Positive
     order_size: Positive
+    queue_ahead_quantity: Nonnegative = Decimal(0)
     half_spread_bps: Positive = Field(default=Decimal(5), le=1000)
     inventory_skew_bps: Nonnegative = Field(default=Decimal(10), le=1000)
     max_fair_age_ms: int = Field(default=1000, ge=0, le=60000, strict=True)
@@ -58,7 +59,7 @@ def simulate_auto_quotes(request: AutoQuoteRequest) -> dict:
                 (price >= o["price"] if side == "buy" else price <= o["price"]) for o in orders)
             if valid and reserved[side] == 0 and not current and size > 0 and not crosses_own_order:
                 commands.append(Submit(kind="submit", at_ms=event.at_ms, order_id=f"quote-{sequence}-{side}",
-                                       side=side, price=price, quantity=size))
+                                       side=side, price=price, quantity=size, queue_ahead_quantity=request.queue_ahead_quantity))
                 actions[side] = "submit"
             else:
                 actions[side] = "cancel_or_wait" if current or reserved[side] else "inactive"

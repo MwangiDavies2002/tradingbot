@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api/client'
+import { usePermissions } from '../auth/identity'
 import examples from '../data/institutional-examples.json'
 
 type Revision = { spec_hash: string; instrument_id: string; venue: string; venue_symbol: string; revision: string; registered_at: string }
@@ -8,6 +9,7 @@ type Plan = { catalog: Revision; catalog_observed_by_decision: boolean; note: st
 const { instrument: exampleSpec, ...examplePlan } = examples['instrument-plan'].input
 
 export default function InstrumentCatalog() {
+  const { canRunResearch, canRegisterInstrument } = usePermissions()
   const [spec, setSpec] = useState(JSON.stringify(exampleSpec, null, 2))
   const [scenario, setScenario] = useState(JSON.stringify(examplePlan, null, 2))
   const [rows, setRows] = useState<Revision[]>([])
@@ -65,13 +67,15 @@ export default function InstrumentCatalog() {
         <section className="bg-slate-800 rounded-xl p-5 space-y-3 min-w-0"><h2 className="font-semibold">Register a specification (admin)</h2>
           <p className="text-sm text-slate-400">Publication and validity times, sessions, contract size and grids must come from the provider. Stored revisions cannot be edited or deleted.</p>
           <label className="block text-sm">Specification JSON<textarea aria-label="Instrument specification JSON" className={editor} spellCheck={false} value={spec} onChange={e => setSpec(e.target.value)} /></label>
-          <button onClick={() => void act(register)} className="bg-slate-700 px-4 py-2 rounded">Register revision</button>
+          <button disabled={!canRegisterInstrument} onClick={() => void act(register)} className="bg-slate-700 px-4 py-2 rounded disabled:opacity-50">Register revision</button>
+          {!canRegisterInstrument && <p className="text-sm text-slate-400">Only administrators can register instrument revisions.</p>}
         </section>
         <section className="bg-slate-800 rounded-xl p-5 space-y-3 min-w-0"><h2 className="font-semibold">Plan against selected revision</h2>
           <p className="text-sm text-slate-400">Book quantities use native lots/contracts. Prices use quote currency per underlying unit. The selected stored revision is used; edits in the specification editor do not alter it.</p>
           <p className="text-xs break-all text-cyan-200">{selected ? `Pinned: ${selected.venue_symbol} / ${selected.revision} / ${selected.spec_hash}` : 'Select or register a revision first.'}</p>
           <label className="block text-sm">Order and native book JSON<textarea aria-label="Order planning JSON" className={editor} spellCheck={false} value={scenario} onChange={e => { setScenario(e.target.value); setReport(null) }} /></label>
-          <button disabled={!selected} onClick={() => void act(plan)} className="bg-cyan-700 px-4 py-2 rounded disabled:opacity-50">Generate offline plan</button>
+          <button disabled={!selected || !canRunResearch} onClick={() => void act(plan)} className="bg-cyan-700 px-4 py-2 rounded disabled:opacity-50">Generate offline plan</button>
+          {!canRunResearch && <p className="text-sm text-slate-400">Viewer access: browse revisions. Generating plans requires an operator or administrator.</p>}
         </section>
       </div>
     </fieldset>
