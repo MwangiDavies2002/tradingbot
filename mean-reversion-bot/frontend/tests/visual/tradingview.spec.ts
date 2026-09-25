@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import fs from 'node:fs/promises'
 
 const embedURL = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js'
 // Mimics the provider's dependency on its current script's attached container.
@@ -61,6 +62,24 @@ for (const width of [1440, 390]) {
     await page.getByRole('button', { name: 'Reload chart', exact: true }).click()
     await expect(chart.getByRole('status')).toContainText('interval 60')
     await expect(chart.getByRole('alert')).toBeHidden()
+    await page.getByLabel('Chart asset', { exact: true }).selectOption('BOOM500')
+    await expect(chart.getByRole('status')).toContainText('DERIV:BOOM_500_INDEX')
+    await page.getByLabel('Other TradingView pair', { exact: true }).fill('FX:EURUSD')
+    await page.getByRole('button', { name: 'Show pair', exact: true }).click()
+    await expect(chart.getByRole('status')).toContainText('FX:EURUSD')
+    await expect(page.getByRole('link', { name: 'Open FX:EURUSD in TradingView' })).toHaveAttribute('href', /FX%3AEURUSD$/)
+    const downloadPromise = page.waitForEvent('download')
+    await page.getByRole('button', { name: 'Download Pine strategy', exact: true }).click()
+    const download = await downloadPromise
+    expect(download.suggestedFilename()).toBe('FX_EURUSD-dynamic-confluence.pine')
+    expect(await fs.readFile((await download.path())!, 'utf8')).toContain('syminfo.tickerid != "FX:EURUSD"')
+    await page.getByLabel('Platform', { exact: true }).selectOption('mt5')
+    await expect(page.getByRole('button', { name: 'NAS100', exact: true })).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.getByRole('button', { name: '1HZ75V', exact: true })).toHaveAttribute('aria-pressed', 'true')
+    await page.getByLabel('Platform', { exact: true }).selectOption('tradingview')
+    await expect(page.getByLabel('Chart asset', { exact: true })).toHaveValue('FX:EURUSD')
+    await expect(chart.getByRole('status')).toContainText('FX:EURUSD')
+    await page.getByRole('region', { name: 'Chart asset selection' }).scrollIntoViewIfNeeded()
     await page.screenshot({ path: testInfo.outputPath('chart-recovered.png') })
     expect(await page.locator('main').evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
     expect(errors).toEqual([])

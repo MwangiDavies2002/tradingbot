@@ -7,6 +7,53 @@ checkboxes are not evidence that the original roadmap is complete.
 
 ## Implementation audit
 
+### MT5 exact broker pair selection - 2026-09-25
+
+The demo worker now selects one exact symbol from the connected broker catalog.
+Saved symbols are validated; Start includes the expected symbol and rejects stale
+mismatches. Candles, signals, sizing and orders follow the saved pair. History
+uses the explicitly selected broker pair. Earlier bot exposure blocks new entries,
+and journal recovery includes bot deals on previous pairs. This supersedes V75-only
+limitations recorded in earlier entries below. Simultaneous multi-pair execution
+and broker-equivalent backtest fills remain outside this implementation.
+
+Validation: production build, 35 final targeted backend tests, six desktop/mobile
+UI flows. Full backend suite before final additional assertions: 286 passed,
+3 skipped. All MT5 responses were mocked; no live terminal or broker order verified.
+
+
+### Chart asset selection - 2026-09-24
+
+Strategy Lab now has a chart-asset selector independent of batch-test selection,
+plus an exact TradingView `EXCHANGE:SYMBOL` input. Chart content, external links,
+Pine symbol checks and download filenames follow that selection. The last chart
+symbol persists in browser settings; switching platforms preserves batch choices.
+Fully qualified symbols retain their provider prefix. This expands chart/export
+selection, not broker symbol support: MT5 remains V75 1s only, and arbitrary
+TradingView symbols are not automatically available to Deriv historical tests.
+
+### Multiple-asset historical test batches - 2026-09-24
+
+Strategy Lab supports multiple Deriv-history assets through sequential independent
+test requests. Successful results survive another asset's failure, and inline errors
+identify the affected asset. Unsupported News-only/Pine execution controls no longer
+produce invalid Python backtest requests. MT5 history and demo execution remain
+V75 1s only; file imports require one asset. Four desktop/mobile tests with stubbed
+market responses passed, along with the frontend build. This verifies orchestration
+and UI behavior, not provider instrument coverage or portfolio-level backtesting.
+
+### Research history and role-aware UI - 2026-09-24
+
+Institutional lab, the research registry and instrument catalog now disable actions
+unavailable to the authenticated role. API authorization remains authoritative.
+Opening failed/pending trials clears the previous report. Real isolated API browser
+tests cover successful/failed saved trials, completeness, search, exports across
+operator/viewer sessions and direct permission denials at desktop/mobile sizes.
+Both new flows and existing admin lifecycle/catalog flows passed, alongside 36
+registry/catalog backend tests and the production build. Remaining dashboard pages
+still need equivalent UI permission handling; pagination/large histories and tenant
+identity remain separate work. No production database or broker was accessed.
+
 ### TradingView chart lifecycle - 2026-09-24
 
 Chart embeds now use a separate iframe document so delayed script execution

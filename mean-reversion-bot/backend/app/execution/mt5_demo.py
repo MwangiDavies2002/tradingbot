@@ -28,7 +28,7 @@ DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 
 class DemoConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    symbol: Literal["Volatility 75 (1s) Index"] = SYMBOL
+    symbol: str = Field(SYMBOL, min_length=1, max_length=128, pattern=r"^[^\x00-\x1f\x7f]+$")
     timeframe: Literal["M1", "M5", "M15", "M30", "H1", "H4"] = "M5"
     min_confluence: int = Field(6, ge=1, le=20)
     risk_pct: float = Field(0.005, gt=0, le=0.01)
@@ -42,9 +42,21 @@ class DemoConfig(BaseModel):
     use_smc: bool = True
     use_volume: bool = True
     use_hurst: bool = True
+    use_linear_regression: bool = False
+    use_tree_model: bool = False
+    use_time_series_nn: bool = False
+    use_smt: bool = False
+    use_day_levels: bool = False
+    use_candle_reversal: bool = False
+    use_candle_continuation: bool = False
+    use_crt: bool = False
 
     @model_validator(mode="after")
     def validate_selection(self):
+        if self.symbol != self.symbol.strip():
+            raise ValueError('Use the exact broker symbol without surrounding whitespace')
+        from app.core.engine.signal_engine import EngineConfig
+        EngineConfig(**self.model_dump(exclude={'symbol', 'timeframe', 'daily_loss_pct'}))
         if not any((self.use_zscore, self.use_rsi, self.use_bb, self.use_vwap,
                     self.use_stoch, self.use_lsl, self.use_smc)):
             raise ValueError("Select at least one directional indicator; volume and Hurst alone cannot determine a direction")
@@ -76,6 +88,7 @@ class MT5DemoRunner:
             row = db.execute("SELECT value FROM settings WHERE key='strategy'").fetchone()
             if row:
                 self.config = DemoConfig.model_validate_json(row[0])
+        self.state['symbol'] = self.config.symbol
 
     @contextmanager
     def db(self):
@@ -98,17 +111,72 @@ class MT5DemoRunner:
         with self.lock:
             if self.state["running"]:
                 raise ValueError("Stop the demo runner before changing its strategy")
+            self._require_connection()
+            self._symbol_info(config.symbol)
             with self.db() as db:
                 db.execute("INSERT OR REPLACE INTO settings VALUES('strategy', ?)",
                            (config.model_dump_json(),))
+                db.execute("DELETE FROM settings WHERE key='research_candidate'")
             self.config = config
+            self.state.update(symbol=config.symbol, last_signal=None, open_positions=[],
+                              message=f'Saved demo strategy for {config.symbol}. Start explicitly to monitor entries.')
             return self.status()
+
+    def _require_connection(self):
+        if not self.mt5 or not self.state['connected']:
+            raise ValueError('Connect MT5 demo before selecting a broker symbol')
+        return self._account()
+
+    @staticmethod
+    def _symbol_problem(info):
+        if info is None:
+            return 'Symbol unavailable on this account/server'
+        # MT5 trade mode: 0 disabled, 1 long-only, 2 short-only, 3 close-only, 4 full.
+        if info.trade_mode not in (1, 2, 4):
+            return 'Symbol does not allow new positions'
+        # Market orders plus broker-held stop loss and take profit are required.
+        if info.order_mode & 49 != 49:
+            return 'Symbol must support market orders, stop loss and take profit'
+        values = (info.point, info.trade_tick_size, info.volume_min, info.volume_max, info.volume_step)
+        if any(not math.isfinite(v) or v <= 0 for v in values) or info.volume_max < info.volume_min:
+            return 'Invalid broker price or lot specification'
+        if not 0 <= info.digits <= 12 or not math.isfinite(info.trade_stops_level) or info.trade_stops_level < 0:
+            return 'Invalid broker precision or stop distance'
+        return None
+
+    def _symbol_info(self, symbol):
+        info = self.mt5.symbol_info(symbol)
+        problem = self._symbol_problem(info)
+        if problem or info.name != symbol:
+            raise ValueError(f'{symbol}: {problem or "Exact broker symbol required"}')
+        if not self.mt5.symbol_select(symbol, True):
+            raise ValueError(f'{symbol}: cannot select this symbol in Market Watch')
+        return info
+
+    def symbols(self):
+        with self.lock:
+            account, _, _ = self._require_connection()
+            rows = self.mt5.symbols_get()
+            if rows is None:
+                raise ValueError('MT5 symbol catalog unavailable; reconnect and retry')
+            return {'account': account.login, 'server': account.server, 'symbols': [
+                {'name': info.name, 'description': info.description,
+                 'eligible': self._symbol_problem(info) is None, 'reason': self._symbol_problem(info)}
+                for info in sorted(rows, key=lambda row: row.name)]}
+
+    def _exposure(self):
+        # Existing bot exposure on an earlier symbol still blocks new entries.
+        positions, orders = self.mt5.positions_get(), self.mt5.orders_get()
+        if positions is None or orders is None:
+            raise ValueError('Cannot verify MT5 positions/pending orders; trading paused')
+        relevant = lambda row: row.symbol == self.config.symbol or row.magic == MAGIC
+        return [p for p in positions if relevant(p)], [o for o in orders if relevant(o)]
 
     def _account(self):
         terminal = self.mt5.terminal_info()
         account = self.mt5.account_info()
         if not terminal or not terminal.connected or not account:
-            raise ValueError("MT5 is disconnected. Log into your Deriv demo account in the desktop terminal")
+            raise ValueError("MT5 is disconnected. Log into your demo account in the desktop terminal")
         if account.trade_mode != self.mt5.ACCOUNT_TRADE_MODE_DEMO:
             raise ValueError("Demo account required. This runner does not execute real-money trades")
         key = f"{account.server}:{account.login}"
@@ -134,8 +202,6 @@ class MT5DemoRunner:
                 raise ValueError(message)
             try:
                 account, terminal, key = self._account()
-                if not self.mt5.symbol_select(SYMBOL, True):
-                    raise ValueError(f"{SYMBOL} is unavailable on this account/server")
                 self.account_key = key
                 self._sync_deals()
                 self.state.update(connected=True, account=account.login, server=account.server,
@@ -150,29 +216,62 @@ class MT5DemoRunner:
 
     def status(self):
         with self.lock:
-            return {**self.state, "config": self.config.model_dump()}
+            evidence = self._research_candidate()
+            return {**self.state, "config": self.config.model_dump(),
+                    "research_candidate": evidence,
+                    "research_validated": bool(evidence and evidence.get('strategy') == self.config.model_dump()
+                        and time.time() - evidence.get('validated_at', 0) <= 7 * 86400)}
 
-    def history(self, timeframe, days):
+    def _research_candidate(self):
+        with self.db() as db:
+            row = db.execute("SELECT value FROM settings WHERE key='research_candidate'").fetchone()
+        return json.loads(row[0]) if row else None
+
+    def adopt_research_candidate(self, evidence):
+        # Called only with evidence loaded from the server's durable research store.
+        with self.lock:
+            account, _, _ = self._require_connection()
+            snapshot = evidence['snapshot']
+            if account.login != snapshot['account'] or account.server != snapshot['server']:
+                raise ValueError('Research belongs to a different demo account/server')
+            config = DemoConfig(**evidence['strategy'])
+            info = self._symbol_info(config.symbol)
+            current = {'contract_size': info.trade_contract_size, 'tick_size': info.trade_tick_size,
+                       'volume_min': info.volume_min, 'volume_step': info.volume_step, 'volume_max': info.volume_max}
+            if any(current[key] != snapshot[key] for key in current):
+                raise ValueError('Broker contract specification changed; rerun research')
+            self.configure(config)
+            with self.db() as db:
+                db.execute("INSERT OR REPLACE INTO settings VALUES('research_candidate', ?)", (json.dumps(evidence),))
+            self.state['message'] = 'Validated research candidate loaded. Review the saved pair and explicitly Start demo.'
+            return self.status()
+
+    def history(self, timeframe, days, symbol=None):
         with self.lock:
             if not self.mt5 or not self.state['connected']:
                 raise ValueError('Connect MT5 demo before loading historical candles, or import a CSV')
             self._account()
+            symbol = symbol or self.config.symbol
+            self._symbol_info(symbol)
             if timeframe not in ('M1', 'M5', 'M15', 'M30', 'H1', 'H4') or not 1 <= days <= 90:
                 raise ValueError('Choose M1/M5/M15/M30/H1/H4 and 1–90 days')
             interval = int(timeframe[1:]) * (60 if timeframe.startswith('M') else 3600)
             end_epoch = int(time.time() // interval) * interval
             end = datetime.fromtimestamp(end_epoch - 1, tz=timezone.utc)
             start = end - timedelta(days=days)
-            rates = self.mt5.copy_rates_range(SYMBOL, getattr(self.mt5, f'TIMEFRAME_{timeframe}'), start, end)
-            expected = days * 86400 // interval
-            if rates is None or len(rates) < max(100, expected * 0.9):
+            rates = self.mt5.copy_rates_range(symbol, getattr(self.mt5, f'TIMEFRAME_{timeframe}'), start, end)
+            # Session-based instruments do not trade 24/7. Do not infer missing
+            # candles from wall-clock time; comprehensive gap auditing is separate.
+            if rates is None or len(rates) < 100:
                 available = 0 if rates is None else len(rates)
-                raise ValueError(f'MT5 returned {available} of about {expected} candles. Open the chart and load more history, increase Max bars in chart, or select fewer days')
+                raise ValueError(f'{symbol}: MT5 returned {available} candles; at least 100 are required. Open its chart and load more history or increase the requested days')
             return [dict(timestamp=int(r['time']), open=float(r['open']), high=float(r['high']),
                          low=float(r['low']), close=float(r['close']), volume=float(r['tick_volume'])) for r in rates]
 
-    def start(self):
+    def start(self, expected_symbol):
         with self.lock:
+            if expected_symbol != self.config.symbol:
+                raise ValueError('Selected pair differs from the saved strategy. Reload and save before starting.')
             if self.state["running"]:
                 return self.status()
             if self.worker and self.worker.is_alive():
@@ -180,6 +279,17 @@ class MT5DemoRunner:
             if not self.mt5 or not self.state["connected"]:
                 raise ValueError("Connect to the MT5 demo terminal first")
             account, terminal, _ = self._account()
+            info = self._symbol_info(self.config.symbol)
+            evidence = self._research_candidate()
+            if not evidence or evidence.get('strategy') != self.config.model_dump() or time.time() - evidence.get('validated_at', 0) > 7 * 86400:
+                raise ValueError('Run Analyze selected assets and load a passing research candidate before starting demo entries')
+            snapshot = evidence['snapshot']
+            if account.login != snapshot['account'] or account.server != snapshot['server']:
+                raise ValueError('Research candidate belongs to a different account/server')
+            if any(getattr(info, attr) != snapshot[key] for attr, key in
+                   [('trade_contract_size','contract_size'), ('trade_tick_size','tick_size'),
+                    ('volume_min','volume_min'), ('volume_max','volume_max'), ('volume_step','volume_step')]):
+                raise ValueError('Broker contract changed; rerun research')
             if not (terminal.trade_allowed and not terminal.tradeapi_disabled
                     and account.trade_allowed and account.trade_expert):
                 raise ValueError("Enable Algo Trading and allow external Python trading in MT5 Options > Expert Advisors")
@@ -204,7 +314,7 @@ class MT5DemoRunner:
                 self.process_lock = handle
             self.stop_event.clear()
             self.record("started", self.config.model_dump())
-            self.state.update(running=True, message="Monitoring closed candles for qualifying entries")
+            self.state.update(running=True, message=f"Monitoring {self.config.symbol} closed candles for qualifying entries")
             self.worker = threading.Thread(target=self._run, name="mt5-demo", daemon=True)
             self.worker.start()
             return self.status()
@@ -244,9 +354,9 @@ class MT5DemoRunner:
                                             datetime.now(timezone.utc))
         if deals is None:
             raise ValueError("MT5 deal history unavailable; trading paused to preserve the journal")
-        ids = {d.position_id for d in deals if d.magic == MAGIC and d.symbol == SYMBOL}
+        ids = {(d.position_id, d.symbol) for d in deals if d.magic == MAGIC}
         for deal in deals:
-            if deal.position_id in ids and deal.symbol == SYMBOL:
+            if (deal.position_id, deal.symbol) in ids:
                 self.record("deal", deal._asdict(), f"deal:{self.account_key}:{deal.ticket}")
         self.last_sync = time.monotonic()
 
@@ -272,10 +382,7 @@ class MT5DemoRunner:
             raise ValueError("MT5 algorithmic trading permission was disabled")
         if time.monotonic() - self.last_sync >= 15:
             self._sync_deals()
-        positions = self.mt5.positions_get(symbol=SYMBOL)
-        orders = self.mt5.orders_get(symbol=SYMBOL)
-        if positions is None or orders is None:
-            raise ValueError("Cannot verify MT5 positions/pending orders; trading paused")
+        positions, orders = self._exposure()
         self.state.update(balance=account.balance, equity=account.equity,
                           open_positions=[p._asdict() for p in positions],
                           last_poll=datetime.now(timezone.utc).isoformat())
@@ -283,9 +390,9 @@ class MT5DemoRunner:
             self.state["message"] = "Daily equity loss limit reached; entries paused until the next UTC day"
             return
         if positions or orders:
-            self.state["message"] = "Waiting: a V75 1s position or pending order already exists"
+            self.state["message"] = f"Waiting: exposure exists on {self.config.symbol} or an earlier bot pair"
             return
-        rates = self.mt5.copy_rates_from_pos(SYMBOL, getattr(self.mt5, f"TIMEFRAME_{self.config.timeframe}"), 1, 500)
+        rates = self.mt5.copy_rates_from_pos(self.config.symbol, getattr(self.mt5, f"TIMEFRAME_{self.config.timeframe}"), 1, 500)
         if rates is None or len(rates) < 100:
             self.state["message"] = "Waiting for at least 100 closed MT5 candles; open the symbol chart"
             return
@@ -297,13 +404,15 @@ class MT5DemoRunner:
         if time.time() - bar > interval * 2 + 30 or bar > time.time():
             self.state['message'] = 'Waiting for current closed candles; history is stale'
             return
-        bar_key = f"bar:{self.account_key}:{self.config.timeframe}:{bar}"
+        # Preserve V75's legacy key so upgrading cannot replay its last candle.
+        symbol_key = '' if self.config.symbol == SYMBOL else f'{self.config.symbol}:'
+        bar_key = f"bar:{self.account_key}:{symbol_key}{self.config.timeframe}:{bar}"
         with self.db() as db:
             if db.execute("SELECT 1 FROM journal WHERE event_key=?", (bar_key,)).fetchone():
                 return
         self.engine.sizer.update_balance(account.balance)
-        decision = self.engine.evaluate(candles, symbol="1HZ75V", timeframe=self.config.timeframe)
-        payload = {"bar": bar, "symbol": SYMBOL, "direction": decision.direction,
+        decision = self.engine.evaluate(candles, symbol=self.config.symbol, timeframe=self.config.timeframe)
+        payload = {"bar": bar, "symbol": self.config.symbol, "direction": decision.direction,
                    "score": decision.confluence_score, "reason": decision.reason,
                    "should_trade": decision.should_trade, "strategy": self.config.model_dump(),
                    "breakdown": asdict(decision.confluence.breakdown) if decision.confluence else {}}
@@ -318,17 +427,21 @@ class MT5DemoRunner:
         current, _, _ = self._account()
         if not self._daily_guard(current):
             return
-        positions = self.mt5.positions_get(symbol=SYMBOL)
-        orders = self.mt5.orders_get(symbol=SYMBOL)
-        if positions is None or orders is None:
-            raise ValueError('Cannot verify MT5 exposure before submission')
+        positions, orders = self._exposure()
         if positions or orders:
             return
-        info = self.mt5.symbol_info(SYMBOL)
-        tick = self.mt5.symbol_info_tick(SYMBOL)
-        if not info or not tick or abs(time.time() - tick.time) > 30:
-            raise ValueError("No fresh V75 1s quote; no order submitted")
+        symbol = self.config.symbol
+        info = self._symbol_info(symbol)
+        tick = self.mt5.symbol_info_tick(symbol)
+        if not tick or abs(time.time() - tick.time) > 30:
+            raise ValueError(f"No fresh {symbol} quote; no order submitted")
+        if decision.direction not in ('buy', 'sell'):
+            raise ValueError('Invalid order direction')
         buy = decision.direction == "buy"
+        if (info.trade_mode == 1 and not buy) or (info.trade_mode == 2 and buy):
+            raise ValueError(f'{symbol}: broker does not allow this order direction')
+        if not all(math.isfinite(v) and v > 0 for v in (tick.ask, tick.bid)) or tick.ask < tick.bid:
+            raise ValueError('Invalid bid/ask; no order submitted')
         price = tick.ask if buy else tick.bid
         distance = decision.atr.value * 1.5
         if not math.isfinite(distance) or distance <= 0 or price <= 0:
@@ -341,31 +454,41 @@ class MT5DemoRunner:
                 not buy and (sl <= tick.ask + minimum or tp >= tick.ask - minimum)):
             raise ValueError("Strategy stop distances do not meet broker limits; no order submitted")
         side = self.mt5.ORDER_TYPE_BUY if buy else self.mt5.ORDER_TYPE_SELL
-        unit_loss = self.mt5.order_calc_profit(side, SYMBOL, 1.0, price, sl)
+        if sl <= 0 or tp <= 0:
+            raise ValueError('Protective prices must be positive')
+        reference_loss = self.mt5.order_calc_profit(side, symbol, info.volume_min, price, sl)
+        unit_loss = reference_loss / info.volume_min if reference_loss is not None else None
         if unit_loss is None or not math.isfinite(unit_loss) or unit_loss >= 0:
             raise ValueError("MT5 could not calculate risk in account currency")
         budget = min(current.balance, current.equity) * self.config.risk_pct
+        if not math.isfinite(budget) or budget <= 0:
+            raise ValueError('Invalid account risk budget')
         volume = round(math.floor(min(budget / abs(unit_loss), info.volume_max) / info.volume_step) * info.volume_step, 8)
         if volume < info.volume_min:
             self.state["message"] = "Skipped: minimum broker lot exceeds the configured risk budget"
             self.record("skipped", {"reason": self.state["message"]})
             return
+        if not info.filling_mode & 3 and info.trade_exemode == 2:
+            raise ValueError(f'{symbol}: no supported market filling policy')
         filling = (self.mt5.ORDER_FILLING_FOK if info.filling_mode & 1 else
                    self.mt5.ORDER_FILLING_IOC if info.filling_mode & 2 else self.mt5.ORDER_FILLING_RETURN)
-        request = dict(action=self.mt5.TRADE_ACTION_DEAL, symbol=SYMBOL, volume=volume,
+        request = dict(action=self.mt5.TRADE_ACTION_DEAL, symbol=symbol, volume=volume,
                        type=side, price=price, sl=sl, tp=tp, deviation=20,
-                       magic=MAGIC, comment="V751s strategy lab", type_time=self.mt5.ORDER_TIME_GTC,
+                       magic=MAGIC, comment="Strategy lab demo", type_time=self.mt5.ORDER_TIME_GTC,
                        type_filling=filling)
         check = self.mt5.order_check(request)
         if check is None or check.retcode != 0:
             raise ValueError(f"MT5 order check rejected: {check.comment if check else self.mt5.last_error()}")
         if self.stop_event.is_set():
             return
-        self._account()  # A switch to a real account always blocks execution.
+        account, terminal, _ = self._account()
+        if not (terminal.trade_allowed and not terminal.tradeapi_disabled
+                and account.trade_allowed and account.trade_expert):
+            raise ValueError('MT5 algorithmic trading permission was disabled')
         if not self.record("order_request", request, f"request:{bar_key}"):
             return
         result = self.mt5.order_send(request)
-        self.record("order_result", result._asdict() if result else {"error": str(self.mt5.last_error())})
+        self.record("order_result", {**(result._asdict() if result else {"error": str(self.mt5.last_error())}), 'symbol': symbol})
         if result is None or result.retcode not in (self.mt5.TRADE_RETCODE_DONE, self.mt5.TRADE_RETCODE_DONE_PARTIAL):
             raise ValueError("MT5 order response requires review in the journal/terminal; no automatic retry")
         self.state["message"] = f"Demo order executed: {result.order}"
@@ -376,9 +499,7 @@ class MT5DemoRunner:
                 try:
                     account, _, _ = self._account()
                     self._sync_deals()
-                    positions = self.mt5.positions_get(symbol=SYMBOL)
-                    if positions is None:
-                        raise ValueError('MT5 positions unavailable')
+                    positions, _ = self._exposure()
                     self.state.update(balance=account.balance, equity=account.equity,
                                       open_positions=[p._asdict() for p in positions])
                 except Exception as exc:

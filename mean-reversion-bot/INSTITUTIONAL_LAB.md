@@ -58,6 +58,13 @@ append-only supplied-metadata store, not a provider feed or verified security ma
 
 ## Durable research registry
 
+The dashboard uses the authenticated role to disable unavailable actions. Viewers
+can search saved trials, check family completeness, view reports and export them;
+operators and administrators can declare families and save analyses. Instrument
+revision registration is administrator-only. These UI controls complement the
+API permission checks. Viewing a failed/pending trial clears any previously
+displayed successful report so results from different trials are not confused.
+
 Before using the registry on an existing deployment, back up the database and
 apply the new migration from `backend`:
 

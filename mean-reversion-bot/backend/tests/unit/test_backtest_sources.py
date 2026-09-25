@@ -10,7 +10,7 @@ from app.api.routes import backtest, mt5
 
 
 @pytest.mark.parametrize('values', [
-    {'symbols': ['NAS100']}, {'symbols': ['R_75']},
+    {'symbols': ['']}, {'symbols': [' EURUSD']},
     {'symbols': ['1HZ75V'], 'timeframe': 'D1'},
 ])
 def test_mt5_rejects_mislabeled_history(values):
@@ -34,13 +34,16 @@ async def test_history_routing_and_persisted_source(monkeypatch, source, uploade
     monkeypatch.setattr(backtest.BacktestEngine, 'run', lambda *args, **kwargs: report)
     db = NS(add=MagicMock(), commit=AsyncMock(), rollback=AsyncMock())
     request = Request({'type': 'http', 'client': ('127.0.0.1', 1234), 'headers': []})
-    req = backtest.BacktestRequest(data_source=source, symbols=['1HZ75V'],
+    symbol = 'EURUSD.a' if source == 'mt5' else '1HZ75V'
+    req = backtest.BacktestRequest(data_source=source, symbols=[symbol],
                                   csv_data='supplied-file' if uploaded else None)
     result = await backtest.run_backtest(req, request, db)
     effective = 'import' if uploaded else source
     assert result[0]['data_source'] == effective
     assert db.add.call_args.args[0].params_json['input_source'] == effective
     assert runner.history.call_count == (1 if source == 'mt5' and not uploaded else 0)
+    if source == 'mt5' and not uploaded:
+        runner.history.assert_called_once_with(req.timeframe, req.days, symbol)
     assert fetch.await_count == (1 if source == 'deriv' and not uploaded else 0)
     assert load.await_count == (0 if source == 'mt5' and not uploaded else 1)
     db.commit.assert_awaited_once()

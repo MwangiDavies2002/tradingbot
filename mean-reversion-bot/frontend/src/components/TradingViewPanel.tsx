@@ -12,7 +12,7 @@ export default function TradingViewPanel({ selection, threshold, timeframe, symb
   const download = () => {
     const url = URL.createObjectURL(new Blob([source], { type: 'text/plain;charset=utf-8' }))
     const link = document.createElement('a')
-    link.href = url; link.download = 'v751s-dynamic-confluence.pine'; link.click()
+    link.href = url; link.download = `${symbol.replace(/[^A-Za-z0-9_-]/g, '_')}-dynamic-confluence.pine`; link.click()
     setTimeout(() => URL.revokeObjectURL(url), 1000)
     setMessage('Downloaded. Paste the script into TradingView Pine Editor and choose Add to chart.')
   }
@@ -30,7 +30,7 @@ export default function TradingViewPanel({ selection, threshold, timeframe, symb
       srcDoc={chartDocument(tvSymbol, timeframe)} className="h-[460px] w-full border-0" />
     <button onClick={() => setChartRevision(value => value + 1)} className="px-3 py-2 rounded bg-slate-700 hover:bg-slate-600">Reload chart</button>
     <p className="text-xs text-slate-400"><a href={tvUrl} target="_blank" rel="noopener noreferrer" className="text-cyan-300">{symbol} chart by TradingView</a>. This embedded chart shows market prices. Your Pine strategy's trade markers appear on the full TradingView chart after you add the script.</p>
-    <p className="text-xs text-slate-400">If TradingView restricts this symbol in embedded charts, use Open V75 1s. No MT5 connection is needed for this workflow.</p>
+    <p className="text-xs text-slate-400">If TradingView restricts this symbol in embedded charts, use Open {symbol} above. No MT5 connection is needed for this workflow.</p>
     <div className="flex flex-wrap gap-3">
       <button disabled={!!error} onClick={download} className="px-4 py-2 bg-cyan-600 rounded disabled:opacity-40">Download Pine strategy</button>
       <button disabled={!!error} onClick={copy} className="px-4 py-2 bg-slate-700 rounded disabled:opacity-40">Copy Pine strategy</button>
@@ -40,7 +40,7 @@ export default function TradingViewPanel({ selection, threshold, timeframe, symb
     {message && <p role="status" className="text-cyan-300">{message}</p>}
     <ol className="list-decimal pl-5 text-sm text-slate-300 space-y-2">
       <li>Select your indicators and a threshold below (1, 2, 3, or any achievable score). Your selection is saved in this browser.</li>
-      <li>Copy the script, open the V75 1s chart, then use <strong>Pine Editor → paste → Save → Add to chart</strong>. Choose your timeframe on that chart.</li>
+      <li>Copy the script, open the {symbol} chart, then use <strong>Pine Editor → paste → Save → Add to chart</strong>. Choose your timeframe on that chart.</li>
       <li>Watch simulated entries/exits on the chart and inspect <strong>Strategy Tester → List of trades</strong>. Export the trade list there to keep your records.</li>
       <li>Tomorrow, change <strong>strategy Settings → Inputs → Minimum weighted score</strong>. Changing lab settings does not update an already-installed Pine script; copy it again or change its inputs.</li>
       <li>Export today's trade list before changing inputs: TradingView recalculates historical strategy results using the new settings.</li>

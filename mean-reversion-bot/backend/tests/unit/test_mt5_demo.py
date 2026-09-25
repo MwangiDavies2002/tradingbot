@@ -30,11 +30,12 @@ def terminal():
     mt.history_deals_get.return_value = []
     mt.positions_get.return_value = []
     mt.orders_get.return_value = []
-    mt.symbol_info.return_value = NS(trade_tick_size=0.01, point=0.01, digits=2,
+    mt.symbol_info.return_value = NS(name=SYMBOL, description='Test instrument', trade_mode=4, order_mode=49, trade_exemode=2, trade_tick_size=0.01, point=0.01, digits=2,
                                    trade_stops_level=0, volume_max=100, volume_min=0.01,
                                    volume_step=0.01, filling_mode=1)
     mt.symbol_info_tick.return_value = NS(time=time.time(), ask=100.1, bid=100.0)
-    mt.order_calc_profit.return_value = -150
+    mt.order_calc_profit.side_effect = lambda side, symbol, volume, price, sl: -150 * volume
+    mt.symbols_get.return_value = [mt.symbol_info.return_value]
     mt.order_check.return_value = NS(retcode=0)
     Result = namedtuple('Result', 'retcode order')
     mt.order_send.return_value = Result(10009, 456)
@@ -52,8 +53,63 @@ def decision():
     return NS(direction='buy', atr=NS(value=1))
 
 
-def test_only_v751s_and_bounded_risk_are_accepted():
-    for value in ({'symbol': 'R_75'}, {'risk_pct': 0.2}, {'timeframe': 'M2'},
+@pytest.mark.parametrize('symbol', ['EURUSD.a', 'XAUUSD', 'US100.cash'])
+def test_exact_pair_orders_and_persistence(runner, symbol):
+    runner.mt5.symbol_info.return_value.name = symbol
+    runner.configure(DemoConfig(symbol=symbol))
+    runner._send(decision(), None, f'bar:{symbol}')
+    assert runner.mt5.order_send.call_args.args[0]['symbol'] == symbol
+    runner.mt5.symbol_info_tick.assert_called_with(symbol)
+    assert runner.mt5.order_calc_profit.call_args.args[1] == symbol
+    assert MT5DemoRunner(runner.path, runner.mt5).config.symbol == symbol
+
+
+def test_catalog_without_v75_and_unknown_pair(runner):
+    runner.mt5.symbol_info.return_value.name = 'EURUSD.a'
+    runner.connect()
+    assert runner.symbols()['symbols'][0]['name'] == 'EURUSD.a'
+    runner.mt5.symbol_info.return_value = None
+    with pytest.raises(ValueError, match='unavailable'):
+        runner.configure(DemoConfig(symbol='EURUSD'))
+    assert runner.config.symbol == SYMBOL
+    runner.mt5.order_send.assert_not_called()
+
+
+def test_stale_start_does_not_launch_worker(runner):
+    with pytest.raises(ValueError, match='differs'):
+        runner.start('EURUSD.a')
+    assert runner.worker is None
+    runner.mt5.order_send.assert_not_called()
+
+
+@pytest.mark.parametrize('kind', ['positions_get', 'orders_get'])
+def test_previous_pair_exposure_blocks_new_entries(runner, kind):
+    runner.mt5.symbol_info.return_value.name = 'EURUSD.a'
+    runner.configure(DemoConfig(symbol='EURUSD.a'))
+    getattr(runner.mt5, kind).return_value = [NS(symbol=SYMBOL, magic=MAGIC)]
+    runner._send(decision(), None, 'newpair')
+    runner.mt5.order_send.assert_not_called()
+
+
+def test_history_uses_requested_pair_without_changing_saved_pair(runner):
+    runner.mt5.symbol_info.return_value.name = 'EURUSD.a'
+    runner.mt5.copy_rates_range.return_value = [dict(time=1700000000+i*300, open=1, high=2, low=1, close=1, tick_volume=10) for i in range(100)]
+    assert len(runner.history('M5', 7, 'EURUSD.a')) == 100
+    assert runner.mt5.copy_rates_range.call_args.args[0] == 'EURUSD.a'
+    assert runner.config.symbol == SYMBOL
+
+
+@pytest.mark.parametrize('field,value', [('trade_mode', 0), ('trade_mode', 3), ('order_mode', 1), ('volume_step', 0)])
+def test_unusable_symbol_rejected(runner, field, value):
+    setattr(runner.mt5.symbol_info.return_value, field, value)
+    with pytest.raises(ValueError):
+        runner.configure(DemoConfig())
+    runner.mt5.order_send.assert_not_called()
+
+
+def test_exact_symbol_and_bounded_risk_are_accepted():
+    assert DemoConfig(symbol='EURUSD.a').symbol == 'EURUSD.a'
+    for value in ({'symbol': '\n'}, {'symbol': ' EURUSD'}, {'risk_pct': 0.2}, {'timeframe': 'M2'},
                   {'use_zscore': False, 'use_lsl': False, 'use_smc': False,
                    'use_rsi': False, 'use_bb': False, 'use_vwap': False, 'use_stoch': False}):
         with pytest.raises(ValidationError):
@@ -104,11 +160,12 @@ def test_daily_limit_persists_and_latches_after_restart(runner):
     assert not restarted._daily_guard(account)
 
 
-def test_journal_recovers_manual_exit_of_bot_position_once(runner):
+@pytest.mark.parametrize('symbol', [SYMBOL, 'EURUSD.a'])
+def test_journal_recovers_manual_exit_of_bot_position_once(runner, symbol):
     Deal = namedtuple('Deal', 'ticket position_id magic symbol entry profit commission swap fee')
     runner.mt5.history_deals_get.return_value = [
-        Deal(1, 100, MAGIC, SYMBOL, 0, 0, -1, 0, 0),
-        Deal(2, 100, 0, SYMBOL, 1, 20, -1, 0, 0),
+        Deal(1, 100, MAGIC, symbol, 0, 0, -1, 0, 0),
+        Deal(2, 100, 0, symbol, 1, 20, -1, 0, 0),
         Deal(3, 200, 0, SYMBOL, 1, 40, 0, 0, 0),
     ]
     runner._sync_deals()
@@ -131,7 +188,7 @@ def test_ambiguous_order_response_is_journaled_and_never_retried(runner):
 
 def test_positions_and_failed_queries_prevent_evaluation(runner):
     runner.engine = Mock()
-    runner.mt5.positions_get.return_value = [NS(_asdict=lambda: {'ticket': 1})]
+    runner.mt5.positions_get.return_value = [NS(symbol=SYMBOL, magic=MAGIC, _asdict=lambda: {'ticket': 1})]
     runner._tick()
     runner.engine.evaluate.assert_not_called()
     runner.mt5.positions_get.return_value = None
@@ -156,6 +213,13 @@ def test_same_closed_candle_is_not_replayed_after_restart(runner):
     restarted._tick()
     assert engine.evaluate.call_count == 1
     assert runner.mt5.copy_rates_from_pos.call_args.args[2] == 1
+    runner.mt5.symbol_info.return_value.name = 'EURUSD.a'
+    runner.configure(DemoConfig(symbol='EURUSD.a'))
+    runner._tick()
+    runner._tick()
+    assert engine.evaluate.call_count == 2
+    assert engine.evaluate.call_args.kwargs['symbol'] == 'EURUSD.a'
+    assert runner.mt5.copy_rates_from_pos.call_args.args[0] == 'EURUSD.a'
 
 
 def test_strategy_persists_and_cannot_change_while_running(runner):
@@ -177,7 +241,9 @@ def test_external_browser_origin_blocked(tmp_path):
     client = TestClient(app)
     assert client.post('/api/mt5/connect', headers={'origin': 'https://untrusted.example'}).status_code == 403
     assert client.get('/api/mt5/status').json()['running'] is False
-    assert client.put('/api/mt5/strategy', json={'symbol': 'EURUSD'}).status_code == 422
+    assert client.put('/api/mt5/strategy', json={'symbol': ''}).status_code == 422
+    assert client.post('/api/mt5/start', json={}).status_code == 422
+    assert client.get('/api/mt5/symbols', headers={'origin': 'https://untrusted.example'}).status_code == 403
 
 
 def test_shared_signal_engine_and_backtest_evaluate_fixture_candles():

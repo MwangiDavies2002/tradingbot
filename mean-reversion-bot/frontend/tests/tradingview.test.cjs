@@ -10,6 +10,12 @@ const mod = { exports: {} }
 vm.runInNewContext(compiled, { exports: mod.exports, module: mod })
 const { buildPineStrategy, selectionError, DEFAULT_SELECTION } = mod.exports
 
+test('qualified chart pairs retain their provider in exports and links', () => {
+  assert.equal(mod.exports.tradingViewSymbol('FX:EURUSD'), 'FX:EURUSD')
+  assert.ok(mod.exports.tradingViewUrl('FX:EURUSD').endsWith('FX%3AEURUSD'))
+  assert.ok(buildPineStrategy({ use_rsi: true }, 2, 'FX:EURUSD').includes('syminfo.tickerid != "FX:EURUSD"'))
+})
+
 test('thresholds 1, 2 and 3 are exported without a mandatory six', () => {
   for (const value of [1, 2, 3]) {
     const pine = buildPineStrategy(DEFAULT_SELECTION, value)

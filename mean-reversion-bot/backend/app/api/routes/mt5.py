@@ -5,6 +5,7 @@ import json
 import threading
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import Response
+from pydantic import BaseModel, Field
 from app.execution.mt5_demo import DemoConfig, MT5DemoRunner
 
 
@@ -34,6 +35,11 @@ def status(runner=Depends(get_runner)):
     return runner.status()
 
 
+@router.get('/symbols')
+def symbols(runner=Depends(get_runner)):
+    return runner.symbols()
+
+
 @router.put("/strategy")
 def strategy(config: DemoConfig, runner=Depends(get_runner)):
     return runner.configure(config)
@@ -44,9 +50,13 @@ def connect(runner=Depends(get_runner)):
     return runner.connect()
 
 
+class StartRequest(BaseModel):
+    symbol: str = Field(..., min_length=1, max_length=128)
+
+
 @router.post("/start")
-def start(runner=Depends(get_runner)):
-    return runner.start()
+def start(body: StartRequest, runner=Depends(get_runner)):
+    return runner.start(body.symbol)
 
 
 @router.post("/stop")
@@ -68,4 +78,4 @@ def export(runner=Depends(get_runner)):
     for row in reversed(runner.journal(2147483647)):
         writer.writerow([row["id"], row["ts"], row["account"], row["kind"], json.dumps(row["data"])])
     return Response(output.getvalue(), media_type="text/csv",
-                    headers={"Content-Disposition": 'attachment; filename="v751s-mt5-journal.csv"'})
+                    headers={"Content-Disposition": 'attachment; filename="mt5-journal.csv"'})

@@ -1,5 +1,5 @@
 export const TV_SYMBOLS: Record<string, string> = { '1HZ75V': 'DERIV:VOLATILITY_75_1S_INDEX', '1HZ100V': 'DERIV:VOLATILITY_100_1S_INDEX', '1HZ50V': 'DERIV:VOLATILITY_50_1S_INDEX', BOOM500: 'DERIV:BOOM_500_INDEX', CRASH500: 'DERIV:CRASH_500_INDEX', GER40: 'TVC:DE40', FRA40: 'TVC:CAC40' }
-export const tradingViewSymbol = (symbol: string) => TV_SYMBOLS[symbol] || `DERIV:${symbol}`
+export const tradingViewSymbol = (symbol: string) => TV_SYMBOLS[symbol] || (symbol.includes(':') ? symbol : `DERIV:${symbol}`)
 export const tradingViewUrl = (symbol = '1HZ75V') => `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(tradingViewSymbol(symbol))}`
 export const TV_SYMBOL = tradingViewSymbol('1HZ75V')
 export const TV_URL = tradingViewUrl()

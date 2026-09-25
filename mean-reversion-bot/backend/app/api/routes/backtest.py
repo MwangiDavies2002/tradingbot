@@ -258,8 +258,8 @@ class BacktestRequest(BaseModel):
     @model_validator(mode="after")
     def validate_model_selection(self):
         if self.data_source == 'mt5' and not self.csv_data:
-            if self.symbols != ['1HZ75V']:
-                raise ValueError('MT5 history supports only 1HZ75V (Volatility 75 (1s) Index)')
+            if not self.symbols[0].strip() or self.symbols[0] != self.symbols[0].strip():
+                raise ValueError('MT5 history requires an exact broker symbol')
             if self.timeframe not in ('M1', 'M5', 'M15', 'M30', 'H1', 'H4'):
                 raise ValueError('MT5 history requires M1/M5/M15/M30/H1/H4')
         EngineConfig(model_strategy=self.model_strategy,
@@ -298,7 +298,7 @@ async def run_backtest(req: BacktestRequest, request: Request, db: AsyncSession 
         if req.data_source == 'mt5' and not req.csv_data:
             from app.api.routes.mt5 import get_runner, local_only
             local_only(request)
-            mt5_candles = rows_to_candles(await asyncio.to_thread(get_runner(request).history, req.timeframe, req.days))
+            mt5_candles = rows_to_candles(await asyncio.to_thread(get_runner(request).history, req.timeframe, req.days, req.symbols[0]))
         elif not req.csv_data:
             tf_seconds = timeframe_to_seconds(req.timeframe)
             await ensure_candles_for_symbols(req.symbols, tf_seconds, req.days)

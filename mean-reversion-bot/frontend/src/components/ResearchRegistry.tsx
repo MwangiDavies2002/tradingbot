@@ -98,10 +98,10 @@ export default function ResearchRegistry({ operation, input, disabled, onReport,
       <button disabled={busy || disabled || !canRunResearch || !familyName || !hypothesis} onClick={() => void act(declare)} className="mt-3 px-4 py-2 rounded bg-slate-700 disabled:opacity-50">Declare family</button>
     </details>
     <div className="grid md:grid-cols-2 gap-3 text-sm">
-      <label>Declared family<select className={control} value={familyId} onChange={e => {
+      <label>Declared family<select aria-label="Declared family" className={control} value={familyId} onChange={e => {
         setFamilyId(e.target.value); setTrial(families.find(f => f.family_id === e.target.value)?.trial_keys[0] || ''); setManifest(null)
       }}><option value="">Select a family (latest 100)</option>{families.map(f => <option key={f.family_id} value={f.family_id}>{f.name} · {f.family_id.slice(0, 8)}</option>)}</select></label>
-      <label>Trial<select className={control} value={trial} onChange={e => setTrial(e.target.value)}>{selected?.trial_keys.map(key => <option key={key}>{key}</option>)}</select></label>
+      <label>Trial<select aria-label="Trial" className={control} value={trial} onChange={e => setTrial(e.target.value)}>{selected?.trial_keys.map(key => <option key={key}>{key}</option>)}</select></label>
       <label>Run name<input className={control} value={runName} maxLength={128} onChange={e => setRunName(e.target.value)} /></label>
       <label>Dataset/source version<input className={control} value={dataset} maxLength={256} onChange={e => setDataset(e.target.value)} /></label>
       <label className="md:col-span-2">Parent run ID (optional)<input className={control} value={parent} onChange={e => setParent(e.target.value)} /></label>
@@ -114,7 +114,7 @@ export default function ResearchRegistry({ operation, input, disabled, onReport,
     {manifest && <p className="text-sm text-slate-300">{manifest.all_trials_terminal ? 'All declared trials have terminal outcomes.' : `Unattempted trials: ${manifest.unattempted_trial_keys.join(', ') || 'none'}. Pending: ${manifest.runs.filter(r => r.status === 'pending').length}.`} Completeness does not establish a valid strategy.</p>}
     <div className="flex flex-wrap gap-2 items-end">
       <label className="flex-1 text-sm">Search run name<input className={control} value={search} onChange={e => setSearch(e.target.value)} /></label>
-      <label className="text-sm">Status<select className={control} value={status} onChange={e => setStatus(e.target.value)}><option value="">All</option>{['pending', 'succeeded', 'failed', 'aborted'].map(s => <option key={s}>{s}</option>)}</select></label>
+      <label className="text-sm">Status<select aria-label="Status" className={control} value={status} onChange={e => setStatus(e.target.value)}><option value="">All</option>{['pending', 'succeeded', 'failed', 'aborted'].map(s => <option key={s}>{s}</option>)}</select></label>
       <button disabled={busy} onClick={() => void act(() => loadRuns())} className="px-4 py-2 rounded bg-slate-700">Search / refresh</button>
     </div>
     {error && <p role="alert" className="text-red-300 text-sm whitespace-pre-wrap break-words">{error}</p>}

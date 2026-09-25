@@ -1,0 +1,1 @@
+"""Automated offline quantitative research."""

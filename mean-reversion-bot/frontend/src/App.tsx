@@ -20,6 +20,7 @@ import Backtest from './pages/Backtest'
 import MT5Panel from './components/MT5Panel'
 import AccessGate from './components/AccessGate'
 import Research from './pages/Research'
+import Analyze from './pages/Analyze'
 import Institutional from './pages/Institutional'
 import InstrumentCatalog from './pages/InstrumentCatalog'
 
@@ -28,6 +29,7 @@ const NAV = [
   { to: '/trades',   label: 'Deriv History', icon: TrendingUp  },
   { to: '/signals',  label: 'Deriv Signals', icon: Activity    },
   { to: '/backtest', label: 'Strategy Lab', icon: FlaskConical },
+  { to: '/analyze', label: 'Analyze assets', icon: FlaskConical },
   { to: '/research', label: 'Research validation', icon: FlaskConical },
   { to: '/institutional', label: 'Institutional lab', icon: FlaskConical },
   { to: '/instruments', label: 'Instrument catalog', icon: SettingsIcon },
@@ -103,6 +105,7 @@ export default function App() {
             <Route path="/trades"   element={<Trades />} />
             <Route path="/signals"  element={<Signals />} />
             <Route path="/backtest" element={<Backtest />} />
+            <Route path="/analyze" element={<Analyze />} />
             <Route path="/research" element={<Research />} />
             <Route path="/institutional" element={<Institutional />} />
             <Route path="/instruments" element={<InstrumentCatalog />} />

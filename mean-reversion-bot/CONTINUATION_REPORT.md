@@ -1,7 +1,135 @@
 # Institutional capability expansion - continuation report
 
-Last checkpoint: 2026-09-24. Status: fifteenth implementation checkpoint
-verified (TradingView chart lifecycle); broader production expansion is NOT complete.
+Last checkpoint: 2026-09-25. Status: nineteenth implementation checkpoint
+verified (exact broker pair selection on MT5 demo); broader production expansion is NOT complete.
+
+## Checkpoint nineteen: exact MT5 broker pair selection
+
+Connected demo accounts expose a searchable symbol catalog. The UI saves an exact
+broker name (including suffixes); Start includes that name and fails if it differs
+from the saved configuration. Saving validates tradability and broker metadata;
+configuration changes while running are rejected. Connection no longer requires
+V75 to exist. No alias mapping or fallback to V75 is performed.
+
+Candles, signals, quotes, protective prices, profit-based lot sizing and orders
+use the selected symbol. History requests also carry that symbol, without changing
+the saved trading configuration. Session instruments require at least 100 candles;
+complete session-aware gap auditing remains outstanding. Execution remains one pair
+at a time. Previous bot positions/pending orders block new entries across pairs;
+journal recovery includes earlier symbols. Legacy V75 candle dedup keys are retained.
+
+Validation: full backend run passed 286 tests (3 skipped); after additional journal,
+signal-symbol and endpoint assertions, the final targeted suite passed 35 tests.
+Production build passed (existing bundle-size warning). Six isolated Edge tests
+passed at 1440px/390px, covering save/start/stop and switching exact broker symbols,
+history source routing and multi-asset research. Both MT5 screenshots were inspected.
+Browser plugin bootstrap failed; existing isolated Playwright fallback was used.
+All broker responses were simulated. No terminal connection or order was made.
+
+Current operating instructions: MT5_SETUP.md. Its selected-pair workflow supersedes
+V75-only instructions in older checkpoint records and the older Word user guide.
+Restart the local backend and refresh the UI to load these changes. Next work remains
+role UI coverage and bounded offline sensitivity studies; simultaneous multi-pair
+execution and true broker-equivalent CFD backtests are not implemented.
+
+
+## Checkpoint eighteen: chart selection beyond the V75 default
+
+Addressed the user's report that the chart only showed 1HZ75V. Chart asset is now
+explicit and separate from the batch selection. Added an exact TradingView
+EXCHANGE:SYMBOL input for assets outside the preset list, preserving qualified
+provider prefixes rather than prepending DERIV. The chart, links, Pine symbol
+guard and downloaded filename all follow the selected chart asset. Removed V75-only
+instruction text from the chart panel. The last chart symbol is stored with lab
+settings. Platform switching no longer truncates a multi-asset batch to its first
+asset; asset buttons can toggle multiple choices in either platform mode.
+
+Scope: custom symbols select TradingView charts/exports, subject to provider
+availability. They do not enter the Deriv batch list or add MT5 execution support.
+The existing V75-only MT5 worker still needs a separate instrument-aware expansion
+before the whole system can truthfully claim all-pairs broker execution.
+
+Validation: production build and five Pine-generation tests passed. Six Edge
+desktop/mobile tests passed (four source/batch flows and two chart lifecycle flows).
+New assertions cover switching preset/custom chart assets, provider-qualified links,
+matching Pine download contents/filenames and retained batch selection across
+platform changes. Screenshots inspected; no page errors or main-container overflow.
+The opt-in public TradingView smoke test was skipped in this run; chart/provider
+responses were stubbed, so universal external symbol coverage is not claimed.
+In-app browser bootstrap still fails; used the isolated Edge runner. No broker
+connection or trading actions occurred. MT5_SETUP.md contains the new chart workflow.
+
+Next: instrument-aware MT5 expansion needs broker symbol discovery, per-instrument
+sizing/limits and tests before multi-pair execution; remaining role UI and bounded
+offline sensitivity-study work also remain open.
+
+## Checkpoint seventeen: multiple assets and unsupported test choices
+
+Addressed the user's News-only/Pine rejection screenshot. The Python test form
+no longer offers an unimplemented Pine execution selector; News-only is disabled
+with an explanation. Test requests explicitly use Python defaults without those
+unsupported flags. Backend rejection of unsupported external API requests remains.
+
+With MT5 / Python and Deriv history selected, asset buttons now toggle independently.
+Run Combined Test submits one existing single-asset API request per selected asset,
+sequentially, retaining successes and showing per-asset errors inline rather than
+using alert popups. Progress identifies the current asset. Each run uses the full
+starting capital, not shared portfolio capital. Snapshotted timeframe/days remain
+attached to results even if form controls change. Result headers wrap on mobile and
+chart gradient IDs are unique per result.
+
+TradingView remains one chart at a time. MT5 history/execution remains V75 1s only.
+Imports require exactly one selected asset so one file is not silently reused under
+different symbols. Provider availability still controls which listed assets can
+load candles; an unavailable asset no longer prevents the remaining batch tests.
+No broker symbols were invented or execution scope expanded.
+
+Validation: four Edge desktop/mobile flows passed (two source-selection checks,
+two batch checks), covering selection/deselection, no-selection disabling, disabled
+multi-asset import, successful results around a failed middle asset, and absence
+of unsupported flags. Screenshots inspected with no page errors or main-container
+overflow. Tests used stubbed market/backtest responses and isolated sign-in; no
+live provider-history or terminal verification is claimed. Frontend production
+build passed; existing large-bundle warning remains. API code/schema did not change.
+Updated MT5_SETUP.md with batch usage and limitations. The role UI and offline
+sensitivity-study work listed at checkpoint sixteen remain next tasks.
+
+## Checkpoint sixteen: saved research history and role-aware controls
+
+Added authenticated identity context from AccessGate and fail-closed permission
+flags for institutional research and the instrument catalog. Viewer sessions can
+browse families, check completeness, view/export saved trials and read instrument
+revisions; analysis/trial submissions are disabled. Operators can run/save trials
+but cannot register instrument specifications; registration remains admin-only.
+The server remains the authorization boundary, and existing API rules are unchanged.
+These UI permissions are scoped to Institutional lab/registry and Instrument catalog;
+other dashboard control surfaces still need the same UI treatment.
+
+Registry report handling now clears an old success report before saving or viewing
+another run, including failed/pending outcomes and export errors. Added explicit
+accessible dropdown names and a labelled saved-trials table. Registry fieldset and
+section widths allow its table to scroll within the mobile layout.
+
+The isolated visual API now supplies operator/viewer test identities. New real-API
+Edge tests create an immutable family and successful/failed trials, check completeness,
+view retained results, search/filter empty and failed histories, export identical
+artifacts across roles, and verify direct viewer POST/operator registration 403s.
+Viewer mutation controls are checked with required fields populated, not just blank
+forms. The temporary SQLite database is separate from all configured app databases.
+
+Validation: 36 registry/catalog backend tests passed; production frontend build
+passed (existing 500 kB bundle warning remains). Two new desktop/mobile registry
+flows passed at 1440px/390px and their screenshots were inspected; no main-container
+overflow or page errors. Existing admin lifecycle/catalog flows also passed. Initial
+registry browser failures identified ambiguous select names; explicit labels fixed
+them. The in-app browser bootstrap remains unavailable, so isolated Edge was used.
+No broker connection, trading action, migration, deployment or git commit was made
+by this agent. Existing and externally committed workspace changes were preserved.
+
+Next concrete work: expand shared UI permission handling to remaining mutation
+surfaces (Strategy Lab, Research validation, MT5 controls, Settings) while preserving
+server authorization; add family/pagination history coverage. The bounded offline
+sensitivity study and provider/data validation roadmap also remain open.
 
 ## Checkpoint fifteen: TradingView chart lifecycle and reload
 
@@ -680,3 +808,22 @@ Suggested continuation instruction:
   of regulatory implementation): https://www.bis.org/publications/201205-consultation-fundamental-review-trading-book
 - OIC Greeks and their model limitations:
   https://prd-web.optionseducation.org/advancedconcepts/volatility-the-greeks
+
+## Deriv history HTTP 520 fix - 2026-09-25
+
+Historical backfills now use Deriv's documented public market-data WebSocket
+(wss://api.derivws.com/trading/v1/options/ws/public), without account credentials
+or the legacy authenticated trading client. This resolves the reported legacy
+connection failure in the verified read-only smoke test: 288 real 1HZ75V M5 candles
+were fetched and cached into an isolated in-memory SQLite database.
+
+Transient transport failures, HTTP 429 and 5xx responses receive at most three
+attempts with bounded timeouts/backoff. Permanent request errors fail immediately;
+persistent outages explain retry, MT5 history and import options. Requests page at
+5,000 candles, exclude the forming bar, and insert in small database batches.
+MT5 source selection remains explicit; no cross-provider fallback was introduced.
+Twelve targeted tests cover retries, failures, pagination, SQLite deduplication and
+source routing. Restart the backend to load this fix; no user database or broker
+session was used by the smoke test.
+
+Provider documentation: https://developers.deriv.me/docs/options/ws-public/
