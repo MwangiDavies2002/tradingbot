@@ -246,6 +246,31 @@ class Signal(Base):
                 f"score={self.score} | fired={self.fired} | {self.reason}>")
 
 
+class PaperTrade(Base):
+    """Hypothetical trade ledger; never submitted to a broker."""
+    __tablename__ = "paper_trades"
+
+    id = Column(String(36), primary_key=True)
+    signal_id = Column(String(64), nullable=True, index=True)
+    symbol = Column(String(64), nullable=False, index=True)
+    timeframe = Column(String(8), nullable=False)
+    direction = Column(String(8), nullable=False)
+    entry_price = Column(Float, nullable=False)
+    stop_loss = Column(Float, nullable=False)
+    take_profit = Column(Float, nullable=False)
+    exit_price = Column(Float, nullable=True)
+    quantity = Column(Float, nullable=False, default=1.)
+    pnl = Column(Float, nullable=True)
+    score = Column(Integer, nullable=False, default=0)
+    regime = Column(String(32), nullable=False, default="unknown")
+    reason = Column(Text, nullable=False, default="")
+    status = Column(String(12), nullable=False, default="open", index=True)
+    approval_status = Column(String(16), nullable=False, default="not_requested", index=True)
+    created_by_role = Column(String(16), nullable=False)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+    closed_at = Column(DateTime, nullable=True)
+
+
 class NewsEvent(Base):
     """Normalized high-impact macro event used by the news strategy gate."""
     __tablename__ = "news_events"

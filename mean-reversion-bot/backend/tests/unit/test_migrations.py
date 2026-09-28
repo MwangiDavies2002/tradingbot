@@ -16,7 +16,7 @@ def test_migration_builds_schema_without_drift(tmp_path):
 
     # Verify the migrated schema, not only create_all's equivalent guards.
     with sqlite3.connect(tmp_path / "migration.db") as db:
-        assert db.execute("SELECT version_num FROM alembic_version").fetchone()[0] == "0003_instrument_catalog"
+        assert db.execute("SELECT version_num FROM alembic_version").fetchone()[0] == "0005_paper_trade_approval"
         db.execute("INSERT INTO research_families VALUES (?, ?, ?, ?, ?, ?)",
                    ("a" * 32, "retained", "hypothesis", '["a"]', "2026-09-23", "operator"))
         db.commit()

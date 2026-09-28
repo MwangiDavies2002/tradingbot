@@ -1,5 +1,8 @@
 # Selected broker pairs on MT5 demo
 
+For the complete operator workflow, start with [USER_MANUAL.md](USER_MANUAL.md).
+This document contains the deeper MT5 setup and execution details.
+
 The previous runner (`python -m app.bot`) sends Deriv WebSocket contracts.
 Those contracts are not MT5 positions. Its dashboard start endpoint only
 writes an event; it does not spawn a trading process.

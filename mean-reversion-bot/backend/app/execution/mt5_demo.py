@@ -26,6 +26,80 @@ MAGIC = 751006
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 
 
+def compare_forward_performance(candidate, deals, orders=(), minimum_sample=20):
+    baseline = (candidate or {}).get('research_baseline')
+    if not baseline:
+        return {'status': 'no_baseline', 'alert': False, 'closed_trades': 0}
+    snapshot = candidate.get('snapshot') or {}
+    scope = f"{snapshot.get('server')}:{snapshot.get('account')}"
+    run_id = candidate.get('run_id')
+    symbol = (candidate.get('strategy') or {}).get('symbol')
+    loaded_at = float(candidate.get('loaded_at') or candidate.get('validated_at') or 0)
+    linked_orders = set()
+    linked_deals = set()
+    for row in orders:
+        order = row.get('data') or {}
+        ticket = order.get('order')
+        if (row.get('account') == scope and run_id and order.get('research_run_id') == run_id
+                and order.get('strategy') == candidate.get('strategy') and order.get('symbol') == symbol
+                and order.get('accepted') is True):
+            if type(ticket) is int and ticket > 0:
+                linked_orders.add(ticket)
+            deal_ticket = order.get('deal')
+            if type(deal_ticket) is int and deal_ticket > 0:
+                linked_deals.add(deal_ticket)
+    positions = {}
+    for row in deals:
+        deal = row.get('data') or {}
+        position_id = deal.get('position_id')
+        if (row.get('account') != scope or deal.get('symbol') != symbol
+                or type(position_id) is not int or position_id <= 0):
+            continue
+        positions.setdefault(position_id, []).append(deal)
+    pnl = []
+    incomplete = 0
+    for position_deals in positions.values():
+        entries = [d for d in position_deals if d.get('entry') == 0]
+        exits = [d for d in position_deals if d.get('entry') == 1]
+        if not entries or not all((d.get('order') in linked_orders or d.get('ticket') in linked_deals)
+                                  and d.get('magic') == MAGIC
+                                  and float(d.get('time') or 0) >= loaded_at for d in entries):
+            continue
+        if any(d.get('entry') not in (0, 1) for d in position_deals):
+            incomplete += 1
+            continue
+        try:
+            opened = sum(float(d['volume']) for d in entries)
+            closed = sum(float(d['volume']) for d in exits)
+            if not math.isfinite(opened) or not math.isfinite(closed) or opened <= 0 or closed < 0:
+                raise ValueError()
+            if abs(opened - closed) > max(1e-8, opened * 1e-6):
+                incomplete += 1
+                continue
+            value = sum(float(d.get(key, 0) or 0) for d in position_deals
+                        for key in ('profit', 'commission', 'swap', 'fee'))
+            if not math.isfinite(value):
+                raise ValueError()
+        except (KeyError, ValueError, TypeError):
+            incomplete += 1
+            continue
+        pnl.append(value)
+    wins = sum(value for value in pnl if value > 0)
+    losses = -sum(value for value in pnl if value < 0)
+    profit_factor = wins / losses if losses else None
+    baseline_pf = baseline.get('holdout', {}).get('profit_factor')
+    alert = (len(pnl) >= minimum_sample and baseline_pf is not None and baseline_pf > 0
+             and profit_factor is not None and profit_factor < baseline_pf * .5)
+    return {'status': 'deteriorating' if alert else ('observing' if len(pnl) >= minimum_sample else 'insufficient_sample'),
+            'alert': alert, 'closed_trades': len(pnl), 'total_pnl': round(sum(pnl), 2),
+            'profit_factor': round(profit_factor, 3) if profit_factor is not None else None,
+            'minimum_sample': minimum_sample, 'baseline_profit_factor': baseline_pf,
+            'incomplete_positions': incomplete, 'linked_orders': len(linked_orders),
+            'linked_deals': len(linked_deals),
+            'research_run_id': run_id, 'account_scope': scope, 'symbol': symbol,
+            'currency': snapshot.get('currency'), 'attribution': 'candidate_order_position_v1'}
+
+
 class DemoConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     symbol: str = Field(SYMBOL, min_length=1, max_length=128, pattern=r"^[^\x00-\x1f\x7f]+$")
@@ -84,6 +158,7 @@ class MT5DemoRunner:
                 CREATE TABLE IF NOT EXISTS journal (
                     id INTEGER PRIMARY KEY, ts TEXT NOT NULL, account TEXT NOT NULL,
                     kind TEXT NOT NULL, event_key TEXT UNIQUE, payload TEXT NOT NULL);
+                CREATE INDEX IF NOT EXISTS journal_kind_account ON journal(kind,account);
             """)
             row = db.execute("SELECT value FROM settings WHERE key='strategy'").fetchone()
             if row:
@@ -217,10 +292,29 @@ class MT5DemoRunner:
     def status(self):
         with self.lock:
             evidence = self._research_candidate()
+            deal_rows, order_rows = [], []
+            if evidence:
+                snapshot = evidence.get('snapshot') or {}
+                scope = f"{snapshot.get('server')}:{snapshot.get('account')}"
+                symbol = (evidence.get('strategy') or {}).get('symbol')
+                with self.db() as db:
+                    deal_rows = [{'account': scope, 'data': json.loads(payload)} for (payload,) in db.execute(
+                        "SELECT payload FROM journal WHERE kind='deal' AND account=? AND json_extract(payload,'$.symbol')=?",
+                        (scope, symbol))]
+                    order_rows = [{'account': scope, 'data': json.loads(payload)} for (payload,) in db.execute(
+                        "SELECT payload FROM journal WHERE kind='order_result' AND account=? AND json_extract(payload,'$.research_run_id')=?",
+                        (scope, evidence.get('run_id')))]
+            comparison = compare_forward_performance(evidence, deal_rows, order_rows)
+            snapshot = (evidence or {}).get('snapshot') or {}
+            age = time.time() - (evidence or {}).get('validated_at', 0)
             return {**self.state, "config": self.config.model_dump(),
                     "research_candidate": evidence,
-                    "research_validated": bool(evidence and evidence.get('strategy') == self.config.model_dump()
-                        and time.time() - evidence.get('validated_at', 0) <= 7 * 86400)}
+                    "research_comparison": comparison,
+                    "research_validated": bool(evidence and self.state.get('connected')
+                        and snapshot.get('server') == self.state.get('server')
+                        and snapshot.get('account') == self.state.get('account')
+                        and evidence.get('strategy') == self.config.model_dump()
+                        and 0 <= age <= 7 * 86400)}
 
     def _research_candidate(self):
         with self.db() as db:
@@ -240,7 +334,12 @@ class MT5DemoRunner:
                        'volume_min': info.volume_min, 'volume_step': info.volume_step, 'volume_max': info.volume_max}
             if any(current[key] != snapshot[key] for key in current):
                 raise ValueError('Broker contract specification changed; rerun research')
+            previous = self._research_candidate()
+            same_candidate = (previous and previous.get('run_id') == evidence.get('run_id')
+                              and previous.get('strategy') == evidence.get('strategy')
+                              and previous.get('snapshot') == evidence.get('snapshot'))
             self.configure(config)
+            evidence = {**evidence, 'loaded_at': (previous.get('loaded_at') if same_candidate else None) or time.time()}
             with self.db() as db:
                 db.execute("INSERT OR REPLACE INTO settings VALUES('research_candidate', ?)", (json.dumps(evidence),))
             self.state['message'] = 'Validated research candidate loaded. Review the saved pair and explicitly Start demo.'
@@ -488,7 +587,12 @@ class MT5DemoRunner:
         if not self.record("order_request", request, f"request:{bar_key}"):
             return
         result = self.mt5.order_send(request)
-        self.record("order_result", {**(result._asdict() if result else {"error": str(self.mt5.last_error())}), 'symbol': symbol})
+        evidence = self._research_candidate()
+        self.record("order_result", {**(result._asdict() if result else {"error": str(self.mt5.last_error())}),
+                                     'symbol': symbol, 'research_run_id': evidence.get('run_id') if evidence else None,
+                                     'strategy': self.config.model_dump(),
+                                     'accepted': bool(result and result.retcode in (
+                                         self.mt5.TRADE_RETCODE_DONE, self.mt5.TRADE_RETCODE_DONE_PARTIAL))})
         if result is None or result.retcode not in (self.mt5.TRADE_RETCODE_DONE, self.mt5.TRADE_RETCODE_DONE_PARTIAL):
             raise ValueError("MT5 order response requires review in the journal/terminal; no automatic retry")
         self.state["message"] = f"Demo order executed: {result.order}"

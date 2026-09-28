@@ -11,7 +11,7 @@ import uuid
 
 from app.quant.schemas import AnalysisRequest
 from app.quant.sources import load_asset
-from app.quant.statistics import audit, relationships
+from app.quant.statistics import audit, market_behavior, relationships
 from app.quant.validation import validate_strategy
 
 
@@ -118,12 +118,13 @@ class AnalysisJobs:
                     audit_start = bars[0].timestamp if request.source == 'import' else start
                     audit_end = bars[-1].timestamp+request.interval if request.source == 'import' else end
                     quality = audit(bars,request.interval,profile.session,audit_start,audit_end)
+                    behavior = market_behavior(bars, request.interval, profile.annualization)
                     series[symbol] = bars
                     if request.source == 'mt5':
                         exposures[symbol] = exposure
                     artifacts[symbol] = {'bars': [b.model_dump() for b in bars], 'profile': profile.model_dump(mode='json'), 'snapshot': snapshot}
                     data_hash = fingerprint(artifacts[symbol])
-                    row = {'status': 'analyzing', 'quality': quality, 'snapshot': snapshot,
+                    row = {'status': 'analyzing', 'quality': quality, 'market_behavior': behavior, 'snapshot': snapshot,
                            'data_hash': data_hash, 'costs_confirmed': profile.costs_confirmed,
                            'specification_confirmed': profile.specification_confirmed}
                     report['assets'][symbol] = row
@@ -134,20 +135,50 @@ class AnalysisJobs:
                         self.update(run_id, f'{symbol}: {stage}', (index+.4)/len(request.assets)*.85, report, artifacts)
                     validation = self.validator(bars,request,profile,symbol,progress)
                     row.update(status='complete', validation=validation)
-                    eligible = (request.source == 'mt5' and quality['passed'] and profile.costs_confirmed
+                    eligible = (request.source == 'mt5' and quality['passed'] and not quality['stale_close_warning']
+                                and profile.costs_confirmed
                                 and validation['passed'] and not snapshot.get('warnings'))
+                    reasons = []
+                    if request.source != 'mt5':
+                        reasons.append('Only connected MT5 research can produce a demo candidate')
+                    if not quality['passed']:
+                        reasons.append('Data quality or confirmed session calendar did not pass')
+                    if quality['stale_close_warning']:
+                        reasons.append(f"Stale close run reached {quality['stale_close_run_bars']} bars")
+                    if not profile.costs_confirmed:
+                        reasons.append('Broker costs were not confirmed')
+                    if not profile.specification_confirmed:
+                        reasons.append('Linear contract specification was not confirmed')
+                    reasons.extend(f'{name.replace("_", " ")} was not met'
+                                   for name, passed in validation['checks'].items() if not passed)
+                    reasons.extend(f'Broker warning: {warning}' for warning in snapshot.get('warnings', []))
                     row['demo_candidate'] = eligible
+                    row['decision'] = 'demo_candidate' if eligible else 'no_trade'
+                    row['no_trade_reasons'] = [] if eligible else reasons
                     if eligible:
                         report['candidates'].append({'symbol':symbol, 'strategy':validation['selected_strategy'],
-                                                     'data_hash':data_hash, 'snapshot':snapshot})
+                                                     'data_hash':data_hash, 'snapshot':snapshot,
+                                                     'research_baseline': {'holdout': validation['holdout'],
+                                                                           'oos_trades': validation['oos_trades'],
+                                                                           'oos_pnl': validation['oos_pnl'],
+                                                                           'validated_at': time.time()}})
                 except ResearchCancelled:
                     raise
                 except Exception as exc:
                     row = report['assets'].setdefault(symbol, {})
-                    row.update(status='failed', error=str(exc)[:2000], demo_candidate=False)
+                    row.update(status='failed', error=str(exc)[:2000], demo_candidate=False,
+                               decision='no_trade', no_trade_reasons=[str(exc)[:2000]])
                 self.update(run_id,f'{symbol}: saved', (index+1)/len(request.assets)*.85,report,artifacts)
             self.update(run_id,'Correlation, cointegration and exposure analysis',.9,report,artifacts)
             report['relationships'] = relationships(series,request.interval,request.minimum_overlap,request.rolling_window,exposures)
+            decisions = list(report['assets'].values())
+            report['decision_summary'] = {
+                'assets': len(decisions),
+                'demo_candidates': sum(item.get('decision') == 'demo_candidate' for item in decisions),
+                'no_trade': sum(item.get('decision') == 'no_trade' for item in decisions),
+                'failed': sum(item.get('status') == 'failed' for item in decisions),
+                'overall_decision': 'candidate_available' if report['candidates'] else 'no_trade',
+            }
             # Candidate checks are evidence, never permission to place orders.
             partial = any(a['status'] == 'failed' for a in report['assets'].values())
             self.update(run_id,'Finished with asset errors' if partial else 'Analysis complete',1,report,artifacts,'partial' if partial else 'complete')
@@ -194,4 +225,4 @@ class AnalysisJobs:
         candidate = next((c for c in row['report'].get('candidates',[]) if c['symbol']==symbol),None)
         if candidate is None:
             raise ValueError('This asset did not pass all data, cost and out-of-sample checks')
-        return {**candidate,'run_id':run_id,'validated_at':row['created']}
+        return {**candidate,'run_id':run_id,'validated_at':row['created']}

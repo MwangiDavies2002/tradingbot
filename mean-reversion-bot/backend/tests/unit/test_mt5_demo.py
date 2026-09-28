@@ -6,7 +6,76 @@ from unittest.mock import Mock
 import pytest
 from pydantic import ValidationError
 
-from app.execution.mt5_demo import DemoConfig, MAGIC, MT5DemoRunner, SYMBOL
+from app.execution.mt5_demo import DemoConfig, MAGIC, MT5DemoRunner, SYMBOL, compare_forward_performance
+
+
+def test_forward_comparison_waits_for_sample_and_flags_deterioration():
+    candidate = {'run_id': 'run-a', 'validated_at': 100, 'loaded_at': 101,
+                 'snapshot': {'server': 'Deriv-Demo', 'account': 123, 'currency': 'USD'},
+                 'strategy': {'symbol': SYMBOL},
+                 'research_baseline': {'holdout': {'profit_factor': 2.0}}}
+    orders = [{'account': 'Deriv-Demo:123', 'data': {'order': i + 1, 'symbol': SYMBOL,
+               'strategy': candidate['strategy'], 'research_run_id': 'run-a', 'accepted': True}}
+              for i in range(20)]
+    deals = []
+    for i in range(20):
+        entry = {'position_id': i + 1, 'entry': 0, 'symbol': SYMBOL, 'time': 102 + i,
+                 'order': i + 1, 'magic': MAGIC, 'volume': 1, 'commission': -.1}
+        exit_deal = {'position_id': i + 1, 'entry': 1, 'symbol': SYMBOL, 'time': 103 + i,
+                     'order': i + 100, 'magic': 0, 'volume': 1, 'profit': -1}
+        deals.extend([{'account': 'Deriv-Demo:123', 'data': entry},
+                      {'account': 'Deriv-Demo:123', 'data': exit_deal}])
+    assert compare_forward_performance(candidate, deals[:2], orders)['status'] == 'insufficient_sample'
+    result = compare_forward_performance(candidate, deals, orders)
+    assert result['status'] == 'deteriorating' and result['alert'] is True
+    assert result['closed_trades'] == 20 and result['total_pnl'] == -22
+    assert result['account_scope'] == 'Deriv-Demo:123' and result['research_run_id'] == 'run-a'
+
+
+def test_demo_comparison_excludes_other_runs_accounts_and_incomplete_positions():
+    candidate = {'run_id': 'run-a', 'validated_at': 100, 'loaded_at': 110,
+                 'snapshot': {'server': 'demo', 'account': 1, 'currency': 'USD'},
+                 'strategy': {'symbol': 'TEST.a'},
+                 'research_baseline': {'holdout': {'profit_factor': 2}}}
+    orders = [{'account': 'demo:1', 'data': {'order': 10, 'symbol': 'TEST.a',
+               'strategy': candidate['strategy'], 'research_run_id': 'run-a', 'accepted': True}},
+              {'account': 'demo:1', 'data': {'order': 20, 'symbol': 'TEST.a',
+               'strategy': candidate['strategy'], 'research_run_id': 'run-b', 'accepted': True}},
+              {'account': 'demo:2', 'data': {'order': 30, 'symbol': 'TEST.a',
+               'strategy': candidate['strategy'], 'research_run_id': 'run-a', 'accepted': True}}]
+    def deal(account, position, entry, order, volume, time, profit=0):
+        return {'account': account, 'data': {'position_id': position, 'entry': entry,
+                'symbol': 'TEST.a', 'order': order, 'magic': MAGIC if entry == 0 else 0,
+                'volume': volume, 'time': time, 'profit': profit}}
+    deals = [deal('demo:1', 1, 0, 10, 1, 111, profit=-.2),
+             deal('demo:1', 1, 1, 11, .4, 112, profit=2),
+             deal('demo:1', 1, 1, 12, .6, 113, profit=3),
+             deal('demo:1', 2, 0, 20, 1, 111), deal('demo:1', 2, 1, 21, 1, 112, profit=99),
+             deal('demo:2', 3, 0, 30, 1, 111), deal('demo:2', 3, 1, 31, 1, 112, profit=99),
+             deal('demo:1', 4, 0, 10, 1, 109), deal('demo:1', 4, 1, 41, 1, 112, profit=99),
+             deal('demo:1', 5, 0, 10, 1, 111), deal('demo:1', 5, 1, 51, .5, 112, profit=99)]
+    result = compare_forward_performance(candidate, deals, orders, minimum_sample=1)
+    assert result['closed_trades'] == 1 and result['total_pnl'] == 4.8
+    assert result['linked_orders'] == 1 and result['incomplete_positions'] == 1
+    assert result['status'] == 'observing'
+
+
+def test_demo_comparison_can_link_entry_by_broker_deal_ticket():
+    candidate = {'run_id': 'run-a', 'loaded_at': 100,
+                 'snapshot': {'server': 'demo', 'account': 1},
+                 'strategy': {'symbol': 'TEST.a'},
+                 'research_baseline': {'holdout': {'profit_factor': 2}}}
+    orders = [{'account': 'demo:1', 'data': {'order': 0, 'deal': 400,
+               'symbol': 'TEST.a', 'strategy': candidate['strategy'],
+               'research_run_id': 'run-a', 'accepted': True}}]
+    deals = [{'account': 'demo:1', 'data': {'ticket': 400, 'position_id': 4,
+              'order': 0, 'entry': 0, 'symbol': 'TEST.a', 'magic': MAGIC,
+              'volume': .1, 'time': 101}},
+             {'account': 'demo:1', 'data': {'ticket': 401, 'position_id': 4,
+              'order': 401, 'entry': 1, 'symbol': 'TEST.a', 'magic': 0,
+              'volume': .1, 'time': 102, 'profit': 2}}]
+    result = compare_forward_performance(candidate, deals, orders)
+    assert result['closed_trades'] == 1 and result['linked_deals'] == 1
 
 
 def terminal():
@@ -137,6 +206,38 @@ def test_order_uses_broker_risk_and_protective_stops(runner):
     assert request['volume'] * 150 <= 10000 * runner.config.risk_pct
     runner._send(decision(), None, 'bar1')
     assert runner.mt5.order_send.call_count == 1
+
+
+def test_demo_order_and_position_keep_loaded_candidate_lineage(runner):
+    info = runner.mt5.symbol_info.return_value
+    info.trade_contract_size = 100
+    snapshot = {'server': 'Deriv-Demo', 'account': 123, 'currency': 'USD',
+                'contract_size': 100, 'tick_size': info.trade_tick_size,
+                'volume_min': info.volume_min, 'volume_step': info.volume_step,
+                'volume_max': info.volume_max}
+    evidence = {'run_id': 'research-one', 'validated_at': time.time() - 10,
+                'strategy': runner.config.model_dump(), 'snapshot': snapshot,
+                'research_baseline': {'holdout': {'profit_factor': 2}}}
+    runner.adopt_research_candidate(evidence)
+    loaded = runner.status()['research_candidate']
+    assert loaded['loaded_at'] >= evidence['validated_at']
+    runner.adopt_research_candidate(evidence)
+    assert runner.status()['research_candidate']['loaded_at'] == loaded['loaded_at']
+    runner._send(decision(), None, 'bar:lineage')
+    result = next(row['data'] for row in runner.journal() if row['kind'] == 'order_result')
+    assert result['research_run_id'] == 'research-one' and result['accepted'] is True
+    for ticket, entry, volume, profit in [(1, 0, .33, 0), (2, 1, .33, -5)]:
+        runner.record('deal', {'ticket': ticket, 'position_id': 456, 'entry': entry,
+                              'order': 456 if entry == 0 else 789,
+                              'magic': MAGIC if entry == 0 else 0, 'symbol': SYMBOL,
+                              'time': loaded['loaded_at'] + 1 + ticket,
+                              'volume': volume, 'profit': profit})
+    comparison = runner.status()['research_comparison']
+    assert comparison['closed_trades'] == 1 and comparison['total_pnl'] == -5
+    assert comparison['research_run_id'] == 'research-one'
+    runner.mt5.account_info.return_value.login = 999
+    runner.connect()
+    assert runner.status()['research_validated'] is False
 
 
 def test_minimum_lot_and_stale_ticks_do_not_send(runner):

@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { api } from '../api/client'
+import { usePermissions } from '../auth/identity'
 
 const SYMBOLS = ['R_75', '1HZ75V', '1HZ100V', '1HZ50V', 'BOOM500', 'CRASH500', 'UK100', 'NAS100', 'SP500', 'GER40', 'FRA40', 'XAUUSD']
 
 export default function Research() {
+  const { canRunResearch } = usePermissions()
   const [csv, setCsv] = useState('')
   const [symbol, setSymbol] = useState('R_75')
   const [timeframe, setTimeframe] = useState('M5')
@@ -47,7 +49,8 @@ export default function Research() {
         <label>Round-trip commission (USD)<input type="number" min="0" step="0.01" className={input} value={commission} onChange={e => setCommission(Number(e.target.value))} /></label>
       </div>
       <label className="block text-sm">Historical OHLCV CSV (up to 10,000 rows)<input type="file" accept=".csv" className="block mt-2" onChange={async e => { const file = e.target.files?.[0]; if (file) setCsv(await file.text()) }} /></label>
-      <button disabled={busy || !csv || !symbol} onClick={run} className="px-4 py-2 rounded bg-cyan-700 disabled:opacity-40">{busy ? 'Running research…' : 'Run validation'}</button>
+      {!canRunResearch && <p className="text-sm text-slate-400">Viewer access: saved reports remain available, but running validation requires an operator or administrator.</p>}
+      <button disabled={!canRunResearch || busy || !csv || !symbol} onClick={run} className="px-4 py-2 rounded bg-cyan-700 disabled:opacity-40">{busy ? 'Running research…' : 'Run validation'}</button>
       {error && <p role="alert" className="text-red-300">{error}</p>}
     </section>
     {report && <section className="bg-slate-800 rounded-xl p-5 space-y-4">

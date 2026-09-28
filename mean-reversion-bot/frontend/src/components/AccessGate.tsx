@@ -1,11 +1,11 @@
 import { useEffect, useState, type ReactNode, type FormEvent } from 'react'
 import { api, setAccessKey } from '../api/client'
-import { IdentityContext } from '../auth/identity'
+import { IdentityContext, type Identity } from '../auth/identity'
 
 const ACCESS_KEY_STORAGE = 'mr-bot-access-key'
 
 export default function AccessGate({ children }: { children: ReactNode }) {
-  const [identity, setIdentity] = useState<any>(null)
+  const [identity, setIdentity] = useState<Identity | null>(null)
   const [key, setKey] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -14,7 +14,7 @@ export default function AccessGate({ children }: { children: ReactNode }) {
     if (!storedKey) return
     setAccessKey(storedKey)
     api.get('/api/auth/me')
-      .then(setIdentity)
+      .then(value => setIdentity(value as Identity))
       .catch(() => {
         setAccessKey('')
         localStorage.removeItem(ACCESS_KEY_STORAGE)
@@ -25,10 +25,16 @@ export default function AccessGate({ children }: { children: ReactNode }) {
     const submittedKey = key.trim()
     setAccessKey(submittedKey)
     try {
-      setIdentity(await api.get('/api/auth/me'))
+      setIdentity(await api.get('/api/auth/me') as Identity)
       localStorage.setItem(ACCESS_KEY_STORAGE, submittedKey)
       setKey('')
-    } catch (err) { setAccessKey(''); setError(err instanceof Error ? err.message : String(err)) }
+    } catch (err) {
+      setAccessKey('')
+      const detail = err instanceof Error ? err.message : String(err)
+      setError(detail.includes('Failed to fetch')
+        ? 'Cannot reach the local API. Start backend/run_local.py, then try again.'
+        : detail)
+    }
     finally { setBusy(false) }
   }
   if (!identity) return <main className="min-h-screen bg-slate-900 text-slate-100 grid place-items-center p-6">
@@ -38,13 +44,13 @@ export default function AccessGate({ children }: { children: ReactNode }) {
       <label className="block">Access key<input autoComplete="off" type="password" required value={key}
         onChange={e => setKey(e.target.value)} className="block w-full rounded p-2 mt-2 bg-slate-900" /></label>
       {error && <p role="alert" className="text-red-300">{error}</p>}
-      <button disabled={busy} className="bg-cyan-700 rounded px-4 py-2 disabled:opacity-50">{busy ? 'Signing in…' : 'Sign in'}</button>
+      <button type="submit" disabled={busy} className="bg-cyan-700 rounded px-4 py-2 disabled:opacity-50">{busy ? 'Signing in…' : 'Sign in'}</button>
     </form>
   </main>
   return <div>
     <div className="bg-slate-950 text-slate-300 text-sm px-4 py-2 flex justify-between">
       <span>{identity.demo ? 'Deriv demo' : 'Deriv LIVE'} · {identity.account_id || 'Account not configured'} · {identity.role}</span>
-      <button onClick={() => { setAccessKey(''); localStorage.removeItem(ACCESS_KEY_STORAGE); setIdentity(null) }}>Sign out</button>
+      <button type="button" onClick={() => { setAccessKey(''); localStorage.removeItem(ACCESS_KEY_STORAGE); setIdentity(null) }}>Sign out</button>
     </div>
     <IdentityContext.Provider value={identity}>{children}</IdentityContext.Provider>
   </div>

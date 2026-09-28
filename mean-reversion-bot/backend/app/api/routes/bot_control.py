@@ -352,6 +352,38 @@ async def live_signals():
     }
 
 
+@signals_router.get("/scanner")
+async def signal_scanner(
+    limit: int = Query(100, ge=1, le=500),
+    db: AsyncSession = Depends(get_db),
+):
+    """Latest read-only signal state per symbol and timeframe."""
+    result = await db.execute(
+        select(Signal).order_by(desc(Signal.evaluated_at)).limit(min(limit * 5, 500))
+    )
+    latest = {}
+    now = datetime.utcnow()
+    for signal in result.scalars().all():
+        key = (signal.symbol, signal.timeframe)
+        if key in latest:
+            continue
+        hurst = signal.hurst
+        regime = ('trending' if hurst is not None and hurst > .55 else
+                  'mean_reverting' if hurst is not None and hurst < .45 else 'mixed')
+        latest[key] = {
+            'symbol': signal.symbol, 'timeframe': signal.timeframe,
+            'direction': signal.direction, 'score': signal.score,
+            'fired': signal.fired, 'reason': signal.reason,
+            'z_score': signal.z_score, 'hurst': hurst, 'regime': regime,
+            'evaluated_at': signal.evaluated_at.isoformat(),
+            'age_seconds': max(0, int((now - signal.evaluated_at).total_seconds())),
+        }
+        if len(latest) >= limit:
+            break
+    rows = sorted(latest.values(), key=lambda row: (-row['score'], row['symbol'], row['timeframe']))
+    return {'count': len(rows), 'scanner': rows}
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # RISK  /api/risk
 # ══════════════════════════════════════════════════════════════════════════════

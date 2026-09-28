@@ -1,17 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, type ChangeEvent } from 'react';
 import { 
-  Play, FlaskConical, Check, X, Info, 
+  Play, FlaskConical, Check, X,
   TrendingUp, BarChart3, History, Layers, Upload, ChevronDown
 } from 'lucide-react';
 import { api } from '../api/client';
+import { usePermissions } from '../auth/identity';
 import MT5Panel from '../components/MT5Panel';
 import TradingViewPanel from '../components/TradingViewPanel';
 import { DEFAULT_SELECTION, TV_SUPPORTED, tradingViewUrl } from '../tradingview/strategy';
 import { CandlestickChart, type Candle } from '../components/CandlestickChart';
-import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, 
-  Tooltip, ResponsiveContainer, AreaChart, Area
-} from 'recharts';
+import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 
 const STRATEGIES = [
   { id: 'use_zscore', label: 'Z-Score', description: 'Price deviation from rolling mean' },
@@ -36,6 +34,7 @@ const STRATEGIES = [
 const SYMBOLS = ['1HZ75V', '1HZ100V', '1HZ50V', 'BOOM500', 'CRASH500', 'UK100', 'NAS100', 'SP500', 'GER40', 'FRA40', 'XAUUSD'];
 
 export default function Backtest() {
+  const { canRunResearch } = usePermissions();
   const [savedLab] = useState(() => {
     try { return JSON.parse(localStorage.getItem('v751s-strategy-lab-v2') || '{}') || {} } catch { return {} }
   });
@@ -89,7 +88,7 @@ export default function Backtest() {
   };
 
   const runBacktest = async (csvText?: string) => {
-    if (loading || testSymbols.length === 0) return;
+    if (!canRunResearch || loading || testSymbols.length === 0) return;
     if (csvText && testSymbols.length !== 1) {
       setTestErrors(['Select exactly one asset before importing its candles.']); return;
     }
@@ -124,7 +123,7 @@ export default function Backtest() {
     }
   };
 
-  const handleCsvUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCsvUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -162,11 +161,11 @@ export default function Backtest() {
           <label className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700 cursor-pointer">
             <Upload className="w-4 h-4" />
             Import CSV / Excel
-            <input type="file" accept=".csv,.xlsx,.xls" disabled={loading || testSymbols.length !== 1} className="hidden" onChange={handleCsvUpload} />
+            <input type="file" accept=".csv,.xlsx,.xls" disabled={!canRunResearch || loading || testSymbols.length !== 1} className="hidden" onChange={handleCsvUpload} />
           </label>
           <button
             onClick={() => runBacktest()}
-            disabled={loading || testSymbols.length === 0}
+            disabled={!canRunResearch || loading || testSymbols.length === 0}
             className={`flex items-center gap-2 px-6 py-2.5 rounded-lg font-semibold transition-all ${
               loading || testSymbols.length === 0
                 ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
@@ -182,6 +181,7 @@ export default function Backtest() {
           </button>
         </div>}
       </div>
+      {!canRunResearch && <p className="text-sm text-slate-400">Viewer access: browse strategy results and reports. Running backtests requires an operator or administrator.</p>}
       {progress && <p role="status" className="text-cyan-300">{progress}</p>}
       {testErrors.length > 0 && <section role="alert" aria-label="Backtest errors" className="rounded-xl border border-red-800 bg-red-950/30 p-4 text-red-200 space-y-2">
         <p>Some tests could not run. Successful results are retained below.</p>
@@ -311,13 +311,13 @@ export default function Backtest() {
           <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-sm space-y-4">
             <h2 className="text-sm font-bold text-slate-300 uppercase tracking-wider mb-2">Parameters</h2>
             <div>
-              <label className="text-xs text-slate-500 block mb-1.5">Starting capital (USD)</label>
-              <input type="number" min="1" step="100" value={startingCapital} onChange={e => setStartingCapital(Math.max(1, Number(e.target.value) || 1))} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200" />
+              <label htmlFor="starting-capital" className="text-xs text-slate-500 block mb-1.5">Starting capital (USD)</label>
+              <input id="starting-capital" type="number" min="1" step="100" value={startingCapital} onChange={e => setStartingCapital(Math.max(1, Number(e.target.value) || 1))} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200" />
               <p className="text-[10px] text-slate-500 mt-1">Used in the generated TradingView strategy. It is not a broker deposit.</p>
             </div>
             <div>
-              <label className="text-xs text-slate-500 block mb-1.5">Lookback (Days)</label>
-              <select 
+              <label htmlFor="lookback-days" className="text-xs text-slate-500 block mb-1.5">Lookback (Days)</label>
+              <select id="lookback-days"
                 value={days} 
                 onChange={e => setDays(Number(e.target.value))}
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 outline-none focus:border-cyan-500"
@@ -329,8 +329,8 @@ export default function Backtest() {
               </select>
             </div>
             <div>
-              <label className="text-xs text-slate-500 block mb-1.5">Min. Confluence Score ({minConfluence})</label>
-              <input 
+              <label htmlFor="min-confluence" className="text-xs text-slate-500 block mb-1.5">Min. Confluence Score ({minConfluence})</label>
+              <input id="min-confluence"
                 type="range" min="1" max="20" step="1"
                 value={minConfluence}
                 onChange={e => setMinConfluence(Number(e.target.value))}
@@ -508,19 +508,19 @@ export default function Backtest() {
                 <div className="bg-slate-900 border border-slate-700 rounded-lg overflow-hidden">
                   <div className="p-4 border-b border-slate-700"><h4 className="text-sm font-bold text-white">Trades ({selectedRun.trades.length})</h4></div>
                   <div className="divide-y divide-slate-700">
-                    {selectedRun.trades.map((trade: any, idx: number) => (
-                      <div key={idx} className="p-4">
-                        <button onClick={() => setExpandedTrades(prev => ({ ...prev, [idx]: !prev[idx] }))} className="w-full flex items-center justify-between hover:text-cyan-400 transition-colors text-left">
+                    {selectedRun.trades.map((trade: any) => (
+                      <div key={trade.id} className="p-4">
+                        <button type="button" onClick={() => setExpandedTrades(prev => ({ ...prev, [trade.id]: !prev[trade.id] }))} className="w-full flex items-center justify-between hover:text-cyan-400 transition-colors text-left">
                           <div className="flex items-center gap-3">
                             <div className={`px-2 py-1 rounded text-xs font-bold ${trade.direction === 'buy' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>{trade.direction.toUpperCase()}</div>
                             <div><div className="text-sm font-mono">{trade.id.slice(0, 8)}</div><div className="text-xs text-slate-500">{trade.reason || 'manual'}</div></div>
                           </div>
                           <div className="flex items-center gap-6">
                             <div className="text-right"><div className={`text-sm font-bold ${(trade.pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>{(trade.pnl || 0) >= 0 ? '+' : ''}{trade.pnl?.toFixed(2)}</div><div className="text-xs text-slate-500">{trade.pnl_pct?.toFixed(1)}%</div></div>
-                            <ChevronDown className={`w-4 h-4 transition-transform ${expandedTrades[idx] ? 'rotate-180' : ''}`} />
+                            <ChevronDown className={`w-4 h-4 transition-transform ${expandedTrades[trade.id] ? 'rotate-180' : ''}`} />
                           </div>
                         </button>
-                        {expandedTrades[idx] && (<div className="mt-3 pt-3 border-t border-slate-600 text-xs grid grid-cols-2 gap-2"><div><span className="text-slate-500">Entry:</span> <span className="text-white font-mono">{trade.entry?.toFixed(4)}</span></div><div><span className="text-slate-500">Exit:</span> <span className="text-white font-mono">{trade.exit?.toFixed(4)}</span></div></div>)}
+                        {expandedTrades[trade.id] && (<div className="mt-3 pt-3 border-t border-slate-600 text-xs grid grid-cols-2 gap-2"><div><span className="text-slate-500">Entry:</span> <span className="text-white font-mono">{trade.entry?.toFixed(4)}</span></div><div><span className="text-slate-500">Exit:</span> <span className="text-white font-mono">{trade.exit?.toFixed(4)}</span></div></div>)}
                       </div>
                     ))}
                   </div>

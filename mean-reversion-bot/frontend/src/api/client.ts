@@ -109,6 +109,37 @@ export interface Signal {
   }
 }
 
+export interface ScannerRow {
+  symbol: string
+  timeframe: string
+  direction: string | null
+  score: number
+  fired: boolean
+  reason: string
+  z_score: number | null
+  hurst: number | null
+  regime: string
+  evaluated_at: string
+  age_seconds: number
+}
+
+export async function fetchScanner(limit = 100): Promise<{ count: number; scanner: ScannerRow[] }> {
+  return apiFetch(`/api/signals/scanner?limit=${limit}`)
+}
+
+export interface PaperTrade {
+  id: string; signal_id: string | null; symbol: string; timeframe: string;
+  direction: 'buy' | 'sell'; entry_price: number; stop_loss: number;
+  take_profit: number; exit_price: number | null; quantity: number; pnl: number | null;
+  score: number; regime: string; reason: string; status: 'open' | 'closed';
+  approval_status: 'not_requested' | 'pending' | 'approved' | 'rejected';
+  created_at: string; closed_at: string | null;
+}
+
+export async function fetchPaperTrades(): Promise<{ count: number; trades: PaperTrade[] }> {
+  return api.get('/api/paper-trades') as Promise<{ count: number; trades: PaperTrade[] }>
+}
+
 export interface BotStatus {
   bot_running: boolean
   circuit_breaker: {

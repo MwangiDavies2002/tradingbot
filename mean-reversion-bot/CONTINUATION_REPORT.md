@@ -1,5 +1,567 @@
 # Institutional capability expansion - continuation report
 
+## Latest checkpoint: 2026-09-28 - attributed single-pair demo comparison
+
+Demo performance comparison now joins each broker entry deal to a successful
+order result pinned to the loaded research run, exact saved strategy and demo
+account. It groups broker deals by position ID, includes entry and exit deal
+costs, and counts a position only when its full volume has closed. Partial exits
+remain one position; pre-candidate, other-account, other-run, incomplete and
+legacy unlinked positions are excluded. Broker history remains in the journal.
+The loaded-candidate status also checks the currently connected demo
+account/server, so reconnecting to another account does not appear validated.
+The MT5 panel shows research holdout, matching candidate-mode scanner policies
+and attributed demo outcomes side by side, without pooling R and currency P&L.
+
+No real account access or broker orders were used for implementation tests;
+real-money execution remains disabled. The linked comparison is a monitoring
+signal, not approval to trade.
+
+Validation: 445 backend tests passed, 3 skipped; frontend production build and
+six desktop/mobile MT5 and candidate-scanner browser flows passed. Existing
+candidate reload keeps its original demo observation start time.
+
+## Latest checkpoint: 2026-09-28 - one-pair research candidate in scanner
+
+Forward scanner can now load the server-saved single-pair Analyze candidate already
+loaded into MT5 Demo & Journal. The backend rechecks seven-day freshness, exact
+demo account/server, broker symbol, timeframe, threshold, saved strategy and
+contract fields before scanning. The signal engine uses the frozen candidate's
+indicator toggles and account balance. Research run, strategy and contract
+snapshot are retained in the paper policy and fingerprint. Contract drift blocks
+new signals and makes unfinished hypothetical exposure unresolved. Scanner start
+refuses overlap with an active demo execution worker.
+
+Manual exploratory mode stays separate; its existing policy fingerprint is
+unchanged. Candidate mode shares signal settings with Analyze and MT5 demo, but
+the scanner's RANGE gate and hypothetical fills still differ. No live execution
+was enabled or broker terminal connected. See USER_MANUAL.md section 17.
+
+Forward evidence now reports each exact account, broker pair, timeframe and policy
+separately. The 300-closed-trade review target is evaluated per row; aggregate
+counts across distinct pairs or settings remain context only. Each row shows
+observations, unfinished outcomes, scanner runs and its research run when present.
+
+Validation: 15 new candidate and pair-evidence tests, focused scanner regression,
+production build and four desktop/mobile visual flows passed. Full backend
+regression: 442 passed, 3 skipped.
+
+Next: shared regime/news data and cost/fill comparability, per-setup forward
+validation, audited approval, source-backed broker specifications and operational
+recovery. Real-account trading remains disabled pending independent validation.
+
+## Latest checkpoint: 2026-09-28 - historical candle-spread provenance
+
+Added optional candle_proxy_v1 paper costs with an explicit scanner UI selector.
+The MT5 adapter retains raw bar spread points, captured point-size conversion,
+source/identity/timeframe, candle/capture time and price basis. Per-trade consumed
+spread history and entry/exit spreads survive persistence, export and the unified
+read view. Current broker chart mode must confirm bid OHLC for this proxy mode.
+
+Entries and ask-side exit/stop/target tests use the corresponding candle proxy.
+Missing/invalid or unconfirmed-zero spreads block new entries or leave outcomes
+unresolved; there is no fallback to an assumed free or fixed cost. Existing fixed
+quote policies keep their fingerprints and outcomes. Each new trade pins its
+chosen spread model. ATR slippage, tick rounding and calendar rules remain active.
+
+This is a retrospective per-candle cost proxy, not executable ask/tick history.
+Current point metadata does not prove historical price-scale stability. Commission,
+financing, quantity, FX conversion and empirically calibrated costs remain pending.
+See SCANNER_SPREADS.md for configuration, assumptions and provider references.
+
+Validation: 61 targeted tests passed (15 new spread cases plus 46 scanner cases).
+Full backend: **427 passed, 3 skipped** in 80 seconds; existing warnings remain.
+Ruff and production build passed (existing bundle-size warning). Two isolated
+desktop/mobile scanner flows passed; screenshots inspected. The established
+Playwright fallback was used after the in-app browser connection limitation.
+Tests use simulated MT5 data; no terminal connection, orders,
+deployment or user-data migration was performed.
+
+Next: explicit quantity/cost specifications with effective dates, commission,
+financing and FX provenance. Historical spread proxies alone do not complete stage 2.
+
+## Latest checkpoint: 2026-09-27 - unified paper evidence read view
+
+Added a common read-only projection for manual and automatic scanner paper records
+at GET /api/scanner/paper-evidence. Source-specific cursors page beyond 500 rows;
+source-prefixed IDs prevent collisions, scanner states remain authoritative, and
+native records/provenance remain available. Manual outcomes retain stored price
+change times quantity with unspecified currency; scanner outcomes remain R. No
+pooled statistics, historical conversion or journal rewrite was introduced.
+
+The Paper trades page now includes Unified paper evidence with source selection,
+latest/older navigation, source units, missing/unresolved outcomes, account/policy
+metadata and expandable original records. Viewer access remains read-only. Local
+host/origin restrictions protect the scanner journal. Existing manual entry,
+approval and close controls remain separate from this read-only view.
+
+Pagination is not a cross-store snapshot. Scanner pages retain their row ceiling;
+manual pages use timestamp/ID keysets so normal newer inserts do not shift them.
+Backfilled manual rows may appear among older records, and states can change during
+browsing. No combined currency P&L is inferred from either source.
+
+Validation: 10 new backend tests passed, including >500-row paging, equal-time
+ID ordering, concurrent inserts, native units/state, cursor rejection, viewer/auth
+checks and unchanged stored evidence. Full backend: **412 passed, 3 skipped**
+(90 seconds), with existing warnings. The 10 focused tests were rerun after the
+final asynchronous read adjustment and passed. Frontend build
+passed with the existing bundle-size warning. Two desktop/mobile Playwright flows
+passed and screenshots were inspected; in-app browser bootstrap remained unavailable
+(missing sandboxPolicy), so the established isolated fallback was used. Ruff passed.
+No broker connection/orders, deployment or user-ledger migration occurred.
+
+Next: stage 2 time-varying spread/cost provenance and quantity/FX/financing models;
+shared regime gates and audited approval remain pending. Stage 1 non-MT5 adapters,
+verified provider equivalence, calendar ingestion/editors and retention remain open.
+
+## Latest checkpoint: 2026-09-27 - catalog-backed MT5 mappings
+
+Added explicit immutable scanner mappings to existing instrument-catalog revisions.
+Admin registration reads the actual catalog revision and checks its content hash,
+exact venue/server/symbol identity and linear-contract broker-lot unit convention.
+Server/account/symbol/revision uniqueness prevents silent redefinition; identical
+registrations are idempotent. Registrations persist in the scanner SQLite journal.
+
+Optional asset mapping IDs are validated against broker metadata at start and on
+each cycle. Currency, calculation mode, multiplier, tick and lot-grid/bound drift,
+missing metadata or expired specs reject new entries and preserve unfinished mapped
+exposure as unresolved. Observation/trade evidence pins the full mapping and spec;
+policy hashes distinguish mapping revisions. Exports include every registration.
+
+Authenticated local read endpoints list, inspect and compare supplied terms.
+Comparison distinguishes matching from incompatible supplied contracts without
+claiming verified economic equivalence or automatically merging provider data.
+Mapping registration is admin-only; viewer reads and existing start permissions
+are retained. SCANNER_MAPPINGS.md documents configuration and limitations.
+
+Validation: **402 passed, 3 skipped** in the full backend suite (91 seconds),
+including 30 new mapping tests and 75 prior scanner tests. Existing dependency
+and application warnings remain. Ruff checks passed. No frontend changes, terminal connection,
+broker orders, deployment or user-data migration were performed. Only temporary
+SQLite catalogs and simulated broker metadata were used by tests.
+
+Remaining stage 1 work: non-MT5 adapters and validated provider equivalence,
+mapping/calendar editor UI, broker-calendar ingestion, validated currency/cost
+specifications and retention. A useful next implementation is a unified read view
+of automatic and manual paper evidence without rewriting historical records.
+
+## Latest checkpoint: 2026-09-26 - supplied session continuity
+
+Continued stage 1 with optional per-asset source/revisioned UTC calendars, bound
+explicitly to the broker account scope and exact symbol. Publication/coverage,
+ordered nonoverlapping windows, candle-grid alignment and full-history continuity
+are checked. Scheduled closures can separate candles; missing open-session bars,
+stale quotes, unavailable/expired calendars and closed sessions cannot approve
+new paper entries. Without a calendar, existing strict gap behavior is retained.
+
+Calendars are pinned in policy fingerprints and saved/exported evidence. Paper
+entries use the next full scheduled candle, held-bar counts skip closures, and
+reopening stop fills retain adverse gap handling. Missing outcome bars and expired
+coverage remain unresolved. Historical evidence is not rewritten. Validated closed
+history now advances existing outcomes before fresh-entry gates run, so stale
+quotes or closed-session rejection do not freeze otherwise observable outcomes.
+
+Configuration is available through the existing authenticated scanner start API;
+the dashboard preserves saved calendars but has no calendar editor. See
+SCANNER_SESSIONS.md for the contract, provenance requirements and limitations.
+No broker calendar is inferred, downloaded or claimed independently verified.
+
+Validation: **372 passed, 3 skipped** in the full backend suite (50 seconds),
+including 75 scanner tests, 29 new calendar cases. Existing dependency/application
+warnings remain. Ruff checks passed. No frontend source changed. No broker session,
+orders, deployment or user ledger migration was performed.
+
+Next stage 1 work: explicit catalog-backed provider mappings, broker-calendar
+adapters/UI, validated currency/cost metadata and retention policy. Provider
+specifications and equivalence must be supplied rather than inferred from labels.
+
+## Latest checkpoint: 2026-09-26 - broker tick grid for paper outcomes
+
+Continued QUANT_CONTINUATION.md stage 1 with the versioned `tick_grid_v2`
+paper model. New observations require a positive finite captured broker tick
+size to create hypothetical trades; missing/invalid metadata preserves a rejected
+observation. Display precision is never substituted for the contract tick.
+
+Decimal calculations round buy entries up, sell entries down, stops outward,
+and exits adversely after slippage. Targets remain 2R from the rounded entry;
+R uses the actual rounded stop distance. The original requested risk is retained.
+Nonpositive levels remain unresolved. The model version is included in the policy
+fingerprint and deduplication key, separating new evidence from earlier policies.
+Historical rows are not rewritten; old pending records retain their original model.
+
+Validation: 46 focused scanner tests passed, including buy/sell quarter-tick
+fills, coarse-grid risk, timed exits, gap stops after reopening the ledger,
+invalid metadata, nonpositive levels and legacy compatibility. Targeted Ruff
+checks passed. Full backend regression: **343 passed, 3 skipped** (42 seconds),
+with existing dependency/application warnings. No frontend source changed.
+Workspace whitespace check reports existing EOF blank lines in jobs.py, schemas.py
+and statistics.py. No broker connection, orders, deployment or user ledger access.
+
+Remaining stage 1 work includes explicit catalog-backed provider mappings,
+session-aware continuity, validated cost specifications and retention policy.
+Tick handling remains a fixed-spread hypothetical model, not broker fill validation.
+
+## Latest checkpoint: 2026-09-26 - scanner identity and evidence access
+
+Continued QUANT_CONTINUATION.md stage 1: exact MT5 identity and raw broker contract,
+tick, lot and currency metadata are captured on new observations. Missing values
+remain null. Policy snapshots/fingerprints identify configurations; analytics adds
+account and policy grouping with a legacy-unknown bucket for older rows.
+
+Scanner settings can be explicitly restored without starting observation, preserving
+advanced polling/spread/slippage/holding parameters. Cursor-based evidence browsing
+covers history beyond the live 500-row display. JSON export streams all runs,
+observations and hypothetical trades from one consistent SQLite WAL read snapshot.
+Page membership stays stable under concurrent inserts; mutable trade states can
+still update while browsing. No retention/deletion or cross-provider equivalence
+mapping is claimed. Existing journals are preserved; metadata is not backfilled.
+
+Validation: 31 focused scanner tests passed, including >500-row pagination,
+concurrent-write export consistency, exact identity, authorization and existing
+paper simulation/regime/lifecycle checks. Production build passed with the existing
+bundle-size warning. Two desktop/mobile history/download/restore flows passed; screenshots inspected.
+In-app browser bootstrap was unavailable, so isolated Playwright was used. No terminal connection, trades or deployment occurred.
+
+
+## Latest checkpoint: 2026-09-26 ? forward scanner and automatic paper evidence
+
+The current ordered continuation list is **QUANT_CONTINUATION.md**. It supersedes
+older remaining-work summaries without treating unverified work as complete.
+
+Implemented `/scanner`: continuous read-only observation of up to eight exact MT5
+demo symbols; persistent eligible/rejected signals; conservative scanner regime
+gates; future-candle hypothetical entries and outcomes; cross-asset dashboard and
+R-based breakdowns. Existing manual paper ledger and single-pair execution remain
+separate. Scanner never submits or approves broker orders. News is unknown,
+liquidity is a spread proxy, scores are uncalibrated indices and sessions are UTC
+buckets. Stopped/restarted/gapped outcomes remain unresolved. Provider normalization,
+shared execution regime gates, audited approval and portfolio execution remain open.
+
+Validation: 26 scanner/backend tests passed; frontend production build passed;
+two isolated Edge desktop/mobile scanner flows passed. Screenshots inspected.
+In-app browser bootstrap failed, so established isolated Playwright fallback was
+used. Full backend regression: 317 passed, 3 skipped; six additional scanner gate/short-fill tests then passed in the final 26-test targeted suite.
+Existing datetime deprecations and the Vite bundle-size warning remain.
+
+No broker connection/orders, deployment or user database migration was performed.
+See QUANT_CONTINUATION.md for operation steps, limits and acceptance requirements.
+
+
+## Checkpoint twenty: legacy research permission coverage
+
+Resumed the automated research workflow from checkpoint nineteen. The durable
+Analyze selected assets workflow was already complete: it persists jobs and
+artifacts, audits data, validates costed holdout/walk-forward results, reports
+relationships, and gates MT5 candidate loading without starting trading.
+
+Added the shared role-aware UI gate to the older Strategy Lab and Research
+validation pages. Viewer sessions can still inspect results and download
+reports, while backtest runs, candle imports, and validation submissions are
+disabled consistently with the API's fail-closed authorization. Replaced two
+unsupported `replaceAll` calls in Analyze with compatible regular expressions.
+
+Validation: frontend TypeScript and production build passed. Vite reported the
+existing single-bundle size warning (755 kB minified). No broker connection,
+orders, deployment, or database migration was performed.
+
+## Checkpoint twenty-one: bounded sensitivity evidence
+
+Extended each automated asset validation report with a deterministic offline
+sensitivity matrix: five predeclared confluence thresholds centered on the
+selected threshold, crossed with 0.75x, 1x, 1.5x and 2x positive-cost
+multipliers on the untouched holdout. Reports now include every case, the
+positive-P&amp;L count/fraction and worst-case P&amp;L. The result is descriptive
+evidence only; it does not alter strategy selection or the demo-candidate gate.
+Analyze displays the summary and retains the full matrix in the saved report.
+
+Validation: 8 focused backend research tests passed; frontend production build
+passed; changed Python and TypeScript files report no diagnostics. Existing
+Python datetime deprecation warnings and the Vite bundle-size warning remain.
+No broker connection, orders, deployment, or database migration was performed.
+
+## Checkpoint twenty-two: stale-price and spread audit metrics
+
+Extended the session-aware candle audit used by Analyze to report the longest
+consecutive flat-close run, a stale-close warning, spread observation count,
+median/max spread and simple high-spread outlier count. These are explicit
+quality warnings and are never silently repaired or used to reject a genuinely
+flat market; existing missing-grid, outside-session and unconfirmed-calendar
+checks remain the fail-closed data gate. Analyze now shows the metrics beside
+coverage and session status, and a regression test covers flat prices and a
+spread outlier.
+
+Validation: 9 focused backend research tests passed; frontend production build
+passed. The MT5-only environment lacks `statsmodels`, so the test used the
+repository backend environment. Existing Python datetime deprecation warnings
+and the Vite bundle-size warning remain. No broker connection, orders,
+deployment, or database migration was performed.
+
+## Checkpoint twenty-three: actionable session gap ranges
+
+Extended the same session-aware audit to group missing candles into contiguous
+timestamp ranges, retaining bounded examples for large gaps. Analyze now shows
+the number of missing ranges alongside the missing-bar count, while the full
+ranges remain in the saved report artifact. This distinguishes isolated data
+holes from whole-session outages without filling or inferring candles.
+
+The MT5 adapter still does not invent broker trading hours: complete calendar
+coverage requires a supplied and confirmed session profile, holidays and early
+closes. That limitation is now explicit rather than hidden behind a raw gap
+count.
+
+Validation: 9 focused backend research tests passed; frontend production build
+passed; changed files report no diagnostics. Existing Python datetime
+deprecation warnings and the Vite bundle-size warning remain. No broker
+connection, orders, deployment, or database migration was performed.
+
+## Checkpoint twenty-four: session-calendar provenance
+
+Made confirmed session calendars require a non-empty provenance reference, such
+as a broker schedule, exchange calendar or supplied document. The Analyze form
+now captures that reference, and the audit report preserves it beside the
+session confirmation state. This prevents a manual confirmation checkbox from
+being mistaken for independently verified broker hours while retaining the
+existing fail-closed gap checks.
+
+Validation: 9 focused backend research tests passed; frontend production build
+passed; changed schema, audit and Analyze files report no diagnostics. Existing
+Python datetime deprecation warnings and the Vite bundle-size warning remain.
+No broker connection, orders, deployment, or database migration was performed.
+
+## Checkpoint twenty-five: structured no-trade decisions
+
+Completed the next research-report gap: every analyzed asset now receives an
+explicit `demo_candidate` or `no_trade` decision. No-trade reports preserve
+actionable reasons, including failed data/session quality, unconfirmed costs or
+contract specifications, failed validation checks, broker warnings and the
+fact that non-MT5 research cannot authorize demo execution. Failed ingestion
+also records its error as a no-trade reason. Analyze displays these reasons
+beside the asset result; the execution gate itself is unchanged.
+
+Validation: research worker compilation passed; 9 focused backend research
+tests passed; frontend production build passed; changed files report no
+diagnostics. Existing Python datetime deprecation warnings and the Vite
+bundle-size warning remain. No broker connection, orders, deployment, or
+database migration was performed.
+
+## Checkpoint twenty-six: forward-demo research baseline
+
+Validated demo candidates now preserve their research holdout baseline with
+holdout trade count, P&amp;L, profit factor, out-of-sample trade count/P&amp;L and a
+validation timestamp. MT5 Demo &amp; Journal displays the holdout reference when a
+candidate is loaded and explicitly labels it as a comparison baseline, not a
+live performance claim. No deterioration alert is asserted yet because that
+requires actual forward demo observations.
+
+Validation: research worker compilation passed; 9 focused backend research
+tests passed; frontend production build passed; changed files report no
+diagnostics. Existing Python datetime deprecation warnings and the Vite
+bundle-size warning remain. No broker connection, orders, deployment, or
+database migration was performed.
+
+## Checkpoint twenty-seven: bounded forward deterioration monitor
+
+Added a forward-demo comparison from the existing MT5 deal journal. Candidate
+status now reports `no_baseline`, `insufficient_sample`, `observing` or
+`deteriorating`; the latter requires at least 20 closed post-validation trades
+and a profit factor below half the research holdout baseline. The MT5 panel
+shows the insufficient-sample state or a visible alert, but does not
+automatically halt trading or claim statistical certainty. Deal matching is
+limited to the candidate symbol and exits after its validation timestamp.
+
+Validation: 29 focused MT5 tests passed; frontend production build passed;
+changed worker, panel and test files report no diagnostics. Existing Python
+datetime deprecation warnings and the Vite bundle-size warning remain. No
+broker connection, orders, deployment, or database migration was performed.
+
+## Checkpoint twenty-eight: custom asset input hardening
+
+Aligned Analyze custom asset entry with the backend symbol contract. The input
+now trims values, rejects empty/control-character symbols, caps length at 128
+characters and disables Add asset once eight assets are selected. Duplicate
+selection behavior remains unchanged.
+
+Validation: frontend production build passed and Analyze reports no diagnostics.
+The existing Vite bundle-size warning remains. No broker connection, orders,
+deployment, or database migration was performed.
+
+## Checkpoint twenty-nine: stale-price candidate gate
+
+Closed a research-integrity gap: stale close runs were previously reported but
+could still qualify an MT5 demo candidate. Candidate eligibility now fails
+closed when the audit reaches its stale-close warning threshold, and the saved
+asset report records the exact run length as a no-trade reason. Spread outliers
+remain visible evidence for review rather than an automatic rejection because
+legitimate broker spread widening can occur.
+
+Validation: research worker compilation passed; 38 focused research and MT5
+tests passed. Existing Python datetime deprecation warnings remain. No broker
+connection, orders, deployment, or database migration was performed.
+
+## Checkpoint thirty: run-level research decision summary
+
+Added a saved summary for multi-asset analyses: total assets, demo-candidate
+count, no-trade count, failed count and an overall `candidate_available` or
+`no_trade` decision. Analyze displays this summary before the individual asset
+reports, making a mixed batch outcome explicit without hiding failed assets or
+turning one successful asset into portfolio approval.
+
+Validation: research worker compilation passed; 38 focused research and MT5
+tests passed; frontend production build passed; changed files report no
+diagnostics. Existing Python datetime deprecation warnings and the Vite
+bundle-size warning remain. No broker connection, orders, deployment, or
+database migration was performed.
+
+## Checkpoint thirty-one: explicit forward-monitoring states
+
+MT5 Demo &amp; Journal now explains every forward-comparison state: no validated
+baseline, insufficient sample, active observation and deterioration alert. The
+normal observing state shows the current closed-trade count and profit factor,
+so silence is no longer ambiguous while evidence accumulates.
+
+Validation: frontend production build passed; MT5Panel reports no diagnostics.
+The existing Vite bundle-size warning remains. No broker connection, orders,
+deployment, or database migration was performed.
+
+## Checkpoint thirty-two: full backend verification
+
+Ran the complete backend regression suite after the research workflow, data
+quality gates, candidate baseline, forward comparison and decision-report
+changes. All 294 tests passed; 3 PostgreSQL-dependent tests were skipped. The
+suite emitted the repository's existing Python/Pydantic deprecation warnings,
+but no test failures or new diagnostics.
+
+## Checkpoint thirty-three: market behavior diagnostics
+
+Added descriptive per-asset behavior analysis to automated research reports:
+annualized realized volatility, lag-1 return autocorrelation, normalized price
+trend z-score and a sample-only `mean_reverting`, `trending` or `mixed` regime
+label. Degenerate and insufficient histories are reported explicitly. These
+diagnostics are evidence for interpretation only and do not alter strategy
+selection or authorize trading.
+
+Validation: 12 focused research tests passed; research worker compilation and
+frontend production build passed; changed files report no diagnostics. Existing
+Python datetime deprecation warnings and the Vite bundle-size warning remain.
+The local backend is reachable on port 8000; authentication requires the
+access key matching the configured `API_ADMIN_KEY_HASH` in `backend/.env`.
+
+## Checkpoint thirty-four: actionable sign-in failure
+
+Improved AccessGate so an unavailable local backend no longer appears as an
+opaque internal error: connection failures now tell the operator to start
+`backend/run_local.py` and retry. Auth identity state is typed, and sign-in and
+sign-out buttons now declare their form types explicitly. The local FastAPI
+service was verified reachable on port 8000; valid credentials still must match
+the configured role hash.
+
+Validation: frontend production build passed; the existing Vite bundle-size
+warning remains. No broker connection, orders, deployment, or database
+migration was performed.
+
+## Checkpoint thirty-five: custom-symbol diagnostic cleanup
+
+Replaced the analyzer-flagged control-character regular expression in Analyze
+with an equivalent explicit printable-character predicate. Custom-symbol
+validation still enforces trimming and the 128-character limit, while the
+Analyze file now reports no diagnostics.
+
+Validation: frontend production build passed; the existing Vite bundle-size
+warning remains. No broker connection, orders, deployment, or database
+migration was performed.
+
+## Checkpoint thirty-six: Strategy Lab diagnostic cleanup
+
+Cleaned the concrete Strategy Lab diagnostics without changing behavior:
+removed unused imports, replaced the default React import with a type import,
+associated parameter labels with their controls, added explicit button types
+and replaced index-based trade keys with stable trade identifiers.
+
+Validation: frontend production build passed and Backtest reports no
+diagnostics. The existing Vite bundle-size warning remains. No broker
+connection, orders, deployment, or database migration was performed.
+
+## Checkpoint thirty-seven: end-to-end user manual
+
+Created `USER_MANUAL.md` as the primary step-by-step operator guide. It covers
+installation and startup, access-key sign-in, MT5 preparation, Analyze
+selected assets, cost/session/calendar validation, report interpretation,
+no-trade decisions, candidate loading, demo start/stop, forward monitoring,
+common validation errors and system limitations. `MT5_SETUP.md` now links to it
+as the starting point while retaining detailed MT5 reference material.
+
+Validation: documentation links and workflow sections were checked in the
+workspace. No broker connection, orders, deployment, or database migration was
+performed.
+
+## Checkpoint thirty-eight: client-side research validation guards
+
+Updated Analyze to prevent two common submission errors before they reach the
+API: slippage ticks cannot be entered below zero, and session-calendar
+confirmation remains disabled until a calendar source is supplied. The API
+validation remains authoritative, but the form now explains the missing source
+inline.
+
+Validation: frontend production build passed; Analyze reports no diagnostics.
+The existing Vite bundle-size warning remains. No broker connection, orders,
+deployment, or database migration was performed.
+
+## Checkpoint thirty-nine: imported-profile consistency guard
+
+Analyze now validates selected profiles before submission as well as individual
+fields. It blocks negative slippage and confirmed sessions with a blank source
+even when those values came from an imported JSON profile or from clearing a
+previously entered source, and reports the affected asset directly.
+
+Validation: frontend production build passed; Analyze reports no diagnostics.
+The existing Vite bundle-size warning remains. No broker connection, orders,
+deployment, or database migration was performed.
+
+## Checkpoint forty: unified signal scanner
+
+Added read-only `/api/signals/scanner`, which groups the latest stored signal
+evaluation by symbol and timeframe and reports direction, confluence score,
+Z-score deviation, Hurst-derived regime proxy, freshness age and reason. The
+Signals page now includes a unified scanner table and regime/confluence summary
+without treating confluence scores as probabilities or starting execution.
+
+Validation: scanner route compilation, 19 protected API tests, frontend
+production build and changed-file diagnostics passed. Existing Vite bundle-size
+and Python deprecation warnings remain.
+
+## Checkpoint forty-one: durable paper-trade ledger
+
+Added protected hypothetical paper trading under `/api/paper-trades` with
+durable create/list/close operations, explicit entry/stop/target/quantity,
+signal score, regime and reason fields. Added a Paper Trades page. The ledger
+never submits broker orders and is separated from the live Trade table.
+Migration `0004_paper_trades` adds the production table and indexes.
+
+## Checkpoint forty-two: regime dashboard and paper analytics
+
+Signals now summarizes latest mean-reverting, trending and mixed markets plus
+score-9+ observations. Paper analytics report sample sufficiency, win rate,
+P&amp;L and profit factor overall and by symbol, regime and score bucket. Session
+breakdown is explicitly `not_recorded` until paper entries capture session
+metadata; no session values are inferred.
+
+Validation: 20 migration/safety tests, frontend production build and changed
+file diagnostics passed. Existing Vite bundle-size and Python deprecation
+warnings remain.
+
+## Checkpoint forty-three: paper manual approval boundary
+
+Added a durable paper-trade approval state machine: `not_requested`, `pending`,
+`approved` and `rejected`, with protected request/approve/reject endpoints and
+operator controls in the Paper Trades page. Approval is explicitly paper-only;
+ledger responses return `live_authorized: false` and no approval path calls a
+broker or MT5 execution route. Migration `0005_paper_trade_approval` adds the
+approval state and index.
+
+Validation: migration/safety tests passed; frontend production build and
+changed-file diagnostics passed. Existing Vite bundle-size and Python
+deprecation warnings remain.
+
 Last checkpoint: 2026-09-25. Status: nineteenth implementation checkpoint
 verified (exact broker pair selection on MT5 demo); broader production expansion is NOT complete.
 

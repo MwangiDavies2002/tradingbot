@@ -165,6 +165,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
             await news_sync_task
         except asyncio.CancelledError:
             pass
+    if hasattr(app.state, "scanner"):
+        await asyncio.to_thread(app.state.scanner.stop)
     if hasattr(app.state, "mt5_demo"):
         await asyncio.to_thread(app.state.mt5_demo.stop)
     if hasattr(app.state, "redis") and app.state.redis:
@@ -210,14 +212,17 @@ def create_app() -> FastAPI:
 
     # ── Routers ───────────────────────────────────────────────────────────────
     # Import here to avoid circular imports at module level
-    from app.api.routes import bot_control, config, risk, signals, test, trades, news, strategies
+    from app.api.routes import bot_control, config, risk, signals, test, trades, news, strategies, paper_trades
 
     app.include_router(trades.router,      prefix="/api/trades",   tags=["Trades"])
     app.include_router(signals.router,     prefix="/api/signals",  tags=["Signals"])
+    app.include_router(paper_trades.router, prefix="/api/paper-trades", tags=["Paper Trading"])
     app.include_router(risk.router,        prefix="/api/risk",     tags=["Risk"])
     app.include_router(bot_control.router, prefix="/api/bot",      tags=["Bot Control"])
     app.include_router(config.router,      prefix="/api/config",   tags=["Config"])
     app.include_router(test.router,        prefix="/api",          tags=["Diagnostics"])
+    from app.api.routes import scanner
+    app.include_router(scanner.router, prefix="/api/scanner", tags=["Forward Scanner"])
     from app.api.routes import backtest, analysis
     app.include_router(analysis.router, prefix="/api/analysis", tags=["Automated Research"])
     from app.api.routes import metrics

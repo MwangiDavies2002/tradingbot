@@ -23,6 +23,8 @@ import Research from './pages/Research'
 import Analyze from './pages/Analyze'
 import Institutional from './pages/Institutional'
 import InstrumentCatalog from './pages/InstrumentCatalog'
+import PaperTrades from './pages/PaperTrades'
+import Scanner from './pages/Scanner'
 
 const NAV = [
   { to: '/',         label: 'Dashboard', icon: LayoutDashboard },
@@ -30,6 +32,8 @@ const NAV = [
   { to: '/signals',  label: 'Deriv Signals', icon: Activity    },
   { to: '/backtest', label: 'Strategy Lab', icon: FlaskConical },
   { to: '/analyze', label: 'Analyze assets', icon: FlaskConical },
+  { to: '/scanner', label: 'Forward scanner', icon: Activity },
+  { to: '/paper-trades', label: 'Paper trades', icon: FlaskConical },
   { to: '/research', label: 'Research validation', icon: FlaskConical },
   { to: '/institutional', label: 'Institutional lab', icon: FlaskConical },
   { to: '/instruments', label: 'Instrument catalog', icon: SettingsIcon },
@@ -106,6 +110,8 @@ export default function App() {
             <Route path="/signals"  element={<Signals />} />
             <Route path="/backtest" element={<Backtest />} />
             <Route path="/analyze" element={<Analyze />} />
+            <Route path="/scanner" element={<Scanner />} />
+            <Route path="/paper-trades" element={<PaperTrades />} />
             <Route path="/research" element={<Research />} />
             <Route path="/institutional" element={<Institutional />} />
             <Route path="/instruments" element={<InstrumentCatalog />} />

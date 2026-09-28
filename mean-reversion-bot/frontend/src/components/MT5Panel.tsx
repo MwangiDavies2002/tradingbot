@@ -10,6 +10,7 @@ export default function MT5Panel({ selection, onLoad, onSymbolChange }: Props) {
   const local = ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname)
   const [status, setStatus] = useState<any>(null)
   const [journal, setJournal] = useState<any[]>([])
+  const [paperEvidence, setPaperEvidence] = useState<any>(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [risk, setRisk] = useState(0.5)
@@ -19,8 +20,9 @@ export default function MT5Panel({ selection, onLoad, onSymbolChange }: Props) {
   const [catalogRevision, setCatalogRevision] = useState(0)
   const [symbolSearch, setSymbolSearch] = useState('')
   const refresh = async () => {
-    const [state, rows] = await Promise.all([api.get('/api/mt5/status'), api.get('/api/mt5/journal')])
-    setStatus(state); setJournal(rows as any[])
+    const [state, rows, paper] = await Promise.all([api.get('/api/mt5/status'), api.get('/api/mt5/journal'),
+      api.get('/api/scanner/analytics').catch(() => null)])
+    setStatus(state); setJournal(rows as any[]); setPaperEvidence(paper)
     return state as any
   }
   useEffect(() => {
@@ -66,6 +68,11 @@ export default function MT5Panel({ selection, onLoad, onSymbolChange }: Props) {
     finally { setBusy(false) }
   }
   const saved = status?.config
+  const candidate = status?.research_candidate
+  const candidateScope = candidate?.snapshot ? `${candidate.snapshot.server}:${candidate.snapshot.account}` : ''
+  const candidatePaper = (paperEvidence?.per_pair_policy || []).filter((row: any) =>
+    row.research_run_id === candidate?.run_id && row.scope === candidateScope &&
+    row.symbol === candidate?.strategy?.symbol && row.timeframe === candidate?.strategy?.timeframe)
   const eligible = symbols.some(row => row.name === symbol && row.eligible)
   const dirty = !saved || saved.symbol !== symbol || (!!selection && Object.entries(selection).some(([key, value]) => saved[key] !== value))
     || saved.risk_pct !== risk / 100 || saved.daily_loss_pct !== lossLimit / 100
@@ -85,6 +92,21 @@ export default function MT5Panel({ selection, onLoad, onSymbolChange }: Props) {
       </div>
     </div>
     {!status?.research_validated && <p className="text-sm text-amber-200">Demo entries require a passing research candidate. <a className="underline text-cyan-300" href="/analyze">Analyze selected assets</a>, then load the validated candidate. Editing or saving strategy settings invalidates previous validation.</p>}
+    {status?.research_validated && status.research_candidate?.research_baseline && <p className="text-sm text-slate-300">Research baseline: holdout P&amp;L {Number(status.research_candidate.research_baseline.holdout.total_pnl).toFixed(2)}, {status.research_candidate.research_baseline.holdout.total_trades} trades, profit factor {Number(status.research_candidate.research_baseline.holdout.profit_factor).toFixed(2)}. Compare future demo results against this baseline; it is not a live performance claim.</p>}
+    {status?.research_validated && candidate && <section className="rounded-lg border border-cyan-800 p-4 space-y-3" aria-label="Single-pair validation evidence">
+      <h3 className="font-semibold">Single-pair validation evidence</h3>
+      <p className="text-xs text-slate-300 break-words">Research {candidate.run_id} | {candidateScope} | {candidate.strategy.symbol} | {candidate.strategy.timeframe}. Paper outcomes use R; research and demo P&amp;L use account currency. Review each stage separately.</p>
+      <div className="grid gap-3 md:grid-cols-3 text-sm">
+        <div className="rounded bg-slate-900 p-3"><strong>Backtest holdout</strong><p>{candidate.research_baseline?.holdout?.total_trades ?? 0} trades; P&amp;L {candidate.research_baseline?.holdout?.total_pnl ?? 'N/A'}; profit factor {candidate.research_baseline?.holdout?.profit_factor ?? 'N/A'}.</p></div>
+        <div className="rounded bg-slate-900 p-3"><strong>Forward paper</strong>{paperEvidence === null ? <p>Forward scanner evidence unavailable.</p> : candidatePaper.length ? candidatePaper.map((row: any) => <p key={row.policy_id} className="break-words">Policy {row.policy_id.slice(0, 12)}: {row.count}/300 closed; {row.observations} signals; {row.states.unresolved || 0} unresolved; mean {row.mean_r?.toFixed(2) ?? 'N/A'} R.</p>) : <p>No matching candidate-mode scanner evidence yet.</p>}<a className="text-cyan-300 underline" href="/scanner">Open Forward scanner</a></div>
+        <div className="rounded bg-slate-900 p-3"><strong>Live-market demo</strong><p>{status.research_comparison?.closed_trades ?? 0} complete candidate-linked positions; P&amp;L {status.research_comparison?.total_pnl ?? 'N/A'} {status.research_comparison?.currency || ''}; profit factor {status.research_comparison?.profit_factor ?? 'N/A'}.</p><p>{status.research_comparison?.incomplete_positions ?? 0} incomplete positions excluded.</p></div>
+      </div>
+      <p className="text-xs text-slate-400">Demo comparison counts only complete positions opened by a successful order linked to this research run on this account. Older or unlinked journal entries remain in the journal but are excluded from this comparison.</p>
+    </section>}
+    {status?.research_comparison?.status === 'deteriorating' && <p role="alert" className="text-red-300">Research deterioration alert: {status.research_comparison.closed_trades} closed candidate-linked positions have profit factor {status.research_comparison.profit_factor}, below half the research baseline. Review the journal and stop entries if appropriate.</p>}
+    {status?.research_comparison?.status === 'insufficient_sample' && <p className="text-xs text-slate-400">Forward comparison: {status.research_comparison.closed_trades}/{status.research_comparison.minimum_sample} complete candidate-linked positions; no deterioration conclusion yet.</p>}
+    {status?.research_comparison?.status === 'observing' && <p className="text-xs text-cyan-200">Forward comparison active: {status.research_comparison.closed_trades} complete candidate-linked positions; current profit factor {status.research_comparison.profit_factor ?? 'N/A'} remains under observation.</p>}
+    {status?.research_comparison?.status === 'no_baseline' && <p className="text-xs text-slate-400">Forward comparison is unavailable until a validated research candidate is loaded.</p>}
     <p className="text-sm text-cyan-200" role="status">{status?.message || 'Loading local MT5 service…'}</p>
     {error && <p className="text-sm text-red-300" role="alert">{error}</p>}
     <div className="space-y-3">

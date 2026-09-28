@@ -7,6 +7,8 @@ from app.core.risk.position_sizer import PositionSizer
 from app.backtesting.backtest_engine import BacktestEngine, BTTrade
 from app.backtesting.research import monte_carlo, walk_forward
 from app.data.validation import validate_candles
+from app.quant.schemas import Bar, Session
+from app.quant.statistics import audit, market_behavior
 
 
 def candles(n=100):
@@ -77,6 +79,37 @@ def test_invalid_data_rejected(bad):
 def test_monte_carlo_is_seeded_and_reports_empty_data():
     assert monte_carlo([], 1000)["status"] == "insufficient_trades"
     assert monte_carlo([10, -5, 2], 1000, 100, 7) == monte_carlo([10, -5, 2], 1000, 100, 7)
+
+
+def test_audit_reports_stale_closes_and_spread_outliers():
+    bars = [Bar(timestamp=i * 300, open=100, high=101, low=99, close=100,
+                volume=10, spread=spread) for i, spread in enumerate((1, 1, 4, 1))]
+    report = audit(bars, 300, Session(weekdays=list(range(7)), source='test fixture', confirmed=True), 0, 1200)
+    assert report['stale_close_run_bars'] == 4
+    assert report['stale_close_warning'] is True
+    assert report['median_spread'] == 1
+    assert report['spread_outlier_bars'] == 1
+
+
+def test_audit_groups_missing_candles_into_ranges():
+    bars = [Bar(timestamp=i * 300, open=100, high=101, low=99, close=100)
+            for i in (0, 1, 4, 5)]
+    report = audit(bars, 300, Session(weekdays=list(range(7)), source='test fixture', confirmed=True), 0, 1800)
+    assert report['missing_ranges'] == [{'start': 600, 'end': 900, 'bars': 2}]
+
+
+def test_confirmed_session_requires_provenance():
+    with pytest.raises(ValueError, match='source or broker schedule'):
+        Session(confirmed=True)
+
+
+def test_market_behavior_is_descriptive_and_deterministic():
+    bars = [Bar(timestamp=i * 300, open=100 + i * .01, high=101 + i * .01,
+                low=99 + i * .01, close=100 + i * .01) for i in range(40)]
+    result = market_behavior(bars, 300)
+    assert result['status'] == 'ok'
+    assert result['regime'] in {'trending', 'mixed', 'mean_reverting'}
+    assert result == market_behavior(bars, 300)
 
 
 def test_walk_forward_selects_only_from_training(monkeypatch):

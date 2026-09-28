@@ -23,18 +23,67 @@ def audit(bars, interval, session, start, end):
     expected = {t for t in range(start, end, interval) if is_session(t, session)}
     missing = sorted(expected - actual)
     unexpected = sorted(actual - expected)
+    missing_ranges = []
+    for timestamp in missing:
+        if not missing_ranges or timestamp != missing_ranges[-1]['end'] + interval:
+            missing_ranges.append({'start': timestamp, 'end': timestamp, 'bars': 1})
+        else:
+            missing_ranges[-1]['end'] = timestamp
+            missing_ranges[-1]['bars'] += 1
+    flat_run = 1
+    longest_flat_run = 1
+    for previous, current in zip(bars, bars[1:]):
+        flat_run = flat_run + 1 if current.close == previous.close else 1
+        longest_flat_run = max(longest_flat_run, flat_run)
+    spreads = sorted(b.spread for b in bars if b.spread is not None)
+    median_spread = spreads[len(spreads) // 2] if spreads else None
+    spread_outliers = (sum(value > median_spread * 3 for value in spreads)
+                       if median_spread and median_spread > 0 else 0)
     return {'bars': len(bars), 'expected_bars': len(expected), 'missing_bars': len(missing),
-            'missing_examples': missing[:30], 'outside_session_or_grid': len(unexpected),
+            'missing_examples': missing[:30], 'missing_ranges': missing_ranges[:30],
+            'outside_session_or_grid': len(unexpected),
             'coverage': len(actual & expected) / len(expected) if expected else 0,
-            'session_confirmed': session.confirmed, 'start': start, 'end_exclusive': end,
+            'stale_close_run_bars': longest_flat_run, 'stale_close_warning': longest_flat_run >= 3,
+            'spread_observations': len(spreads), 'median_spread': median_spread,
+            'max_spread': max(spreads) if spreads else None, 'spread_outlier_bars': spread_outliers,
+            'session_confirmed': session.confirmed, 'session_source': session.source,
+            'start': start, 'end_exclusive': end,
             'passed': bool(expected) and not missing and not unexpected and session.confirmed,
-            'note': 'No candles are filled or invented. Missing counts use the supplied session, holidays and early closes.'}
+            'note': 'No candles are filled or invented. Missing counts use the supplied session, holidays and early closes. Flat closes and spread outliers are reported as warnings, not silently repaired.'}
 
 
 def returns(bars, interval):
     # A gap is excluded, not bridged into a multi-period return.
     return {b.timestamp: b.close / a.close - 1 for a, b in zip(bars, bars[1:])
             if b.timestamp - a.timestamp == interval}
+
+
+def market_behavior(bars, interval, annualization=252):
+    """Describe realized behavior without claiming a predictive regime model."""
+    if len(bars) < 30:
+        return {'status': 'insufficient_history', 'observations': max(0, len(bars) - 1)}
+    values = np.asarray([b.close for b in bars], dtype=float)
+    log_returns = np.diff(np.log(values))
+    deviation = float(np.std(log_returns, ddof=1))
+    if not math.isfinite(deviation) or deviation < 1e-12:
+        return {'status': 'constant_or_degenerate', 'observations': len(log_returns),
+                'annualized_volatility': 0., 'lag1_return_autocorrelation': None,
+                'trend_zscore': 0., 'regime': 'unclassified'}
+    autocorrelation = float(np.corrcoef(log_returns[:-1], log_returns[1:])[0, 1])
+    slope = float(np.polyfit(np.arange(len(values)), np.log(values), 1)[0])
+    trend_zscore = slope * len(values) ** .5 / deviation
+    annualized_volatility = deviation * (annualization * 86400 / interval) ** .5
+    if autocorrelation <= -.1 and abs(trend_zscore) < 2:
+        regime = 'mean_reverting'
+    elif abs(trend_zscore) >= 2:
+        regime = 'trending'
+    else:
+        regime = 'mixed'
+    return {'status': 'ok', 'observations': len(log_returns),
+            'annualized_volatility': annualized_volatility,
+            'lag1_return_autocorrelation': autocorrelation, 'trend_zscore': trend_zscore,
+            'regime': regime,
+            'note': 'Descriptive classification from this sample; not a predictive signal.'}
 
 
 def coefficient(x, y):
@@ -124,4 +173,4 @@ def relationships(series, interval, minimum=100, window=60, exposures=None):
             'exposure_warnings': alerts, 'exposures': exposures,
             'method': 'Pearson correlation of exact timestamp-aligned, one-bar percentage returns; no forward fill',
             'cointegration_method': 'Engle–Granger on log prices, constant, AIC lags <=5; ADF integration screening; Holm adjustment across all selected pairs',
-            'note': 'Exploratory relationships, not a pairs-trading strategy. Correlation and cointegration can change. Exposure warnings are directional, not portfolio VaR.'}
+            'note': 'Exploratory relationships, not a pairs-trading strategy. Correlation and cointegration can change. Exposure warnings are directional, not portfolio VaR.'}

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Activity, RefreshCw, Zap, TrendingUp, TrendingDown, Info } from 'lucide-react'
-import { fetchSignals, type Signal } from '../api/client'
+import { fetchScanner, fetchSignals, type ScannerRow, type Signal } from '../api/client'
 import { format } from 'date-fns'
 
 const scoreColor = (s: number) => s >= 9 ? 'text-yellow-400' : s >= 6 ? 'text-emerald-400' : 'text-slate-400'
@@ -8,18 +8,24 @@ const dirColor = (d: string | null) => d === 'buy' ? 'text-emerald-400' : d === 
 
 export default function Signals() {
   const [signals, setSignals] = useState<Signal[]>([])
+  const [scanner, setScanner] = useState<ScannerRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [firedOnly, setFiredOnly] = useState(false)
+  const regimeCounts = scanner.reduce<Record<string, number>>((counts, row) => {
+    counts[row.regime] = (counts[row.regime] || 0) + 1
+    return counts
+  }, {})
 
   const loadSignals = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetchSignals({ 
+      const [res, scan] = await Promise.all([fetchSignals({
         limit: 50,
         fired: firedOnly ? true : undefined
-      })
+      }), fetchScanner()])
       setSignals(res.signals)
+      setScanner(scan.scanner)
       setError(null)
     } catch (err: any) {
       setError(err.message)
@@ -66,6 +72,14 @@ export default function Signals() {
       )}
 
       <div className="grid gap-4">
+        <section className="grid grid-cols-2 md:grid-cols-4 gap-3" aria-label="Regime and confluence summary">
+          {['mean_reverting', 'trending', 'mixed'].map(regime => <div key={regime} className="bg-slate-800 border border-slate-700 rounded-xl p-4"><p className="text-xs text-slate-500 uppercase">{regime.replace('_', ' ')}</p><p className="text-2xl font-bold text-white">{regimeCounts[regime] || 0}</p><p className="text-xs text-slate-400">latest markets</p></div>)}
+          <div className="bg-slate-800 border border-cyan-800 rounded-xl p-4"><p className="text-xs text-cyan-300 uppercase">High confluence</p><p className="text-2xl font-bold text-cyan-300">{scanner.filter(row => row.score >= 9).length}</p><p className="text-xs text-slate-400">score 9+; not a probability</p></div>
+        </section>
+        <section className="bg-slate-800 border border-slate-700 rounded-xl p-4 overflow-x-auto" aria-label="Unified market scanner">
+          <div className="flex items-center justify-between mb-3"><h2 className="font-semibold text-white">Unified market scanner</h2><span className="text-xs text-slate-500">Latest stored evaluation per symbol/timeframe</span></div>
+          <table className="w-full text-sm min-w-[760px]"><thead><tr className="text-left text-slate-500"><th className="p-2">Market</th><th>Regime</th><th>Deviation</th><th>Score</th><th>State</th><th>Age</th><th>Reason</th></tr></thead><tbody>{scanner.map(row => <tr key={`${row.symbol}-${row.timeframe}`} className="border-t border-slate-700"><td className="p-2 font-semibold">{row.symbol} <span className="text-xs text-slate-500">{row.timeframe}</span></td><td className="text-slate-300">{row.regime}</td><td className={row.z_score !== null && Math.abs(row.z_score) >= 2 ? 'text-cyan-300' : 'text-slate-300'}>{row.z_score?.toFixed(2) ?? 'N/A'}</td><td className={scoreColor(row.score)}>{row.score}</td><td className={row.fired ? 'text-emerald-300' : 'text-slate-400'}>{row.fired ? row.direction?.toUpperCase() : 'AVOID'}</td><td className="text-slate-400">{row.age_seconds}s</td><td className="text-slate-400">{row.reason}</td></tr>)}</tbody></table>{!scanner.length && !loading && <p className="text-slate-500 py-4">No stored scanner evaluations yet.</p>}
+        </section>
         {signals.length === 0 && !loading ? (
           <div className="bg-slate-800 border border-slate-700 rounded-xl p-12 text-center text-slate-500">
             No signals found

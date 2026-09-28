@@ -23,6 +23,7 @@ class Bar(Record):
 
 class Session(Record):
     timezone: str = 'UTC'
+    source: str = Field(default='', max_length=500)
     weekdays: list[int] = Field(default_factory=lambda: list(range(7)), min_length=1, max_length=7)
     open_minute: int = Field(default=0, ge=0, lt=1440)
     close_minute: int = Field(default=1440, gt=0, le=1440)
@@ -37,6 +38,8 @@ class Session(Record):
             raise ValueError('Use weekdays 0–6 and a same-day session; split overnight sessions at midnight')
         if any(not self.open_minute < v <= self.close_minute for v in self.early_closes.values()):
             raise ValueError('Invalid early close minute')
+        if self.confirmed and not self.source.strip():
+            raise ValueError('Confirmed session calendars require a source or broker schedule reference')
         return self
 
 
@@ -114,4 +117,4 @@ class AnalysisRequest(Record):
 
     @property
     def interval(self):
-        return int(self.timeframe[1:]) * (60 if self.timeframe[0] == 'M' else 3600)
+        return int(self.timeframe[1:]) * (60 if self.timeframe[0] == 'M' else 3600)

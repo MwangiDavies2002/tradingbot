@@ -44,6 +44,18 @@ def validate_strategy(bars, request, profile, symbol, progress):
     progress('Final untouched holdout and doubled-cost stress')
     holdout = simulate(bars[boundary-60:], chosen)
     stress = simulate(bars[boundary-60:], chosen, 2)
+    progress('Bounded threshold and cost sensitivity')
+    sensitivity = []
+    for threshold in sorted({max(1, chosen.min_confluence + offset) for offset in range(-2, 3)}):
+        config = replace(chosen, min_confluence=threshold)
+        for multiplier in (.75, 1, 1.5, 2):
+            result = simulate(bars[boundary-60:], config, multiplier)
+            sensitivity.append({'min_confluence': threshold, 'cost_multiplier': multiplier,
+                                'total_trades': result.total_trades, 'total_pnl': result.total_pnl,
+                                'profit_factor': result.profit_factor,
+                                'max_drawdown_pct': result.max_drawdown_pct,
+                                'positive_pnl': result.total_pnl > 0})
+    positive_sensitivity = sum(row['positive_pnl'] for row in sensitivity)
     gains, losses = sum(p for p in oos if p > 0), -sum(p for p in oos if p < 0)
     pf = gains/losses if losses else None
     checks = {'training_has_trades': bool(viable), 'all_walk_forward_folds_tested': len([f for f in folds if f['status']=='tested']) == 3,
@@ -58,7 +70,13 @@ def validate_strategy(bars, request, profile, symbol, progress):
     config = request.strategy.model_dump()
     config.update(symbol=symbol, timeframe=request.timeframe, min_confluence=chosen.min_confluence)
     return {'folds': folds, 'holdout_start': bars[boundary].timestamp, 'holdout': holdout.to_dict(),
-            'holdout_cost_stress': stress.to_dict(), 'checks': checks, 'passed': all(checks.values()),
+            'holdout_cost_stress': stress.to_dict(),
+            'sensitivity': {'rows': sensitivity, 'tested': len(sensitivity),
+                            'positive_pnl_cases': positive_sensitivity,
+                            'positive_pnl_fraction': positive_sensitivity / len(sensitivity),
+                            'worst_case_pnl': min(row['total_pnl'] for row in sensitivity),
+                            'note': 'Sensitivity varies the predeclared confluence threshold by up to two points and scales positive costs; it is descriptive evidence, not additional tuning.'},
+            'checks': checks, 'passed': all(checks.values()),
             'selected_strategy': DemoConfig(**config).model_dump(), 'oos_trades': len(oos), 'oos_pnl': sum(oos),
             'oos_profit_factor': pf, 'monte_carlo': monte_carlo(oos, request.initial_balance),
             'selection_rule': 'Development return minus drawdown, >=5 training trades; thresholds predeclared before fetching data',
