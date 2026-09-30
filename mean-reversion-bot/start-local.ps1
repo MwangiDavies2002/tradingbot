@@ -14,8 +14,21 @@ if (-not (Test-Path -LiteralPath $vitePath)) {
 }
 if (-not (Get-NetTCPConnection -State Listen -LocalPort 8000 -ErrorAction SilentlyContinue)) {
     $apiProcess = Start-Process -FilePath $pythonPath -ArgumentList 'run_local.py' -WorkingDirectory $backendDir -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $logDir 'backend.out.log') -RedirectStandardError (Join-Path $logDir 'backend.err.log')
-    Write-Host "Backend launched (PID $($apiProcess.Id))."
+    Write-Host "Backend starting (PID $($apiProcess.Id))."
 } else { Write-Host 'Port 8000 is already in use; backend launch skipped.' }
+$apiReady = $false
+for ($attempt = 0; $attempt -lt 40; $attempt++) {
+    try {
+        $health = Invoke-WebRequest -Uri 'http://127.0.0.1:8000/health' -TimeoutSec 2 -UseBasicParsing
+        if ($health.StatusCode -eq 200) { $apiReady = $true; break }
+    } catch { }
+    if ($apiProcess -and $apiProcess.HasExited) { break }
+    Start-Sleep -Milliseconds 500
+}
+if (-not $apiReady) {
+    throw "Local API did not become healthy. Check $logDir/backend.err.log; verify backend/.venv-mt5 dependencies with pip install -r requirements-mt5.txt."
+}
+Write-Host 'Backend healthy at http://127.0.0.1:8000/health.'
 if (-not (Get-NetTCPConnection -State Listen -LocalPort 3000 -ErrorAction SilentlyContinue)) {
     $nodePath = (Get-Command node).Source
     $uiProcess = Start-Process -FilePath $nodePath -ArgumentList @("`"$vitePath`"", '--host', '127.0.0.1', '--port', '3000', '--strictPort') -WorkingDirectory $frontendDir -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $logDir 'frontend.out.log') -RedirectStandardError (Join-Path $logDir 'frontend.err.log')
@@ -23,4 +36,4 @@ if (-not (Get-NetTCPConnection -State Listen -LocalPort 3000 -ErrorAction Silent
 } else { Write-Host 'Port 3000 is already in use; dashboard launch skipped.' }
 Write-Host 'Dashboard: http://localhost:3000/backtest'
 Write-Host 'API: http://127.0.0.1:8000/docs'
-Write-Host 'Log into MT5 demo, connect, save a strategy, then Start demo. Launching does not place orders.'
+Write-Host 'Log into MT5 demo, Analyze one exact broker pair, load its validated candidate, then explicitly Start demo. Launching does not place orders.'

@@ -1,5 +1,58 @@
 # Institutional capability expansion - continuation report
 
+## Latest checkpoint: 2026-09-30 - strategy setup versus paper entry
+
+The forward scanner now persists the signal engine's strategy-setup decision
+and reason separately from paper-entry eligibility. Its existing RANGE and
+instrument/cost gates still control hypothetical entries. The one-pair card
+shows both outcomes, including a BUY/SELL setup blocked by the paper gate.
+Per-pair evidence now calls the total number of observations **evaluations**;
+it includes rejected and error observations, so it was misleading to label
+that count as signals. No broker order path or demo rule changed.
+Validation: 451 backend tests passed, 3 skipped; 64 focused scanner tests,
+frontend production build, and four desktop/mobile scanner/MT5 browser flows
+passed. The local API was restarted and is healthy. No MT5 terminal was running.
+
+
+## Latest checkpoint: 2026-09-29 - visible single-pair signals and Monte Carlo
+
+Analyze now shows each asset's existing Monte Carlo bootstrap metrics directly,
+including an insufficient-trades state and the IID/fixed-cash limitation.
+Forward scanner now highlights only the latest observation matching its current
+single-pair run, exact symbol, timeframe and candidate account. MT5 Demo &
+Journal shows the saved pair's last evaluated demo signal and distinguishes it
+from a broker fill. No signal generation, research gate or execution rule changed.
+Validation: frontend production build and six desktop/mobile browser flows
+passed, including wrong-run/account exclusion and insufficient-trade Monte Carlo.
+
+
+## Latest checkpoint: 2026-09-28 - sequential candidate paper/demo sessions
+
+Demo Start now rejects an active research-candidate forward-paper scanner, closing
+the reverse direction of the existing scanner-start guard. The two API start
+paths share a transition lock, including first scanner creation, then use the
+scanner lock during the final check. Concurrent requests in the single local
+API process cannot both pass. Demo readiness names this blocker.
+Manual scanner sessions remain independent. Tests cover candidate blocking,
+preflight reporting, concurrent start requests and manual-mode behavior; no
+broker order was submitted. Validation: 451 backend tests passed, 3 skipped;
+the local API was restarted and is healthy.
+
+
+## Latest checkpoint: 2026-09-28 - read-only live-demo preflight
+
+MT5 Demo & Journal now reports readiness for the one saved broker pair. The
+read-only endpoint checks candidate age and strategy, demo account and trading
+permissions, exact broker contract, exposure, daily limit, and fresh quotes and
+closed candles. It separates setup readiness from live-market readiness so a
+closed market can still be monitored without implying a trade can be evaluated.
+The preflight never connects, selects a symbol or sends an order. Broker-backed
+verification still requires a logged-in MT5 demo terminal and saved candidate.
+Validation: 448 backend tests passed, 3 skipped; 35 focused MT5 tests passed
+after the final assertion; frontend production build and four desktop/mobile
+MT5 browser flows passed. The local API was restarted and exposes the new route.
+
+
 ## Latest checkpoint: 2026-09-28 - attributed single-pair demo comparison
 
 Demo performance comparison now joins each broker entry deal to a successful

@@ -9,6 +9,7 @@ export default function MT5Panel({ selection, onLoad, onSymbolChange }: Props) {
   const { canRunResearch: canOperate } = usePermissions()
   const local = ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname)
   const [status, setStatus] = useState<any>(null)
+  const [preflight, setPreflight] = useState<any>(null)
   const [journal, setJournal] = useState<any[]>([])
   const [paperEvidence, setPaperEvidence] = useState<any>(null)
   const [error, setError] = useState('')
@@ -20,9 +21,10 @@ export default function MT5Panel({ selection, onLoad, onSymbolChange }: Props) {
   const [catalogRevision, setCatalogRevision] = useState(0)
   const [symbolSearch, setSymbolSearch] = useState('')
   const refresh = async () => {
-    const [state, rows, paper] = await Promise.all([api.get('/api/mt5/status'), api.get('/api/mt5/journal'),
-      api.get('/api/scanner/analytics').catch(() => null)])
-    setStatus(state); setJournal(rows as any[]); setPaperEvidence(paper)
+    const [state, rows, paper, readiness] = await Promise.all([api.get('/api/mt5/status'), api.get('/api/mt5/journal'),
+      api.get('/api/scanner/analytics').catch(() => null),
+      api.get('/api/mt5/preflight').catch(e => ({ error: e instanceof Error ? e.message : String(e) }))])
+    setStatus(state); setJournal(rows as any[]); setPaperEvidence(paper); setPreflight(readiness)
     return state as any
   }
   useEffect(() => {
@@ -68,6 +70,7 @@ export default function MT5Panel({ selection, onLoad, onSymbolChange }: Props) {
     finally { setBusy(false) }
   }
   const saved = status?.config
+  const demoSignal = saved?.symbol && status?.last_signal?.symbol === saved.symbol ? status.last_signal : null
   const candidate = status?.research_candidate
   const candidateScope = candidate?.snapshot ? `${candidate.snapshot.server}:${candidate.snapshot.account}` : ''
   const candidatePaper = (paperEvidence?.per_pair_policy || []).filter((row: any) =>
@@ -91,6 +94,25 @@ export default function MT5Panel({ selection, onLoad, onSymbolChange }: Props) {
         <button className={`${button} text-red-300`} disabled={!canOperate || busy || !status?.running} onClick={() => action('stop')}>Stop entries</button>
       </div>
     </div>
+    {preflight?.error && <p className="text-sm text-amber-200" role="alert">Demo readiness unavailable: {preflight.error}</p>}
+    {preflight && !preflight.error && <section className="rounded-lg border border-slate-600 bg-slate-900 p-4 space-y-2 text-sm" aria-label="Demo readiness">
+      <h3 className="font-semibold text-white">Demo readiness for saved pair {preflight.symbol} · {preflight.timeframe}</h3>
+      <p className={preflight.ready_to_start || preflight.monitoring ? 'text-green-300' : 'text-amber-200'}>
+        {preflight.monitoring ? 'Monitoring is running.' : preflight.ready_to_start ? 'Ready to start demo monitoring.' : 'Setup needs attention before demo monitoring can start.'}
+      </p>
+      <p className={preflight.live_market_ready ? 'text-green-300' : 'text-amber-200'}>
+        {preflight.live_market_ready ? 'Live data and entry safeguards are currently ready.' : 'Live-market entry checks are blocked right now.'}
+      </p>
+      {preflight.start_blockers?.length > 0 && <div><p className="font-medium">Setup blockers</p><ul className="list-disc pl-5 space-y-1">{preflight.start_blockers.map((message: string) => <li key={message}>{message}</li>)}</ul></div>}
+      {preflight.market_blockers?.length > 0 && <div><p className="font-medium">Current market blockers</p><ul className="list-disc pl-5 space-y-1">{preflight.market_blockers.map((message: string) => <li key={message}>{message}</li>)}</ul></div>}
+      <p className="text-xs text-slate-400">This read-only check applies to the saved pair and does not place an order. Quotes and candles can change; check again while monitoring.</p>
+    </section>}
+    {demoSignal && <section className="rounded-lg border border-cyan-800 bg-slate-900 p-4 space-y-2 text-sm" aria-label="Latest demo signal">
+      <h3 className="font-semibold">Latest demo evaluation · {demoSignal.symbol}</h3>
+      <p className={demoSignal.should_trade ? 'text-emerald-300' : 'text-slate-300'}>{demoSignal.should_trade && ['buy', 'sell'].includes(demoSignal.direction) ? `Qualified ${demoSignal.direction.toUpperCase()} strategy signal` : 'No qualifying entry'} · weighted score {demoSignal.score ?? 'N/A'} · {saved?.timeframe}</p>
+      <p>Closed candle {new Date(demoSignal.bar * 1000).toLocaleString()} · {demoSignal.reason || 'No reason recorded'}</p>
+      <p className="text-xs text-slate-400">This is the last evaluated candle for the saved pair. A qualifying signal does not prove an order was accepted or filled; check the journal and MT5 terminal.</p>
+    </section>}
     {!status?.research_validated && <p className="text-sm text-amber-200">Demo entries require a passing research candidate. <a className="underline text-cyan-300" href="/analyze">Analyze selected assets</a>, then load the validated candidate. Editing or saving strategy settings invalidates previous validation.</p>}
     {status?.research_validated && status.research_candidate?.research_baseline && <p className="text-sm text-slate-300">Research baseline: holdout P&amp;L {Number(status.research_candidate.research_baseline.holdout.total_pnl).toFixed(2)}, {status.research_candidate.research_baseline.holdout.total_trades} trades, profit factor {Number(status.research_candidate.research_baseline.holdout.profit_factor).toFixed(2)}. Compare future demo results against this baseline; it is not a live performance claim.</p>}
     {status?.research_validated && candidate && <section className="rounded-lg border border-cyan-800 p-4 space-y-3" aria-label="Single-pair validation evidence">
@@ -98,7 +120,7 @@ export default function MT5Panel({ selection, onLoad, onSymbolChange }: Props) {
       <p className="text-xs text-slate-300 break-words">Research {candidate.run_id} | {candidateScope} | {candidate.strategy.symbol} | {candidate.strategy.timeframe}. Paper outcomes use R; research and demo P&amp;L use account currency. Review each stage separately.</p>
       <div className="grid gap-3 md:grid-cols-3 text-sm">
         <div className="rounded bg-slate-900 p-3"><strong>Backtest holdout</strong><p>{candidate.research_baseline?.holdout?.total_trades ?? 0} trades; P&amp;L {candidate.research_baseline?.holdout?.total_pnl ?? 'N/A'}; profit factor {candidate.research_baseline?.holdout?.profit_factor ?? 'N/A'}.</p></div>
-        <div className="rounded bg-slate-900 p-3"><strong>Forward paper</strong>{paperEvidence === null ? <p>Forward scanner evidence unavailable.</p> : candidatePaper.length ? candidatePaper.map((row: any) => <p key={row.policy_id} className="break-words">Policy {row.policy_id.slice(0, 12)}: {row.count}/300 closed; {row.observations} signals; {row.states.unresolved || 0} unresolved; mean {row.mean_r?.toFixed(2) ?? 'N/A'} R.</p>) : <p>No matching candidate-mode scanner evidence yet.</p>}<a className="text-cyan-300 underline" href="/scanner">Open Forward scanner</a></div>
+        <div className="rounded bg-slate-900 p-3"><strong>Forward paper</strong>{paperEvidence === null ? <p>Forward scanner evidence unavailable.</p> : candidatePaper.length ? candidatePaper.map((row: any) => <p key={row.policy_id} className="break-words">Policy {row.policy_id.slice(0, 12)}: {row.count}/300 closed; {row.observations} evaluations; {row.states.unresolved || 0} unresolved; mean {row.mean_r?.toFixed(2) ?? 'N/A'} R.</p>) : <p>No matching candidate-mode scanner evidence yet.</p>}<a className="text-cyan-300 underline" href="/scanner">Open Forward scanner</a></div>
         <div className="rounded bg-slate-900 p-3"><strong>Live-market demo</strong><p>{status.research_comparison?.closed_trades ?? 0} complete candidate-linked positions; P&amp;L {status.research_comparison?.total_pnl ?? 'N/A'} {status.research_comparison?.currency || ''}; profit factor {status.research_comparison?.profit_factor ?? 'N/A'}.</p><p>{status.research_comparison?.incomplete_positions ?? 0} incomplete positions excluded.</p></div>
       </div>
       <p className="text-xs text-slate-400">Demo comparison counts only complete positions opened by a successful order linked to this research run on this account. Older or unlinked journal entries remain in the journal but are excluded from this comparison.</p>

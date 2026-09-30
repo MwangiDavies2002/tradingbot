@@ -9,6 +9,7 @@ for (const width of [1440, 390]) {
       use_zscore: true, use_rsi: false, use_bb: false, risk_pct: .005 }
     const candidate = { run_id: 'validated-123', strategy, snapshot: { server: 'Demo', account: 1 } }
     let saved: any = null
+    let latest: any[] = []
     let candidateReady = false
     const posted: any[] = []
     await page.route('**/api/mt5/status', route => route.fulfill({ json: {
@@ -24,9 +25,19 @@ for (const width of [1440, 390]) {
       if (url.endsWith('/start')) {
         const body = route.request().postDataJSON(); posted.push(body)
         saved = { id:'scan-1', status:'running', created:Date.now()/1000, config:body }
+        const observation = { run_id:'scan-1', scope:'Demo:1', symbol:'EURUSD.a', timeframe:'M15',
+          observed:Date.now()/1000, bar:Math.floor(Date.now()/900)*900-900,
+          regime:'TREND', direction:'buy', strategy_setup:true,
+          strategy_reason:'candidate fixture', eligible:false, score:55,
+          reasons:['candidate fixture', 'Mean-reversion paper gate blocks TREND'] }
+        latest = [
+          { ...observation, run_id:'older-run', score:99 },
+          { ...observation, scope:'Demo:999', score:98 },
+          observation
+        ]
       }
       if (url.endsWith('/stop') && saved) saved.status = 'stopped'
-      return route.fulfill({ json: { run:saved, latest:[], execution_enabled:false } })
+      return route.fulfill({ json: { run:saved, latest, execution_enabled:false } })
     })
     await page.goto('/scanner')
     await page.getByLabel('Access key').fill('visual-test-operator-key-0000000000000000')
@@ -44,6 +55,14 @@ for (const width of [1440, 390]) {
     await page.getByRole('button', { name:'Start paper scanner' }).click()
     expect(posted[0]).toMatchObject({ strategy_mode:'research_candidate', timeframe:'M15', threshold:11,
       assets:[{ symbol:'EURUSD.a' }], research_run_id:'validated-123' })
+    const signal = page.getByRole('region', { name:'Latest single-pair paper signal' })
+    await expect(signal).toContainText('Research validated-123')
+    await expect(signal).toContainText('Strategy setup BUY')
+    await expect(signal).toContainText('Paper entry blocked')
+    await expect(signal).toContainText('paper gate blocks TREND')
+    await expect(signal).toContainText('score 55/100')
+    await expect(signal).not.toContainText('99/100')
+    await expect(signal).not.toContainText('98/100')
     await page.getByRole('button', { name:'Stop scanner' }).click()
     await page.getByRole('button', { name:'Use manual scanner settings' }).click()
     await expect(page.getByLabel('Timeframe')).toBeEnabled()

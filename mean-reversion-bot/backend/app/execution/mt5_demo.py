@@ -244,7 +244,8 @@ class MT5DemoRunner:
         positions, orders = self.mt5.positions_get(), self.mt5.orders_get()
         if positions is None or orders is None:
             raise ValueError('Cannot verify MT5 positions/pending orders; trading paused')
-        relevant = lambda row: row.symbol == self.config.symbol or row.magic == MAGIC
+        def relevant(row):
+            return row.symbol == self.config.symbol or row.magic == MAGIC
         return [p for p in positions if relevant(p)], [o for o in orders if relevant(o)]
 
     def _account(self):
@@ -315,6 +316,100 @@ class MT5DemoRunner:
                         and snapshot.get('account') == self.state.get('account')
                         and evidence.get('strategy') == self.config.model_dump()
                         and 0 <= age <= 7 * 86400)}
+
+    def preflight(self):
+        """Read-only checks for one demo pair. This never selects a symbol or sends an order."""
+        with self.lock:
+            now = time.time()
+            checks = []
+            def add(code, stage, ok, message):
+                checks.append({'code': code, 'stage': stage, 'ok': bool(ok), 'message': message})
+
+            evidence = self._research_candidate()
+            add('candidate_loaded', 'start', evidence is not None,
+                'Load a passing single-pair candidate from Analyze selected assets')
+            if evidence:
+                age = now - evidence.get('validated_at', 0)
+                add('candidate_fresh', 'start', 0 <= age <= 7 * 86400,
+                    'Research candidate is older than seven days; rerun Analyze')
+                add('strategy_match', 'start', evidence.get('strategy') == self.config.model_dump(),
+                    'Saved MT5 strategy differs from the research candidate')
+
+            account = terminal = scope = None
+            try:
+                account, terminal, scope = self._require_connection()
+            except ValueError as exc:
+                add('demo_connected', 'start', False, str(exc))
+            else:
+                add('demo_connected', 'start', True, 'Connected MT5 demo account')
+                snapshot = (evidence or {}).get('snapshot') or {}
+                if evidence:
+                    add('account_match', 'start', account.server == snapshot.get('server')
+                        and account.login == snapshot.get('account'),
+                        'Connected demo account/server differs from the research candidate')
+                allowed = bool(terminal.trade_allowed and not terminal.tradeapi_disabled
+                               and account.trade_allowed and account.trade_expert)
+                add('trading_permissions', 'start', allowed,
+                    'Enable Algo Trading and external Python trading in MT5')
+
+            info = None
+            if account is not None:
+                info = self.mt5.symbol_info(self.config.symbol)
+                problem = self._symbol_problem(info)
+                exact = bool(info and info.name == self.config.symbol)
+                add('broker_symbol', 'start', problem is None and exact,
+                    f'{self.config.symbol}: {problem or "Exact broker symbol unavailable"}')
+                if evidence and info and problem is None and exact:
+                    snapshot = evidence.get('snapshot') or {}
+                    contract = all(snapshot.get(key) is not None and getattr(info, attr, None) == snapshot[key]
+                                   for attr, key in (('trade_contract_size', 'contract_size'),
+                                                     ('trade_tick_size', 'tick_size'),
+                                                     ('volume_min', 'volume_min'),
+                                                     ('volume_step', 'volume_step'),
+                                                     ('volume_max', 'volume_max')))
+                    add('contract_match', 'start', contract,
+                        'Broker contract changed; rerun Analyze for this pair')
+
+            if account is not None:
+                try:
+                    positions, orders = self._exposure()
+                except ValueError as exc:
+                    add('exposure_query', 'start', False, str(exc))
+                else:
+                    add('exposure_query', 'start', True, 'Broker exposure query available')
+                    add('no_exposure', 'market', not positions and not orders,
+                        'Existing position or pending order blocks a new demo entry')
+                day = datetime.now(timezone.utc).date().isoformat()
+                with self.db() as db:
+                    halted = db.execute("SELECT 1 FROM settings WHERE key=?",
+                                        (f'day:{scope}:{day}:halted',)).fetchone() is not None
+                add('daily_limit', 'market', not halted,
+                    'Daily equity loss limit is latched; entries are paused today')
+
+            if account is not None and info is not None:
+                tick = self.mt5.symbol_info_tick(self.config.symbol)
+                valid_quote = bool(tick and all(math.isfinite(v) and v > 0 for v in
+                    (tick.bid, tick.ask, tick.time)) and tick.ask >= tick.bid
+                    and abs(now - tick.time) <= 30)
+                add('fresh_quote', 'market', valid_quote,
+                    'No fresh bid/ask quote for this pair; wait for an open market')
+                rates = self.mt5.copy_rates_from_pos(self.config.symbol,
+                    getattr(self.mt5, f'TIMEFRAME_{self.config.timeframe}'), 1, 100)
+                interval = int(self.config.timeframe[1:]) * (60 if self.config.timeframe[0] == 'M' else 3600)
+                latest = int(rates[-1]['time']) if rates is not None and len(rates) >= 100 else None
+                fresh_bars = latest is not None and 0 <= now - latest <= interval * 2 + 30
+                add('fresh_candles', 'market', fresh_bars,
+                    'At least 100 recent closed candles are needed; open the pair chart or wait for an open market')
+
+            start_blockers = [c['message'] for c in checks if c['stage'] == 'start' and not c['ok']]
+            market_blockers = [c['message'] for c in checks if c['stage'] == 'market' and not c['ok']]
+            return {'symbol': self.config.symbol, 'timeframe': self.config.timeframe,
+                    'account_scope': scope, 'research_run_id': (evidence or {}).get('run_id'),
+                    'monitoring': bool(self.state['running']),
+                    'ready_to_start': not start_blockers and not self.state['running'],
+                    'live_market_ready': not start_blockers and not market_blockers,
+                    'checks': checks, 'start_blockers': start_blockers,
+                    'market_blockers': market_blockers, 'read_only': True}
 
     def _research_candidate(self):
         with self.db() as db:

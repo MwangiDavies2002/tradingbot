@@ -14,6 +14,23 @@ const freshProfile = () => ({ commission_per_lot: null, financing_long: null, fi
   session: { timezone: 'UTC', source: '', weekdays: [0,1,2,3,4], open_minute: 0, close_minute: 1440, confirmed: false },
   rollover_timezone: 'UTC', rollover_minute: 0, rollover_weights: [1,1,3,1,1,0,0] })
 
+function MonteCarloSummary({ symbol, validation }: { symbol: string; validation: any }) {
+  const result = validation.monte_carlo
+  if (!result) return null
+  const metricsReady = [result.drawdown_p95, result.ending_balance_p05, result.loss_probability]
+    .every(value => typeof value === 'number' && Number.isFinite(value))
+  return <section className="rounded-lg border border-slate-600 bg-slate-900 p-4 space-y-2" aria-label={`${symbol} Monte Carlo risk`}>
+    <h3 className="font-semibold">Monte Carlo · {symbol}</h3>
+    <p className="text-sm text-slate-300">Resamples {validation.oos_trades ?? 'unknown'} walk-forward out-of-sample trade outcomes for this asset.</p>
+    {metricsReady ? <div className="grid gap-3 sm:grid-cols-3 text-sm">
+      <div><span className="block text-slate-400">95th percentile drawdown</span><strong>{(result.drawdown_p95 * 100).toFixed(1)}%</strong></div>
+      <div><span className="block text-slate-400">5th percentile ending balance</span><strong>{result.ending_balance_p05.toFixed(2)}</strong> <span className="text-slate-400">account currency</span></div>
+      <div><span className="block text-slate-400">Share of paths ending below start</span><strong>{(result.loss_probability * 100).toFixed(1)}%</strong></div>
+    </div> : <p className="text-amber-200 text-sm">No usable out-of-sample trade sample; Monte Carlo metrics are unavailable.</p>}
+    <p className="text-xs text-slate-400">{metricsReady ? `${result.simulations} seeded simulations · ${result.method}` : 'Simulation not run'}. Assumes independent trades and fixed cash sizing; this is a sensitivity check, not a forecast or a trading signal.</p>
+  </section>
+}
+
 export default function Analyze() {
   const { canRunResearch } = usePermissions()
   const [source, setSource] = useState('mt5')
@@ -131,6 +148,7 @@ export default function Analyze() {
     {report?.decision_summary&&<section className="bg-slate-800 rounded-xl p-5" aria-label="Research decision summary"><h2 className="text-xl font-bold">Run decision: {report.decision_summary.overall_decision==='candidate_available'?'candidate available':'no trade'}</h2><p className="text-sm text-slate-400">{report.decision_summary.demo_candidates} demo candidates · {report.decision_summary.no_trade} no-trade assets · {report.decision_summary.failed} failed</p></section>}
     {report && Object.entries(report.assets||{}).map(([symbol, value])=>{const r:any=value;return <section key={symbol} className="bg-slate-800 rounded-xl p-5 space-y-3"><h2 className="text-xl font-bold">{symbol} research report</h2><p className={r.demo_candidate?'text-emerald-300':'text-amber-200'}>{r.demo_candidate?'Validated demo candidate':'No trade: more evidence needed'} · {r.status}</p>{r.error&&<p role="alert" className="text-red-300">{r.error}</p>}{r.no_trade_reasons?.length>0&&<ul className="list-disc pl-5 text-amber-200">{r.no_trade_reasons.map((reason:string)=><li key={reason}>{reason}</li>)}</ul>}{r.quality&&<p>Data coverage: {(r.quality.coverage*100).toFixed(1)}% · {r.quality.missing_bars} missing bars in {r.quality.missing_ranges?.length??0} ranges · {r.quality.outside_session_or_grid} outside the supplied calendar · longest flat close run {r.quality.stale_close_run_bars} bars · spread median/max {r.quality.median_spread??'N/A'} / {r.quality.max_spread??'N/A'} · calendar {r.quality.session_confirmed?'confirmed':'unconfirmed'}</p>}{r.market_behavior?.status==='ok'&&<p>Behavior: {r.market_behavior.regime} · annualized volatility {(r.market_behavior.annualized_volatility*100).toFixed(2)}% · lag-1 return correlation {r.market_behavior.lag1_return_autocorrelation.toFixed(3)} · trend z-score {r.market_behavior.trend_zscore.toFixed(2)}</p>}
       {r.validation&&<><div className="grid grid-cols-2 md:grid-cols-4 gap-3">{Object.entries({ 'Holdout P&L':r.validation.holdout.total_pnl,'Holdout trades':r.validation.holdout.total_trades,'Profit factor':r.validation.holdout.profit_factor,'Max drawdown (%)':r.validation.holdout.max_drawdown_pct*100,'Sharpe':r.validation.holdout.sharpe_ratio,'Sortino':r.validation.holdout.sortino_ratio,'Expectancy':r.validation.holdout.expectancy,'Win rate (%)':r.validation.holdout.win_rate*100 }).map(([k,v])=><div key={k} className="bg-slate-900 rounded p-3"><div className="text-sm text-slate-400">{k}</div><strong>{Number(v).toFixed(2)}</strong></div>)}</div><ul>{Object.entries(r.validation.checks).map(([k,v])=><li key={k} className={v?'text-emerald-300':'text-amber-300'}>{v?'Pass':'Not met'}: {k.replace(/_/g,' ')}</li>)}</ul><p className="text-sm text-slate-400">{r.validation.note}</p><details><summary>Walk-forward folds and stress results</summary><p className="text-sm text-slate-400">Sensitivity: {r.validation.sensitivity?.positive_pnl_cases ?? 0}/{r.validation.sensitivity?.tested ?? 0} cases positive; worst P&amp;L {r.validation.sensitivity?.worst_case_pnl?.toFixed(2) ?? 'N/A'}.</p><pre className="overflow-auto max-h-80 text-xs">{JSON.stringify({folds:r.validation.folds,cost_stress:r.validation.holdout_cost_stress,sensitivity:r.validation.sensitivity,monte_carlo:r.validation.monte_carlo},null,2)}</pre></details></>}
+      {r.validation?.monte_carlo && <MonteCarloSummary symbol={symbol} validation={r.validation} />}
       {r.demo_candidate&&<button className={button} disabled={!canRunResearch || job.status==='running'} onClick={async()=>{try {await api.post(`/api/analysis/runs/${job.id}/candidate`,{symbol});setMessage(`${symbol} candidate loaded. Review MT5 Demo & Journal and explicitly start when ready.`)}catch(e){setError(String(e))}}}>Load validated candidate into MT5</button>}
       </section>})}
     {relations && <section className="bg-slate-800 rounded-xl p-5 space-y-5 min-w-0"><h2 className="text-xl font-bold">Cross-asset relationships</h2><p className="text-sm text-slate-400">{relations.method}. Values near +1 move together, near -1 move oppositely. N/A means insufficient overlap or constant returns.</p>

@@ -7,6 +7,7 @@ import pytest
 from pydantic import ValidationError
 
 from app.execution.mt5_demo import DemoConfig
+from app.api.routes.mt5 import StartRequest, preflight as demo_preflight, start as demo_start
 from app.quant.scanner import ScanConfig, Scanner, evaluate
 
 
@@ -63,6 +64,80 @@ def test_validated_start_loads_server_candidate_and_pins_strategy(setup):
     runner.mt5.order_send.assert_not_called()
 
 
+def test_demo_start_waits_for_candidate_scanner_to_stop():
+    store = NS(lock=threading.RLock(), worker=Mock(), status=Mock())
+    store.worker.is_alive.return_value = True
+    store.status.return_value = {'run': {'status': 'running',
+                                         'config': {'strategy_mode': 'research_candidate'}}}
+    runner = Mock()
+    runner.preflight.return_value = {'ready_to_start': True, 'live_market_ready': True,
+                                     'checks': [], 'start_blockers': []}
+    request = NS(app=NS(state=NS(scanner=store)))
+    body = StartRequest(symbol='TEST.a')
+
+    with pytest.raises(ValueError, match='Stop the validated forward-paper scanner'):
+        demo_start(body, request, runner)
+    runner.start.assert_not_called()
+    report = demo_preflight(request, runner)
+    assert report['ready_to_start'] is False and report['live_market_ready'] is False
+    assert report['checks'][-1]['code'] == 'candidate_scanner_active'
+
+    store.worker.is_alive.return_value = False
+    assert demo_start(body, request, runner) == runner.start.return_value
+    runner.start.assert_called_once_with('TEST.a')
+
+
+def test_manual_scanner_does_not_block_validated_demo_start():
+    store = NS(lock=threading.RLock(), worker=Mock(), status=Mock(return_value={
+        'run': {'status': 'running', 'config': {'strategy_mode': 'manual'}}}))
+    store.worker.is_alive.return_value = True
+    runner = Mock()
+    request = NS(app=NS(state=NS(scanner=store)))
+    demo_start(StartRequest(symbol='TEST.a'), request, runner)
+    runner.start.assert_called_once_with('TEST.a')
+
+
+def test_simultaneous_candidate_scan_start_blocks_demo_start(monkeypatch):
+    from app.api.routes import scanner as scanner_routes
+
+    entered, release, demo_done = (threading.Event() for _ in range(3))
+    store = NS(lock=threading.RLock(), worker=Mock(), status=Mock(return_value={
+        'run': {'status': 'running', 'config': {'strategy_mode': 'research_candidate'}}}))
+    store.worker.is_alive.return_value = False
+    def begin_scan(*_):
+        entered.set()
+        assert release.wait(2)
+        store.worker.is_alive.return_value = True
+        return {}
+    store.start = begin_scan
+    runner = Mock()
+    monkeypatch.setattr(scanner_routes, 'get_runner', lambda _: runner)
+    request = NS(app=NS(state=NS(scanner=store)), state=NS(role='operator'))
+    errors = []
+    scan_thread = threading.Thread(target=lambda: scanner_routes.start(config(), request, store))
+    def begin_demo():
+        try:
+            demo_start(StartRequest(symbol='TEST.a'), request, runner)
+        except ValueError as exc:
+            errors.append(str(exc))
+        finally:
+            demo_done.set()
+    demo_thread = threading.Thread(target=begin_demo)
+    scan_thread.start()
+    try:
+        assert entered.wait(2)
+        demo_thread.start()
+        assert not demo_done.wait(.05)
+        runner.start.assert_not_called()
+    finally:
+        release.set()
+        scan_thread.join(2)
+        demo_thread.join(2)
+    assert not scan_thread.is_alive() and not demo_thread.is_alive()
+    assert errors and 'Stop the validated forward-paper scanner' in errors[0]
+    runner.start.assert_not_called()
+
+
 @pytest.mark.parametrize('case,match', [
     ('missing','passing research'), ('expired','passing research'), ('future','passing research'),
     ('symbol','Selected pair'), ('timeframe','Selected pair'), ('threshold','Selected pair'),
@@ -106,13 +181,22 @@ def test_engine_uses_research_signal_toggles_and_threshold(monkeypatch):
     engine.zscore.compute.return_value = NS(value=-1)
     monkeypatch.setattr(scanner, 'SignalEngine', lambda settings: observed.append(settings) or engine)
     cfg = config(strategy=strategy())
-    bars = [dict(timestamp=i*300,open=100,high=101,low=99,close=100,volume=100) for i in range(100)]
+    bars = [dict(timestamp=i*300,open=100,high=101,low=99,close=100+(i%3)*0.01,volume=100) for i in range(100)]
     data = dict(scope='demo:1', bars=bars, bid=100,ask=100.01,quote_time=30010,balance=12345)
-    evaluate(data,cfg,'TEST.a',30010)
+    allowed = evaluate(data,cfg,'TEST.a',30010)
     assert observed[0].min_confluence == cfg.strategy.min_confluence
     assert observed[0].use_rsi is False and observed[0].use_bb is False
     assert observed[0].use_zscore is True
     engine.initialise.assert_called_once_with(12345)
+    assert allowed['strategy_setup'] is True and allowed['eligible'] is True
+    engine.hurst_ind.compute.return_value = NS(value=.7)
+    blocked = evaluate(data,cfg,'TEST.a',30010)
+    assert blocked['strategy_setup'] is True and blocked['eligible'] is False
+    assert blocked['strategy_reason'] == 'fixture'
+    assert any('paper gate blocks TREND' in reason for reason in blocked['reasons'])
+    engine.evaluate.return_value = NS(should_trade=False,direction='buy',reason='no setup',confluence_score=9)
+    no_setup = evaluate(data,cfg,'TEST.a',30010)
+    assert no_setup['strategy_setup'] is False and no_setup['eligible'] is False
 
 
 def test_contract_drift_unresolves_candidate_exposure(setup):

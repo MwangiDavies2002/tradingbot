@@ -24,6 +24,13 @@ export default function Scanner() {
   const local = ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname)
   const active = state?.run?.status === 'running'
   const candidateMode = restored.strategy_mode === 'research_candidate'
+  const singlePairRun = state?.run?.config?.assets?.length === 1 ? state.run : null
+  const singlePair = singlePairRun?.config.assets[0].symbol
+  const singleScope = singlePairRun?.config.candidate_snapshot
+    ? `${singlePairRun.config.candidate_snapshot.server}:${singlePairRun.config.candidate_snapshot.account}` : null
+  const paperSignal = singlePairRun && (state?.latest || []).find((row: any) =>
+    row.run_id === singlePairRun.id && row.symbol === singlePair &&
+    row.timeframe === singlePairRun.config.timeframe && (!singleScope || row.scope === singleScope))
   const refresh = async () => {
     const [s, l, a] = await Promise.all([api.get('/api/scanner'), api.get('/api/scanner/ledger'), api.get('/api/scanner/analytics')])
     setState(s); setLedger(l); setAnalytics(a)
@@ -104,12 +111,23 @@ export default function Scanner() {
       <p className="text-xs text-slate-400">Polling: {restored.poll_seconds ?? 30}s | Max spread/ATR: {restored.max_spread_atr ?? 0.2} | Slippage/ATR: {restored.slippage_atr ?? 0.02} | Max holding bars: {restored.max_hold_bars ?? 12}. Loading saved settings restores these limits too.</p>
       {state?.run && <p className="text-xs text-slate-400 break-words">Active/saved selection: {state.run.config.assets.map((a: any) => a.symbol).join(', ')} · {state.run.config.timeframe} · started {new Date(state.run.created * 1000).toLocaleString()}{state.run.error && ` · ${state.run.error}`}</p>}
     </section>
+    {singlePairRun && <section className="bg-slate-800 rounded-xl p-4 space-y-2" aria-label="Latest single-pair paper signal">
+      <h2 className="font-semibold">Latest paper signal · {singlePair}</h2>
+      <p className="text-xs text-slate-300 break-words">{singleScope || 'Manual scanner account'} · {singlePairRun.config.timeframe} · {singlePairRun.config.strategy_mode === 'research_candidate' ? `Research ${singlePairRun.config.research_run_id}` : 'Manual settings'} · Scanner {singlePairRun.status}</p>
+      {paperSignal ? <>
+        <p className="text-sm">{paperSignal.strategy_setup === true && ['buy', 'sell'].includes(paperSignal.direction) ? `Strategy setup ${paperSignal.direction.toUpperCase()}` : paperSignal.strategy_setup === false ? 'No strategy setup' : 'Strategy setup not recorded for this observation'} · {paperSignal.strategy_reason || paperSignal.reasons?.[0] || 'No strategy reason recorded'}</p>
+        <p className={paperSignal.eligible ? 'text-emerald-300' : 'text-amber-200'}>{paperSignal.eligible && ['buy', 'sell'].includes(paperSignal.direction) ? `Paper entry eligible ${paperSignal.direction.toUpperCase()}` : 'Paper entry blocked'} · score {paperSignal.score ?? 'N/A'}/100 · regime {paperSignal.regime || 'unknown'}</p>
+        <p className="text-sm">Observed {new Date(paperSignal.observed * 1000).toLocaleString()} · closed candle {paperSignal.bar ? new Date(paperSignal.bar * 1000).toLocaleString() : 'unavailable'}</p>
+        <p className="text-sm text-slate-300 break-words">{paperSignal.reasons?.join('; ') || 'No reason recorded'}</p>
+      </> : <p className="text-sm text-slate-400">No observation for this exact pair and scanner run yet.</p>}
+      <p className="text-xs text-slate-400">Paper observation only. It does not place an MT5 order; demo execution is a separate explicit step.</p>
+    </section>}
     <section className="bg-slate-800 rounded-xl p-4"><h2 className="font-semibold mb-3">Latest observations</h2><div className="overflow-x-auto"><table className="w-full min-w-[850px] text-sm text-left"><thead><tr>{['Pair','Observed','Regime','Deviation','Score /100','Direction','Action / reasons'].map(h => <th className="p-2" key={h}>{h}</th>)}</tr></thead><tbody>{(state?.latest || []).map((r: any) => <tr key={r.symbol} className="border-t border-slate-700"><td className="p-2">{r.symbol}<details><summary className="text-cyan-300 cursor-pointer">Instrument identity</summary><p>{r.scope || 'Legacy account unknown'}</p><pre className="whitespace-pre-wrap break-all max-w-xs text-xs">{JSON.stringify(r.instrument || { provider: r.provider, symbol: r.symbol, scope: r.scope }, null, 2)}</pre></details></td><td>{new Date(r.observed * 1000).toLocaleString()}</td><td>{r.regime}</td><td>{r.deviation?.toFixed(2) ?? 'N/A'}</td><td>{r.score ?? 'N/A'}</td><td>{r.direction || 'none'}</td><td className="p-2 max-w-xs">{r.eligible ? 'Paper eligible' : 'No trade'}: {r.reasons.join('; ')}</td></tr>)}</tbody></table></div>{!state?.latest?.length && <p className="text-slate-400">No observations yet.</p>}</section>
     {analytics && <section className="bg-slate-800 rounded-xl p-4 space-y-3">
       <h2 className="font-semibold">Forward evidence by pair and policy</h2>
       <p className="text-sm text-slate-300">Review each exact account, broker pair, timeframe and paper policy separately. The 300 closed-trade target applies to each row; pooled totals do not qualify a pair.</p>
       <div className="overflow-x-auto"><table className="w-full min-w-[850px] text-sm text-left [&_th]:p-2 [&_td]:p-2">
-        <thead><tr><th>Account / pair</th><th>Timeframe</th><th>Policy</th><th>Signals</th><th>Closed / 300</th><th>Mean R</th><th>Win rate</th><th>Other states</th></tr></thead>
+        <thead><tr><th>Account / pair</th><th>Timeframe</th><th>Policy</th><th>Evaluations</th><th>Closed / 300</th><th>Mean R</th><th>Win rate</th><th>Other states</th></tr></thead>
         <tbody>{(analytics.per_pair_policy || []).map((p: any) => <tr key={`${p.scope}:${p.symbol}:${p.timeframe}:${p.policy_id}`} className="border-t border-slate-700">
           <td>{p.scope} / {p.symbol}{p.research_run_id && <div className="text-xs text-cyan-300">Research {p.research_run_id}</div>}</td>
           <td>{p.timeframe}</td>

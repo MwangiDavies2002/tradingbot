@@ -240,6 +240,62 @@ def test_demo_order_and_position_keep_loaded_candidate_lineage(runner):
     assert runner.status()['research_validated'] is False
 
 
+def test_demo_preflight_separates_start_readiness_from_live_market_data(runner):
+    now = time.time()
+    info = runner.mt5.symbol_info.return_value
+    info.trade_contract_size = 100
+    evidence = {'run_id': 'preflight-run', 'validated_at': now - 10,
+                'strategy': runner.config.model_dump(),
+                'snapshot': {'server': 'Deriv-Demo', 'account': 123, 'currency': 'USD',
+                             'contract_size': 100, 'tick_size': info.trade_tick_size,
+                             'volume_min': info.volume_min, 'volume_step': info.volume_step,
+                             'volume_max': info.volume_max}}
+    runner.adopt_research_candidate(evidence)
+    end = int(now // 300) * 300 - 300
+    runner.mt5.symbol_select.reset_mock()
+    runner.mt5.copy_rates_from_pos.return_value = [
+        {'time': end - (99 - i) * 300} for i in range(100)]
+    runner.mt5.symbol_info_tick.return_value = NS(time=now, bid=100, ask=100.1)
+    ready = runner.preflight()
+    assert ready['ready_to_start'] is True and ready['live_market_ready'] is True
+    assert ready['research_run_id'] == 'preflight-run'
+    assert ready['account_scope'] == 'Deriv-Demo:123'
+    assert ready['read_only'] is True
+    runner.mt5.symbol_info_tick.return_value.time = now - 120
+    runner.mt5.copy_rates_from_pos.return_value[-1]['time'] = end - 3600
+    waiting = runner.preflight()
+    assert waiting['ready_to_start'] is True and waiting['live_market_ready'] is False
+    assert {c['code'] for c in waiting['checks'] if not c['ok']} == {'fresh_quote', 'fresh_candles'}
+    runner.mt5.symbol_select.assert_not_called()
+    runner.mt5.order_send.assert_not_called()
+
+
+def test_demo_preflight_reports_missing_candidate_permissions_and_exposure(runner):
+    runner.mt5.copy_rates_from_pos.return_value = []
+    missing = runner.preflight()
+    assert missing['ready_to_start'] is False
+    assert any(c['code'] == 'candidate_loaded' and not c['ok'] for c in missing['checks'])
+    runner.mt5.terminal_info.return_value.trade_allowed = False
+    denied = runner.preflight()
+    assert any(c['code'] == 'trading_permissions' and not c['ok'] for c in denied['checks'])
+    runner.mt5.positions_get.return_value = [NS(symbol=SYMBOL, magic=MAGIC)]
+    exposure = runner.preflight()
+    assert any(c['code'] == 'no_exposure' and not c['ok'] for c in exposure['checks'])
+    runner.mt5.order_send.assert_not_called()
+
+
+def test_demo_preflight_is_read_only_when_terminal_is_disconnected(tmp_path):
+    mt = terminal()
+    store = MT5DemoRunner(tmp_path / 'journal.sqlite3', mt)
+    report = store.preflight()
+    assert report['ready_to_start'] is False and report['live_market_ready'] is False
+    assert {c['code'] for c in report['checks'] if not c['ok']} == {
+        'candidate_loaded', 'demo_connected'}
+    mt.initialize.assert_not_called()
+    mt.symbol_select.assert_not_called()
+    mt.order_send.assert_not_called()
+
+
 def test_minimum_lot_and_stale_ticks_do_not_send(runner):
     runner.mt5.symbol_info.return_value.volume_min = 1
     runner._send(decision(), None, 'bar1')
@@ -342,9 +398,11 @@ def test_external_browser_origin_blocked(tmp_path):
     client = TestClient(app)
     assert client.post('/api/mt5/connect', headers={'origin': 'https://untrusted.example'}).status_code == 403
     assert client.get('/api/mt5/status').json()['running'] is False
+    assert client.get('/api/mt5/preflight').json()['ready_to_start'] is False
     assert client.put('/api/mt5/strategy', json={'symbol': ''}).status_code == 422
     assert client.post('/api/mt5/start', json={}).status_code == 422
     assert client.get('/api/mt5/symbols', headers={'origin': 'https://untrusted.example'}).status_code == 403
+    assert client.get('/api/mt5/preflight', headers={'origin': 'https://untrusted.example'}).status_code == 403
 
 
 def test_shared_signal_engine_and_backtest_evaluate_fixture_candles():

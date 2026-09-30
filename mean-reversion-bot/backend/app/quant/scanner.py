@@ -207,14 +207,16 @@ def evaluate(data, config, symbol, now):
     reasons = [result.reason]
     if regime != 'RANGE':
         reasons.append(f'Mean-reversion paper gate blocks {regime}')
-    eligible = regime == 'RANGE' and result.should_trade and result.direction in ('buy', 'sell')
+    strategy_setup = bool(result.should_trade and result.direction in ('buy', 'sell'))
+    eligible = regime == 'RANGE' and strategy_setup
     return dict(bar=bars[-1].timestamp, direction=result.direction, raw_score=result.confluence_score,
                 score=round(min(100, result.confluence_score/20*100), 1),
                 deviation=z.value if z and math.isfinite(z.value) else None,
                 hurst=h, atr=atr.value, trend_atr=drift, spread=spread, regime=regime,
                 volatility='high' if atr.is_spike else 'normal', news='unknown',
                 session=f'UTC {datetime.fromtimestamp(now, timezone.utc).hour//6*6:02d}-{datetime.fromtimestamp(now, timezone.utc).hour//6*6+6:02d}',
-                setup='mean_reversion_v1', reasons=reasons, eligible=eligible)
+                setup='mean_reversion_v1', strategy_setup=strategy_setup,
+                strategy_reason=result.reason, reasons=reasons, eligible=eligible)
 
 
 class Scanner:

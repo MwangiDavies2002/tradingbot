@@ -13,11 +13,18 @@ for (const width of [1440, 390]) {
       research_baseline: { holdout: { total_trades: 25, total_pnl: 42, profit_factor: 1.8 } } }
     await page.route('**/api/mt5/status', route => route.fulfill({ json: {
       connected: true, running: false, account: 123, server: 'Demo', config: strategy,
+      last_signal: { symbol: 'EURUSD.a', bar: 1770000000, direction: 'buy',
+        score: 8, should_trade: true, reason: 'candidate signal fixture' },
       research_validated: true, research_candidate: candidate,
       research_comparison: { status: 'insufficient_sample', closed_trades: 3,
         total_pnl: -2, profit_factor: .8, minimum_sample: 20,
         incomplete_positions: 1, currency: 'USD' } } }))
     await page.route('**/api/mt5/journal', route => route.fulfill({ json: [] }))
+    await page.route('**/api/mt5/preflight', route => route.fulfill({ json: {
+      symbol: 'EURUSD.a', timeframe: 'M5', monitoring: false,
+      ready_to_start: true, live_market_ready: false,
+      start_blockers: [], market_blockers: ['No fresh bid/ask quote for this pair; wait for an open market']
+    } }))
     await page.route('**/api/mt5/symbols', route => route.fulfill({ json: { symbols: [
       { name: 'EURUSD.a', description: 'EURUSD.a', eligible: true } ] } }))
     await page.route('**/api/scanner/analytics', route => route.fulfill({ json: { per_pair_policy: [
@@ -32,9 +39,17 @@ for (const width of [1440, 390]) {
     await page.getByRole('button', { name: 'Sign in', exact: true }).click()
     await page.getByLabel('Platform', { exact: true }).selectOption('mt5')
     const evidence = page.getByRole('region', { name: 'Single-pair validation evidence' })
+    const readiness = page.getByRole('region', { name: 'Demo readiness' })
+    const demoSignal = page.getByRole('region', { name: 'Latest demo signal' })
+    await expect(demoSignal).toContainText('Qualified BUY strategy signal')
+    await expect(demoSignal).toContainText('candidate signal fixture')
+    await expect(demoSignal).toContainText('does not prove an order was accepted or filled')
+    await expect(readiness).toContainText('Ready to start demo monitoring')
+    await expect(readiness).toContainText('Live-market entry checks are blocked right now')
+    await expect(readiness).toContainText('No fresh bid/ask quote')
     await expect(evidence).toBeVisible()
     await expect(evidence).toContainText('Research research-one | Demo:123 | EURUSD.a | M5')
-    await expect(evidence).toContainText('12/300 closed; 45 signals; 2 unresolved')
+    await expect(evidence).toContainText('12/300 closed; 45 evaluations; 2 unresolved')
     await expect(evidence).toContainText('3 complete candidate-linked positions')
     await expect(evidence).toContainText('1 incomplete positions excluded')
     await expect(evidence).not.toContainText('500/300')

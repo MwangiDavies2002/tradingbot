@@ -96,6 +96,10 @@ Each asset report includes:
 - Session confirmation and calendar provenance.
 - Descriptive behavior: realized volatility, return autocorrelation, trend score and a sample-only regime label.
 - Walk-forward folds and an untouched holdout.
+- Per-asset Monte Carlo bootstrap summary from walk-forward out-of-sample trade
+  P&L: 95th percentile drawdown, 5th percentile ending balance and the share
+  of resampled paths finishing below the starting balance. It assumes
+  independent trades and fixed cash sizing; it is not a forecast or signal.
 - Cost stress and bounded threshold sensitivity.
 - Correlations, rolling relationships and exploratory cointegration for multi-asset runs.
 - A clear `demo candidate` or `no trade` decision.
@@ -145,9 +149,16 @@ A candidate is tied to the demo account/server and broker contract specification
 1. In `MT5 Demo & Journal`, click `Connect MT5 demo` if needed.
 2. Choose the exact broker pair from the catalog.
 3. Click `Save pair selection` or `Save lab selection`.
-4. Confirm the saved settings and research validation indicator.
-5. Click `Start demo` explicitly.
+4. Confirm the saved settings and review **Demo readiness**. Setup blockers explain
+   missing validation, account or trading permissions. Current market blockers
+   identify stale quotes or candles, open exposure and a latched daily limit.
+   An active validated forward-paper scan also blocks demo start. The check is
+   read-only and refreshes while the panel is open.
+5. Click `Start demo` explicitly when setup is ready. Monitoring may start while
+   the market is closed; it waits for fresh data before evaluating an entry.
 6. Monitor open positions in MT5 `Toolbox -> Trade` and the app journal.
+   **Latest demo evaluation** shows the saved pair's last closed-candle signal;
+   a qualifying signal does not prove a broker order was filled.
 7. Review the research baseline and forward comparison status:
    - `insufficient_sample`: fewer than 20 closed post-validation trades.
    - `observing`: enough trades for comparison, with no deterioration alert.
@@ -241,7 +252,7 @@ results, then stop the relevant workers before selecting another pair.
    scanner. Keep the backend and terminal running. Review/export its observations,
    rejections, closed trades and unresolved outcomes before stopping the scanner.
 3. **Live-market demo test:** a passing Analyze candidate can be loaded into
-   MT5 Demo & Journal. Review the exact saved pair/account/settings and explicitly
+   MT5 Demo & Journal. Review **Demo readiness** for the saved pair, then explicitly
    Start demo. The worker executes one selected symbol. A changed pair/account or
    contract invalidates the candidate, and old bot exposure blocks new entries.
    Stop entries before switching; stopping does not close existing positions.
@@ -257,12 +268,20 @@ The scanner selects that exact pair, timeframe and score threshold and loads the
 indicator toggles from the server's saved candidate. Start the scanner explicitly.
 The backend checks the demo account and broker contract again before starting;
 changed or stale candidates are rejected. The scanner and MT5 demo worker must be
-run sequentially in this candidate mode.
+run sequentially in this candidate mode. Stop the candidate scanner before
+starting demo monitoring, or stop demo entries before starting the scanner.
 
 The scanner still applies its own conservative RANGE paper gate and hypothetical
 spread/slippage model. Historical Analyze fills and actual MT5 demo fills have
 separate assumptions. Use policy and research run identifiers when comparing
 results; this is shared signal configuration, not identical end-to-end trades.
+The **Latest paper signal** card shows only the current one-pair scanner run's
+matching account, pair and timeframe. It separates the strategy's BUY/SELL
+setup from the paper entry gate. A strategy setup can exist while the paper
+gate blocks a TREND regime or another entry prerequisite. The count in
+**Forward evidence by pair and policy** is evaluations, including no-entry
+observations, rather than qualifying signals. A stopped run's last observation
+remains historical; paper signals never place MT5 orders.
 
 In **Forward evidence by pair and policy**, review the row matching the exact
 account, broker symbol, timeframe and paper settings you tested. Its 300 closed

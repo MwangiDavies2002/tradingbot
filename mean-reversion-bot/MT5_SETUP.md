@@ -26,7 +26,13 @@ From `frontend`, run `npm ci`. Then from the project directory:
 powershell -ExecutionPolicy Bypass -File .\start-local.ps1
 ```
 
+Rerun the MT5 requirements install after updating this project; Analyze also
+needs the scientific packages listed in `requirements.txt`. The launcher waits
+for a healthy API and points to `logs/backend.err.log` if startup fails.
+
 Open <http://localhost:3000/backtest>. Logs are under `logs/`.
+Sign in with the app's configured admin or operator access key. Enter MT5
+credentials only in the desktop terminal, never in the dashboard.
 
 To start the backend manually, open a PowerShell window and run:
 
@@ -80,11 +86,20 @@ does not run on Vercel. Use one backend process with one worker, no reload.
    history, increase MT5's **Max bars in chart**, open/scroll the chart, or
    increase the requested days. At least 100 candles are required. Session closures
    and weekends are allowed; this minimum does not certify complete history.
-6. Choose demo risk settings, click **Save lab selection**, then **Start demo**.
-   **Load saved selection** restores your saved pair, toggles and risk settings.
-   To switch pairs, stop entries, select the exact new pair, save, then start.
-   A stale Start request naming a different pair is rejected.
-7. View open trades in MT5 **Toolbox → Trade**, closed deals in **History**,
+6. Open **Analyze selected assets**, choose **Connected MT5 demo**, and select
+   only that exact broker pair. Confirm its contract, session calendar and costs,
+   run the analysis, then load a passing candidate into **MT5 Demo & Journal**.
+   Strategy Lab's combined backtest or an imported CSV alone cannot authorize
+   demo entries.
+7. Review the candidate's pair, account, timeframe, threshold and risk settings.
+   Read **Demo readiness** for setup and current market blockers. It only reads
+   account, symbol, exposure, quotes and candles; it never sends an order.
+   A closed market can block live data while the worker is ready to start monitoring.
+   Stop a validated forward-paper scan before starting the demo worker.
+   Click **Start demo** explicitly. To switch pairs, stop entries, analyze the
+   new pair and load its own passing candidate. A stale Start request naming a
+   different pair is rejected. Stopping entries leaves existing positions open.
+8. View open trades in MT5 **Toolbox → Trade**, closed deals in **History**,
    and the app's **MT5 Demo & Journal**. Expand the journal and download CSV.
 
 The worker polls every two seconds and evaluates each completed candle once.

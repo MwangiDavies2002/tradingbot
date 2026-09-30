@@ -5,7 +5,7 @@ from typing import Literal
 from fastapi.responses import StreamingResponse
 from fastapi import APIRouter, Depends, Request, Query, HTTPException
 from fastapi.responses import JSONResponse
-from app.api.routes.mt5 import local_only, get_runner
+from app.api.routes.mt5 import local_only, get_runner, candidate_transition_lock
 from app.quant.scanner import Scanner, ScanConfig
 from app.quant.scanner_mappings import MappingRequest, compare_mappings
 from app.api.routes.instrument_catalog import lookup
@@ -33,7 +33,8 @@ def start(body: ScanConfig, request: Request, store=Depends(scanner)):
     for asset in body.assets:
         if asset.mapping_id:
             mapping_or_404(store, asset.mapping_id)
-    return store.start(body, get_runner(request), request.state.role)
+    with candidate_transition_lock:
+        return store.start(body, get_runner(request), request.state.role)
 
 
 @router.post('/stop')
