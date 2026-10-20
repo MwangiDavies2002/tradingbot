@@ -99,7 +99,9 @@ class ScoreBreakdown:
     htf_points:         int = 0   # 0 or 1
     volume_points:      int = 0   # 0 or 1
     hurst_points:       int = 0   # 0 or 1
+    crt_points:         int = 0   # previous-candle sweep and midpoint reclaim
     news_points:        int = 0   # 0, 1, or 2 (High impact news)
+    hybrid_context_points: int = 0  # opt-in simulation pullback/confirmation score
 
     @property
     def total(self) -> int:
@@ -115,7 +117,7 @@ class ScoreBreakdown:
             self.htf_points +
             self.volume_points +
             self.hurst_points +
-            self.news_points
+            self.news_points + self.crt_points + self.hybrid_context_points
         )
 
     def to_dict(self) -> dict[str, int]:
@@ -131,6 +133,8 @@ class ScoreBreakdown:
             "htf_trend":   self.htf_points,
             "volume":      self.volume_points,
             "hurst":       self.hurst_points,
+            "crt":         self.crt_points,
+            "hybrid_context": self.hybrid_context_points,
             "total":       self.total,
         }
 
@@ -148,7 +152,9 @@ class ScoreBreakdown:
         if self.htf_points:         parts.append(f"HTF:{self.htf_points}")
         if self.volume_points:      parts.append(f"Vol:{self.volume_points}")
         if self.hurst_points:       parts.append(f"Hurst:{self.hurst_points}")
+        if self.crt_points:         parts.append(f"CRT:{self.crt_points}")
         if self.news_points:        parts.append(f"News:{self.news_points}")
+        if self.hybrid_context_points: parts.append(f"Hybrid:{self.hybrid_context_points}")
         return " | ".join(parts) + f" → TOTAL: {self.total}"
 
 
@@ -224,6 +230,7 @@ class ConfluenceResult:
         bd = self.breakdown
         if bd.z_score_points:     parts.append("ZRS")
         if bd.rsi_points:         parts.append("RSI")
+        if bd.crt_points:         parts.append("CRT")
         if bd.bb_points:          parts.append("BB")
         if bd.vwap_points:        parts.append("VWP")
         if bd.stoch_points:       parts.append("STO")
@@ -234,6 +241,7 @@ class ConfluenceResult:
         if bd.volume_points:      parts.append("VOL")
         if bd.hurst_points:       parts.append("HUR")
         if bd.news_points:        parts.append("NWS")
+        if bd.hybrid_context_points: parts.append("HYBRID")
         return "_".join(parts)
 
     def __repr__(self) -> str:
@@ -344,6 +352,7 @@ class ConfluenceScorer:
         bos_choch:    bool = False,
         order_block:  bool = False,
         # ── Context signals ───────────────────────
+        crt_direction: Optional[str] = None,
         htf_aligned:  bool = False,              # True if HTF trend matches direction
         volume_ratio: Optional[float] = None,    # current_vol / avg_vol
         hurst:        Optional[float] = None,    # Hurst exponent
@@ -396,6 +405,9 @@ class ConfluenceScorer:
                     bd.z_score_points += 1   # Bonus +1 for very extreme deviation
 
         # ── RSI ───────────────────────────────────────────────────────────────
+        if crt_direction == direction:
+            bd.crt_points = 1
+
         if rsi is not None:
             rsi_ok = (direction == "buy"  and rsi < self.rsi_oversold) or \
                      (direction == "sell" and rsi > self.rsi_overbought)
@@ -480,6 +492,32 @@ class ConfluenceScorer:
         )
 
         return result
+
+    def with_hybrid_context(self, result: ConfluenceResult, value_areas=(), confirmations=()) -> ConfluenceResult:
+        """Opt-in weighted context; no requirement to hit every value area.
+
+        Copy the original score so repeated evaluations cannot accumulate points.
+        Related value references and confirmation events have separate caps.
+        """
+        from dataclasses import replace
+        from app.core.hybrid.campaign import CONFIRMATION_REASONS
+        weights = {"EMA_PULLBACK": 1, "VWAP_PULLBACK": 1, "VWMA_PULLBACK": 1,
+                   "DEMAND_ZONE": 2, "SUPPLY_ZONE": 2, "BREAKOUT_RETEST": 1,
+                   "PREVIOUS_POC": 1, "PREVIOUS_VAH": 1, "PREVIOUS_VAL": 1,
+                   "HVN": 1, "LVN": 1}
+        if set(value_areas) - weights.keys() or set(confirmations) - CONFIRMATION_REASONS:
+            raise ValueError("Unknown hybrid score reason")
+        counted_areas = set(value_areas)
+        counted_confirmations = set(confirmations)
+        if result.breakdown.order_block_points:
+            counted_areas -= {"DEMAND_ZONE", "SUPPLY_ZONE"}
+        if result.breakdown.bos_choch_points:
+            counted_confirmations.discard("BOS_CONFIRMED")
+        if result.breakdown.lsl_points:
+            counted_confirmations.discard("LIQUIDITY_SWEEP")
+        points = min(4, sum(weights[r] for r in counted_areas)) + min(3, len(counted_confirmations))
+        breakdown = replace(result.breakdown, hybrid_context_points=points)
+        return replace(result, breakdown=breakdown)
 
     def minimum_required(self) -> dict[str, int]:
         """Return the minimum signal requirements as a dict (for docs/UI display)."""

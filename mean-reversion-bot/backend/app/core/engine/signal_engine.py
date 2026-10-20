@@ -298,6 +298,8 @@ class SignalEngine:
     ) -> None:
         self.cfg = config or EngineConfig()
         c = self.cfg
+        if c.use_smt:
+            raise ValueError("SMT divergence requires aligned comparison-market history; Python SMT is unavailable. Disable SMT or use TradingView with an explicit comparison symbol.")
 
         # ── Indicators ────────────────────────────────────────────────────────
         self.zscore    = ZScoreIndicator(period=c.zscore_period)
@@ -455,6 +457,18 @@ class SignalEngine:
             ema200 = sum(long_recent) / len(long_recent)
             direction, _ = classify(zs_result.value, rsi_result.value, atr, candles[-1].close, ema50, ema200)
 
+        # Match the exported Pine CRT rule using only the last two closed bars.
+        crt_direction = None
+        if self.cfg.use_crt:
+            previous, current = candles[-2:]
+            midpoint = (previous.high + previous.low) / 2
+            crt_buy = current.low < previous.low and current.close > midpoint
+            crt_sell = current.high > previous.high and current.close < midpoint
+            if crt_buy != crt_sell:
+                crt_direction = "buy" if crt_buy else "sell"
+        if direction is None and crt_direction is not None:
+            direction = crt_direction
+
         # Leakage-safe ML inference shared by backtest and demo/live paths.
         if self.cfg.model_strategy == "logistic_regression":
             from app.core.engine.ml_model import predict
@@ -506,6 +520,7 @@ class SignalEngine:
             bos_choch    = structure.choch_detected if structure else False,
             order_block  = self._is_at_order_block(candles[-1], extra_zones) if self.cfg.use_smc else False,
             htf_aligned  = htf_aligned,
+            crt_direction = crt_direction,
             volume_ratio = self._volume_ratio(candles) if self.cfg.use_volume else None,
             hurst        = hurst_result.value if hurst_result else None,
             news_impact  = news_impact        if self.cfg.use_news   else None,

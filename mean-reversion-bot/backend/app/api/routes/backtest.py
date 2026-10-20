@@ -288,6 +288,8 @@ class BacktestReportResponse(BaseModel):
 @router.post("/run")
 async def run_backtest(req: BacktestRequest, request: Request, db: AsyncSession = Depends(get_db)):
     """Run a backtest for the selected symbols and strategy configuration."""
+    if req.use_smt:
+        raise HTTPException(422, "Python SMT requires comparison-market history, which is unavailable. Disable SMT or use TradingView with an explicit comparison symbol.")
     results = []
 
     try:

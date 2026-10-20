@@ -260,6 +260,7 @@ export default function Backtest() {
                   <button aria-pressed={selectedStrategies[s.id]} onClick={() => toggleStrategy(s.id)} className="flex items-center gap-2 text-left min-w-0">
                   <div>
                     <div className="text-sm font-medium">{s.label}</div>
+                    {s.id === 'use_smt' && platform === 'mt5' && <div className="text-xs text-amber-300">Unavailable in Python: deselect SMT before testing. Requires comparison-market history.</div>}
                     {!TV_SUPPORTED.includes(s.id) && <div className="text-xs text-amber-300">Python / MT5 only · exact Pine port pending</div>}
                     <div className="text-[10px] opacity-60 leading-tight mt-0.5">{s.description}</div>
                   </div>

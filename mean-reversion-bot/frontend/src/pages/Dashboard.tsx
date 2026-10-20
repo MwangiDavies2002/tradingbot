@@ -161,7 +161,7 @@ export default function Dashboard() {
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-2">
             <Zap className="text-cyan-400 w-6 h-6" />
-            Mean Reversion Bot
+            Strategy Tester
           </h1>
           <p className="text-slate-400 text-sm mt-0.5">
             {lastRefresh ? `Updated ${format(lastRefresh, 'HH:mm:ss')}` : 'Loading...'}
@@ -179,6 +179,7 @@ export default function Dashboard() {
             </button>
           )}
           <button
+            title={status?.bot_running ? "Disable Deriv entries and request managed-position closure" : "Enable entries for the existing Deriv worker; does not start MT5 demo or a backtest"}
             onClick={status?.bot_running ? handleStop : handleStart}
             disabled={actionLoading}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition
@@ -188,8 +189,8 @@ export default function Dashboard() {
               }`}
           >
             {status?.bot_running
-              ? <><StopCircle className="w-4 h-4" /> Stop Bot</>
-              : <><PlayCircle className="w-4 h-4" /> Start Bot</>
+              ? <><StopCircle className="w-4 h-4" /> Stop Deriv worker</>
+              : <><PlayCircle className="w-4 h-4" /> Enable Deriv entries</>
             }
           </button>
         </div>

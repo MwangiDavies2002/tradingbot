@@ -1,0 +1,14 @@
+{
+  "SYNTHETIC_GOLD": {
+    "point_value": 100,
+    "quantity_step": 0.01,
+    "min_quantity": 0.01,
+    "commission": 0.1
+  },
+  "SYNTHETIC_INDEX": {
+    "point_value": 10,
+    "quantity_step": 0.01,
+    "min_quantity": 0.01,
+    "commission": 0.1
+  }
+}

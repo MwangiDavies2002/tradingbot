@@ -407,6 +407,23 @@ class BacktestEngine:
         logger.info("Backtest complete | %s", report.summary())
         return report
 
+    def run_comparison(self, datasets, instrument_specs, hybrid_config=None,
+                       timeframe="M5", base_seconds=300):
+        """Compare A-D offline with explicit linear instrument specifications.
+
+        Does not change the original Deriv run() or any execution/broker code.
+        Per-side commissions belong to each InstrumentSpec, not the legacy
+        fixed-per-trade commission setting.
+        """
+        from app.backtesting.hybrid import CampaignBacktester
+        if self.commission:
+            raise ValueError("Use InstrumentSpec.commission for campaign comparison")
+        return CampaignBacktester(self.engine.cfg, hybrid_config,
+                                  initial_balance=self.initial_balance,
+                                  slippage_pct=self.slippage_pct, spread_price=self.spread_pips,
+                                  warmup_bars=self.warmup_bars).compare(
+                                      datasets, instrument_specs, timeframe, base_seconds)
+
     def run_walk_forward(
         self,
         candles:   list[Candle],

@@ -1,0 +1,702 @@
+{
+  "purpose": "Deterministic synthetic smoke test, not historical market-performance evidence",
+  "model": "Independent per-instrument runs; not a shared portfolio",
+  "variants": {
+    "A": {
+      "SYNTHETIC_GOLD": {
+        "metrics": {
+          "total_trades": 17,
+          "win_rate": 0.5882352941176471,
+          "average_winner": 212.50692468595108,
+          "average_loser": -110.72284418109125,
+          "expectancy": 79.41231397599246,
+          "profit_factor": 2.7418128862677316,
+          "maximum_drawdown": 0.01124480838687139,
+          "average_R": 0.7624286855683362,
+          "median_R": 1.9961154793830957,
+          "maximum_campaign_risk": 113.7851274442731,
+          "maximum_campaign_risk_percent": 0.9997744490102172,
+          "total_pnl": 1350.0093375918718,
+          "sharpe_ratio": null,
+          "sharpe_observed_days": 0
+        },
+        "by_regime": {
+          "TREND": {
+            "total_trades": 9,
+            "win_rate": 1.0,
+            "average_winner": 214.00509150883522,
+            "average_loser": 0,
+            "expectancy": 214.00509150883522,
+            "profit_factor": null,
+            "maximum_drawdown": 0.0029008045702693095,
+            "average_R": 1.9961264941001933,
+            "median_R": 1.996115479383096,
+            "maximum_campaign_risk": 111.20882165349825,
+            "maximum_campaign_risk_percent": 0.9997744490102172,
+            "total_pnl": 1926.045823579517,
+            "sharpe_ratio": null,
+            "sharpe_observed_days": 0
+          },
+          "RANGE": {
+            "total_trades": 0,
+            "win_rate": 0,
+            "average_winner": 0,
+            "average_loser": 0,
+            "expectancy": 0,
+            "profit_factor": null,
+            "maximum_drawdown": 0.0,
+            "average_R": 0,
+            "median_R": 0,
+            "maximum_campaign_risk": 0,
+            "maximum_campaign_risk_percent": 0,
+            "total_pnl": 0,
+            "sharpe_ratio": null,
+            "sharpe_observed_days": 0
+          },
+          "UNKNOWN": {
+            "total_trades": 8,
+            "win_rate": 0.125,
+            "average_winner": 199.02342327999364,
+            "average_loser": -110.72284418109125,
+            "expectancy": -72.00456074845565,
+            "profit_factor": 0.25678456710275815,
+            "maximum_drawdown": 0.07599354145010681,
+            "average_R": -0.6254813490300029,
+            "median_R": -1.0,
+            "maximum_campaign_risk": 113.7851274442731,
+            "maximum_campaign_risk_percent": 0.9990396016350165,
+            "total_pnl": -576.0364859876452,
+            "sharpe_ratio": null,
+            "sharpe_observed_days": 0
+          }
+        },
+        "by_instrument": {
+          "SYNTHETIC_GOLD": {
+            "total_trades": 17,
+            "win_rate": 0.5882352941176471,
+            "average_winner": 212.50692468595108,
+            "average_loser": -110.72284418109125,
+            "expectancy": 79.41231397599246,
+            "profit_factor": 2.7418128862677316,
+            "maximum_drawdown": 0.01124480838687139,
+            "average_R": 0.7624286855683362,
+            "median_R": 1.9961154793830957,
+            "maximum_campaign_risk": 113.7851274442731,
+            "maximum_campaign_risk_percent": 0.9997744490102172,
+            "total_pnl": 1350.0093375918718,
+            "sharpe_ratio": null,
+            "sharpe_observed_days": 0
+          }
+        }
+      },
+      "SYNTHETIC_INDEX": {
+        "metrics": {
+          "total_trades": 17,
+          "win_rate": 0.5882352941176471,
+          "average_winner": 209.57973745591767,
+          "average_loser": -111.08158998653103,
+          "expectancy": 77.54272027373291,
+          "profit_factor": 2.695312742402484,
+          "maximum_drawdown": 0.011233860868701772,
+          "average_R": 0.7421945349023215,
+          "median_R": 1.9616017082912258,
+          "maximum_campaign_risk": 114.21404642471893,
+          "maximum_campaign_risk_percent": 0.9999754204672535,
+          "total_pnl": 1318.2262446534596,
+          "sharpe_ratio": null,
+          "sharpe_observed_days": 0
+        },
+        "by_regime": {
+          "TREND": {
+            "total_trades": 9,
+            "win_rate": 1.0,
+            "average_winner": 211.08677731915924,
+            "average_loser": 0,
+            "expectancy": 211.08677731915924,
+            "profit_factor": null,
+            "maximum_drawdown": 0.0029889200927882484,
+            "average_R": 1.9617089651714656,
+            "median_R": 1.9616017082912258,
+            "maximum_campaign_risk": 112.03605156327534,
+            "maximum_campaign_risk_percent": 0.9999306821534671,
+            "total_pnl": 1899.780995872433,
+            "sharpe_ratio": null,
+            "sharpe_observed_days": 0
+          },
+          "RANGE": {
+            "total_trades": 0,
+            "win_rate": 0,
+            "average_winner": 0,
+            "average_loser": 0,
+            "expectancy": 0,
+            "profit_factor": null,
+            "maximum_drawdown": 0.0,
+            "average_R": 0,
+            "median_R": 0,
+            "maximum_campaign_risk": 0,
+            "maximum_campaign_risk_percent": 0,
+            "total_pnl": 0,
+            "sharpe_ratio": null,
+            "sharpe_observed_days": 0
+          },
+          "UNKNOWN": {
+            "total_trades": 8,
+            "win_rate": 0.125,
+            "average_winner": 196.0163786867437,
+            "average_loser": -111.08158998653103,
+            "expectancy": -72.69434390237168,
+            "profit_factor": 0.2520880356122678,
+            "maximum_drawdown": 0.07626224802179736,
+            "average_R": -0.6297591991504656,
+            "median_R": -1.0,
+            "maximum_campaign_risk": 114.21404642471893,
+            "maximum_campaign_risk_percent": 0.9999754204672535,
+            "total_pnl": -581.5547512189735,
+            "sharpe_ratio": null,
+            "sharpe_observed_days": 0
+          }
+        },
+        "by_instrument": {
+          "SYNTHETIC_INDEX": {
+            "total_trades": 17,
+            "win_rate": 0.5882352941176471,
+            "average_winner": 209.57973745591767,
+            "average_loser": -111.08158998653103,
+            "expectancy": 77.54272027373291,
+            "profit_factor": 2.695312742402484,
+            "maximum_drawdown": 0.011233860868701772,
+            "average_R": 0.7421945349023215,
+            "median_R": 1.9616017082912258,
+            "maximum_campaign_risk": 114.21404642471893,
+            "maximum_campaign_risk_percent": 0.9999754204672535,
+            "total_pnl": 1318.2262446534596,
+            "sharpe_ratio": null,
+            "sharpe_observed_days": 0
+          }
+        }
+      }
+    },
+    "B": {
+      "SYNTHETIC_GOLD": {
+        "metrics": {
+          "total_trades": 3,
+          "win_rate": 1.0,
+          "average_winner": 48.839499722502765,
+          "average_loser": 0,
+          "expectancy": 48.839499722502765,
+          "profit_factor": null,
+          "maximum_drawdown": 0.005159802224646453,
+          "average_R": 1.9964850799424623,
+          "median_R": 1.9964863659223453,
+          "maximum_campaign_risk": 25.014505668751422,
+          "maximum_campaign_risk_percent": 0.24775227787690735,
+          "total_pnl": 146.51849916750828,
+          "sharpe_ratio": null,
+          "sharpe_observed_days": 0
+        },
+        "by_regime": {
+          "TREND": {
+            "total_trades": 3,
+            "win_rate": 1.0,
+            "average_winner": 48.839499722502765,
+            "average_loser": 0,
+            "expectancy": 48.839499722502765,
+            "profit_factor": null,
+            "maximum_drawdown": 0.005159802224646453,
+            "average_R": 1.9964850799424623,
+            "median_R": 1.9964863659223453,
+            "maximum_campaign_risk": 25.014505668751422,
+            "maximum_campaign_risk_percent": 0.24775227787690735,
+            "total_pnl": 146.51849916750828,
+            "sharpe_ratio": null,
+            "sharpe_observed_days": 0
+          },
+          "RANGE": {
+            "total_trades": 0,
+            "win_rate": 0,
+            "average_winner": 0,
+            "average_loser": 0,
+            "expectancy": 0,
+            "profit_factor": null,
+            "maximum_drawdown": 0.0,
+            "average_R": 0,
+            "median_R": 0,
+            "maximum_campaign_risk": 0,
+            "maximum_campaign_risk_percent": 0,
+            "total_pnl": 0,
+            "sharpe_ratio": null,
+            "sharpe_observed_days": 0
+          },
+          "UNKNOWN": {
+            "total_trades": 0,
+            "win_rate": 0,
+            "average_winner": 0,
+            "average_loser": 0,
+            "expectancy": 0,
+            "profit_factor": null,
+            "maximum_drawdown": 0.0,
+            "average_R": 0,
+            "median_R": 0,
+            "maximum_campaign_risk": 0,
+            "maximum_campaign_risk_percent": 0,
+            "total_pnl": 0,
+            "sharpe_ratio": null,
+            "sharpe_observed_days": 0
+          }
+        },
+        "by_instrument": {
+          "SYNTHETIC_GOLD": {
+            "total_trades": 3,
+            "win_rate": 1.0,
+            "average_winner": 48.839499722502765,
+            "average_loser": 0,
+            "expectancy": 48.839499722502765,
+            "profit_factor": null,
+            "maximum_drawdown": 0.005159802224646453,
+            "average_R": 1.9964850799424623,
+            "median_R": 1.9964863659223453,
+            "maximum_campaign_risk": 25.014505668751422,
+            "maximum_campaign_risk_percent": 0.24775227787690735,
+            "total_pnl": 146.51849916750828,
+            "sharpe_ratio": null,
+            "sharpe_observed_days": 0
+          }
+        }
+      },
+      "SYNTHETIC_INDEX": {
+        "metrics": {
+          "total_trades": 3,
+          "win_rate": 1.0,
+          "average_winner": 49.15204429291946,
+          "average_loser": 0,
+          "expectancy": 49.15204429291946,
+          "profit_factor": null,
+          "maximum_drawdown": 0.0053175534047012335,
+          "average_R": 1.965217703238347,
+          "median_R": 1.9652301646584465,
+          "maximum_campaign_risk": 25.115942297626418,
+          "maximum_campaign_risk_percent": 0.24899816980974368,
+          "total_pnl": 147.45613287875838,
+          "sharpe_ratio": null,
+          "sharpe_observed_days": 0
+        },
+        "by_regime": {
+          "TREND": {
+            "total_trades": 3,
+            "win_rate": 1.0,
+            "average_winner": 49.15204429291946,
+            "average_loser": 0,
+            "expectancy": 49.15204429291946,
+            "profit_factor": null,
+            "maximum_drawdown": 0.005317553404701414,
+            "average_R": 1.965217703238347,
+            "median_R": 1.9652301646584465,
+            "maximum_campaign_risk": 25.115942297626418,
+            "maximum_campaign_risk_percent": 0.24899816980974368,
+            "total_pnl": 147.45613287875838,
+            "sharpe_ratio": null,
+            "sharpe_observed_days": 0
+          },
+          "RANGE": {
+            "total_trades": 0,
+            "win_rate": 0,
+            "average_winner": 0,
+            "average_loser": 0,
+            "expectancy": 0,
+            "profit_factor": null,
+            "maximum_drawdown": 0.0,
+            "average_R": 0,
+            "median_R": 0,
+            "maximum_campaign_risk": 0,
+            "maximum_campaign_risk_percent": 0,
+            "total_pnl": 0,
+            "sharpe_ratio": null,
+            "sharpe_observed_days": 0
+          },
+          "UNKNOWN": {
+            "total_trades": 0,
+            "win_rate": 0,
+            "average_winner": 0,
+            "average_loser": 0,
+            "expectancy": 0,
+            "profit_factor": null,
+            "maximum_drawdown": 0.0,
+            "average_R": 0,
+            "median_R": 0,
+            "maximum_campaign_risk": 0,
+            "maximum_campaign_risk_percent": 0,
+            "total_pnl": 0,
+            "sharpe_ratio": null,
+            "sharpe_observed_days": 0
+          }
+        },
+        "by_instrument": {
+          "SYNTHETIC_INDEX": {
+            "total_trades": 3,
+            "win_rate": 1.0,
+            "average_winner": 49.15204429291946,
+            "average_loser": 0,
+            "expectancy": 49.15204429291946,
+            "profit_factor": null,
+            "maximum_drawdown": 0.0053175534047012335,
+            "average_R": 1.965217703238347,
+            "median_R": 1.9652301646584465,
+            "maximum_campaign_risk": 25.115942297626418,
+            "maximum_campaign_risk_percent": 0.24899816980974368,
+            "total_pnl": 147.45613287875838,
+            "sharpe_ratio": null,
+            "sharpe_observed_days": 0
+          }
+        }
+      }
+    },
+    "C": {
+      "SYNTHETIC_GOLD": {
+        "metrics": {
+          "total_trades": 3,
+          "win_rate": 1.0,
+          "average_winner": 51.12342278068657,
+          "average_loser": 0,
+          "expectancy": 51.12342278068657,
+          "profit_factor": null,
+          "maximum_drawdown": 0.007003584834264374,
+          "average_R": 2.090916283890431,
+          "median_R": 2.1378258395518928,
+          "maximum_campaign_risk": 47.19521045750104,
+          "maximum_campaign_risk_percent": 0.4719521045750104,
+          "total_pnl": 153.3702683420597,
+          "sharpe_ratio": null,
+          "sharpe_observed_days": 0
+        },
+        "by_regime": {
+          "TREND": {
+            "total_trades": 3,
+            "win_rate": 1.0,
+            "average_winner": 51.12342278068657,
+            "average_loser": 0,
+            "expectancy": 51.12342278068657,
+            "profit_factor": null,
+            "maximum_drawdown": 0.007003584834264374,
+            "average_R": 2.090916283890431,
+            "median_R": 2.1378258395518928,
+            "maximum_campaign_risk": 47.19521045750104,
+            "maximum_campaign_risk_percent": 0.4719521045750104,
+            "total_pnl": 153.3702683420597,
+            "sharpe_ratio": null,
+            "sharpe_observed_days": 0
+          },
+          "RANGE": {
+            "total_trades": 0,
+            "win_rate": 0,
+            "average_winner": 0,
+            "average_loser": 0,
+            "expectancy": 0,
+            "profit_factor": null,
+            "maximum_drawdown": 0.0,
+            "average_R": 0,
+            "median_R": 0,
+            "maximum_campaign_risk": 0,
+            "maximum_campaign_risk_percent": 0,
+            "total_pnl": 0,
+            "sharpe_ratio": null,
+            "sharpe_observed_days": 0
+          },
+          "UNKNOWN": {
+            "total_trades": 0,
+            "win_rate": 0,
+            "average_winner": 0,
+            "average_loser": 0,
+            "expectancy": 0,
+            "profit_factor": null,
+            "maximum_drawdown": 0.0,
+            "average_R": 0,
+            "median_R": 0,
+            "maximum_campaign_risk": 0,
+            "maximum_campaign_risk_percent": 0,
+            "total_pnl": 0,
+            "sharpe_ratio": null,
+            "sharpe_observed_days": 0
+          }
+        },
+        "by_instrument": {
+          "SYNTHETIC_GOLD": {
+            "total_trades": 3,
+            "win_rate": 1.0,
+            "average_winner": 51.12342278068657,
+            "average_loser": 0,
+            "expectancy": 51.12342278068657,
+            "profit_factor": null,
+            "maximum_drawdown": 0.007003584834264374,
+            "average_R": 2.090916283890431,
+            "median_R": 2.1378258395518928,
+            "maximum_campaign_risk": 47.19521045750104,
+            "maximum_campaign_risk_percent": 0.4719521045750104,
+            "total_pnl": 153.3702683420597,
+            "sharpe_ratio": null,
+            "sharpe_observed_days": 0
+          }
+        }
+      },
+      "SYNTHETIC_INDEX": {
+        "metrics": {
+          "total_trades": 3,
+          "win_rate": 1.0,
+          "average_winner": 51.59795588916864,
+          "average_loser": 0,
+          "expectancy": 51.59795588916864,
+          "profit_factor": null,
+          "maximum_drawdown": 0.007342004108887354,
+          "average_R": 2.0632149719174793,
+          "median_R": 2.112047068284999,
+          "maximum_campaign_risk": 49.97406091563245,
+          "maximum_campaign_risk_percent": 0.49712670050028235,
+          "total_pnl": 154.7938676675059,
+          "sharpe_ratio": null,
+          "sharpe_observed_days": 0
+        },
+        "by_regime": {
+          "TREND": {
+            "total_trades": 3,
+            "win_rate": 1.0,
+            "average_winner": 51.59795588916864,
+            "average_loser": 0,
+            "expectancy": 51.59795588916864,
+            "profit_factor": null,
+            "maximum_drawdown": 0.0073420041088871745,
+            "average_R": 2.0632149719174793,
+            "median_R": 2.112047068284999,
+            "maximum_campaign_risk": 49.97406091563245,
+            "maximum_campaign_risk_percent": 0.49712670050028235,
+            "total_pnl": 154.7938676675059,
+            "sharpe_ratio": null,
+            "sharpe_observed_days": 0
+          },
+          "RANGE": {
+            "total_trades": 0,
+            "win_rate": 0,
+            "average_winner": 0,
+            "average_loser": 0,
+            "expectancy": 0,
+            "profit_factor": null,
+            "maximum_drawdown": 0.0,
+            "average_R": 0,
+            "median_R": 0,
+            "maximum_campaign_risk": 0,
+            "maximum_campaign_risk_percent": 0,
+            "total_pnl": 0,
+            "sharpe_ratio": null,
+            "sharpe_observed_days": 0
+          },
+          "UNKNOWN": {
+            "total_trades": 0,
+            "win_rate": 0,
+            "average_winner": 0,
+            "average_loser": 0,
+            "expectancy": 0,
+            "profit_factor": null,
+            "maximum_drawdown": 0.0,
+            "average_R": 0,
+            "median_R": 0,
+            "maximum_campaign_risk": 0,
+            "maximum_campaign_risk_percent": 0,
+            "total_pnl": 0,
+            "sharpe_ratio": null,
+            "sharpe_observed_days": 0
+          }
+        },
+        "by_instrument": {
+          "SYNTHETIC_INDEX": {
+            "total_trades": 3,
+            "win_rate": 1.0,
+            "average_winner": 51.59795588916864,
+            "average_loser": 0,
+            "expectancy": 51.59795588916864,
+            "profit_factor": null,
+            "maximum_drawdown": 0.007342004108887354,
+            "average_R": 2.0632149719174793,
+            "median_R": 2.112047068284999,
+            "maximum_campaign_risk": 49.97406091563245,
+            "maximum_campaign_risk_percent": 0.49712670050028235,
+            "total_pnl": 154.7938676675059,
+            "sharpe_ratio": null,
+            "sharpe_observed_days": 0
+          }
+        }
+      }
+    },
+    "D": {
+      "SYNTHETIC_GOLD": {
+        "metrics": {
+          "total_trades": 1,
+          "win_rate": 1.0,
+          "average_winner": 41.648607635000836,
+          "average_loser": 0,
+          "expectancy": 41.648607635000836,
+          "profit_factor": null,
+          "maximum_drawdown": 0.00405732391555837,
+          "average_R": 1.7022448847300282,
+          "median_R": 1.7022448847300282,
+          "maximum_campaign_risk": 24.46687195750111,
+          "maximum_campaign_risk_percent": 0.2446687195750111,
+          "total_pnl": 41.648607635000836,
+          "sharpe_ratio": null,
+          "sharpe_observed_days": 0
+        },
+        "by_regime": {
+          "TREND": {
+            "total_trades": 1,
+            "win_rate": 1.0,
+            "average_winner": 41.648607635000836,
+            "average_loser": 0,
+            "expectancy": 41.648607635000836,
+            "profit_factor": null,
+            "maximum_drawdown": 0.00405732391555837,
+            "average_R": 1.7022448847300282,
+            "median_R": 1.7022448847300282,
+            "maximum_campaign_risk": 24.46687195750111,
+            "maximum_campaign_risk_percent": 0.2446687195750111,
+            "total_pnl": 41.648607635000836,
+            "sharpe_ratio": null,
+            "sharpe_observed_days": 0
+          },
+          "RANGE": {
+            "total_trades": 0,
+            "win_rate": 0,
+            "average_winner": 0,
+            "average_loser": 0,
+            "expectancy": 0,
+            "profit_factor": null,
+            "maximum_drawdown": 0.0,
+            "average_R": 0,
+            "median_R": 0,
+            "maximum_campaign_risk": 0,
+            "maximum_campaign_risk_percent": 0,
+            "total_pnl": 0,
+            "sharpe_ratio": null,
+            "sharpe_observed_days": 0
+          },
+          "UNKNOWN": {
+            "total_trades": 0,
+            "win_rate": 0,
+            "average_winner": 0,
+            "average_loser": 0,
+            "expectancy": 0,
+            "profit_factor": null,
+            "maximum_drawdown": 0.0,
+            "average_R": 0,
+            "median_R": 0,
+            "maximum_campaign_risk": 0,
+            "maximum_campaign_risk_percent": 0,
+            "total_pnl": 0,
+            "sharpe_ratio": null,
+            "sharpe_observed_days": 0
+          }
+        },
+        "by_instrument": {
+          "SYNTHETIC_GOLD": {
+            "total_trades": 1,
+            "win_rate": 1.0,
+            "average_winner": 41.648607635000836,
+            "average_loser": 0,
+            "expectancy": 41.648607635000836,
+            "profit_factor": null,
+            "maximum_drawdown": 0.00405732391555837,
+            "average_R": 1.7022448847300282,
+            "median_R": 1.7022448847300282,
+            "maximum_campaign_risk": 24.46687195750111,
+            "maximum_campaign_risk_percent": 0.2446687195750111,
+            "total_pnl": 41.648607635000836,
+            "sharpe_ratio": null,
+            "sharpe_observed_days": 0
+          }
+        }
+      },
+      "SYNTHETIC_INDEX": {
+        "metrics": {
+          "total_trades": 1,
+          "win_rate": 1.0,
+          "average_winner": 41.64070890750099,
+          "average_loser": 0,
+          "expectancy": 41.64070890750099,
+          "profit_factor": null,
+          "maximum_drawdown": 0.003910288186660824,
+          "average_R": 1.6726242525118755,
+          "median_R": 1.6726242525118755,
+          "maximum_campaign_risk": 24.895435328626114,
+          "maximum_campaign_risk_percent": 0.24895435328626114,
+          "total_pnl": 41.64070890750099,
+          "sharpe_ratio": null,
+          "sharpe_observed_days": 0
+        },
+        "by_regime": {
+          "TREND": {
+            "total_trades": 1,
+            "win_rate": 1.0,
+            "average_winner": 41.64070890750099,
+            "average_loser": 0,
+            "expectancy": 41.64070890750099,
+            "profit_factor": null,
+            "maximum_drawdown": 0.003910288186660643,
+            "average_R": 1.6726242525118755,
+            "median_R": 1.6726242525118755,
+            "maximum_campaign_risk": 24.895435328626114,
+            "maximum_campaign_risk_percent": 0.24895435328626114,
+            "total_pnl": 41.64070890750099,
+            "sharpe_ratio": null,
+            "sharpe_observed_days": 0
+          },
+          "RANGE": {
+            "total_trades": 0,
+            "win_rate": 0,
+            "average_winner": 0,
+            "average_loser": 0,
+            "expectancy": 0,
+            "profit_factor": null,
+            "maximum_drawdown": 0.0,
+            "average_R": 0,
+            "median_R": 0,
+            "maximum_campaign_risk": 0,
+            "maximum_campaign_risk_percent": 0,
+            "total_pnl": 0,
+            "sharpe_ratio": null,
+            "sharpe_observed_days": 0
+          },
+          "UNKNOWN": {
+            "total_trades": 0,
+            "win_rate": 0,
+            "average_winner": 0,
+            "average_loser": 0,
+            "expectancy": 0,
+            "profit_factor": null,
+            "maximum_drawdown": 0.0,
+            "average_R": 0,
+            "median_R": 0,
+            "maximum_campaign_risk": 0,
+            "maximum_campaign_risk_percent": 0,
+            "total_pnl": 0,
+            "sharpe_ratio": null,
+            "sharpe_observed_days": 0
+          }
+        },
+        "by_instrument": {
+          "SYNTHETIC_INDEX": {
+            "total_trades": 1,
+            "win_rate": 1.0,
+            "average_winner": 41.64070890750099,
+            "average_loser": 0,
+            "expectancy": 41.64070890750099,
+            "profit_factor": null,
+            "maximum_drawdown": 0.003910288186660824,
+            "average_R": 1.6726242525118755,
+            "median_R": 1.6726242525118755,
+            "maximum_campaign_risk": 24.895435328626114,
+            "maximum_campaign_risk_percent": 0.24895435328626114,
+            "total_pnl": 41.64070890750099,
+            "sharpe_ratio": null,
+            "sharpe_observed_days": 0
+          }
+        }
+      }
+    }
+  }
+}

@@ -6,9 +6,11 @@
  */
 
 import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom'
+import { useState } from 'react'
 import {
   LayoutDashboard, TrendingUp, Activity, Shield,
-  Settings as SettingsIcon, FileText, Zap, FlaskConical
+  Settings as SettingsIcon, FileText, Zap, FlaskConical,
+  PanelLeftClose, PanelLeftOpen
 } from 'lucide-react'
 import Dashboard from './pages/Dashboard'
 import Trades from './pages/Trades'
@@ -58,23 +60,47 @@ function Placeholder({ title }: { title: string }) {
 }
 
 export default function App() {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try { return localStorage.getItem('sidebar-collapsed') === 'true' } catch { return false }
+  })
+
+  function toggleSidebar() {
+    setSidebarCollapsed(current => {
+      const next = !current
+      try { localStorage.setItem('sidebar-collapsed', String(next)) } catch { /* Keep the toggle usable without storage. */ }
+      return next
+    })
+  }
+
   return (
     <AccessGate><BrowserRouter>
       <div className="flex h-[calc(100vh-36px)] bg-slate-900 text-slate-100 overflow-hidden">
 
         {/* ── Sidebar ─────────────────────────────────────────── */}
-        <aside className="w-16 md:w-56 flex-shrink-0 bg-slate-800 border-r border-slate-700 flex flex-col">
+        <aside className={`${sidebarCollapsed ? 'w-16' : 'w-56'} flex-shrink-0 bg-slate-800 border-r border-slate-700 flex flex-col transition-[width] duration-200`}>
           {/* Logo */}
-          <div className="px-5 py-5 border-b border-slate-700">
-            <div className="flex items-center gap-2">
+          <div className={`${sidebarCollapsed ? 'px-2' : 'px-4'} py-4 border-b border-slate-700`}>
+            <div className={`flex items-center ${sidebarCollapsed ? 'flex-col gap-3' : 'justify-between gap-2'}`}>
+              <div className="flex items-center gap-2 min-w-0">
               <Zap className="w-5 h-5 text-cyan-400" />
-              <span className="hidden md:inline font-bold text-sm text-white">MR Bot</span>
+              {!sidebarCollapsed && <span className="font-bold text-sm text-white truncate">Strategy Tester</span>}
+              </div>
+              <button
+                type="button"
+                onClick={toggleSidebar}
+                aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                aria-expanded={!sidebarCollapsed}
+                title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/60 transition-colors"
+              >
+                {sidebarCollapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
+              </button>
             </div>
-            <p className="hidden md:block text-xs text-slate-500 mt-0.5">Deriv · Synthetic Indices</p>
+            {!sidebarCollapsed && <p className="text-xs text-slate-500 mt-0.5">Deriv · Synthetic Indices</p>}
           </div>
 
           {/* Nav */}
-          <nav className="flex-1 overflow-y-auto px-1 md:px-3 py-4 space-y-1">
+          <nav className={`flex-1 overflow-y-auto ${sidebarCollapsed ? 'px-1' : 'px-3'} py-4 space-y-1`}>
             {NAV.map(({ to, label, icon: Icon }) => (
               <NavLink
                 key={to}
@@ -83,7 +109,7 @@ export default function App() {
                 title={label}
                 end={to === '/'}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                  `flex items-center ${sidebarCollapsed ? 'justify-center px-2' : 'gap-3 px-3'} py-2 rounded-lg text-sm transition-colors ${
                     isActive
                       ? 'bg-cyan-500/15 text-cyan-400'
                       : 'text-slate-400 hover:text-white hover:bg-slate-700/60'
@@ -91,14 +117,14 @@ export default function App() {
                 }
               >
                 <Icon className="w-4 h-4 flex-shrink-0" />
-                <span className="hidden md:inline">{label}</span>
+                {!sidebarCollapsed && <span className="truncate">{label}</span>}
               </NavLink>
             ))}
           </nav>
 
           {/* Footer */}
-          <div className="hidden md:block px-5 py-4 border-t border-slate-700">
-            <p className="text-xs text-slate-500">v1.0.0 · protected controls</p>
+          <div className={`${sidebarCollapsed ? 'px-1 text-center' : 'px-5'} py-4 border-t border-slate-700`}>
+            {!sidebarCollapsed && <p className="text-xs text-slate-500">v1.0.0 · protected controls</p>}
           </div>
         </aside>
 

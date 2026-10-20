@@ -1,0 +1,17 @@
+{
+  "engine": {
+    "min_confluence": 2,
+    "use_hurst": false,
+    "use_crt": true,
+    "swing_lookback": 3
+  },
+  "hybrid": {
+    "value_period": 5,
+    "confirmation_threshold": 2,
+    "regime": {
+      "timeframes": [600, 1200],
+      "ema_period": 20,
+      "swing_lookback": 2
+    }
+  }
+}

@@ -7,7 +7,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
     const errors: string[] = []
     page.on('pageerror', error => errors.push(error.message))
     await page.goto('/institutional')
-    await expect(page.getByRole('heading', { name: 'Sign in to MR Bot' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Sign in to Strategy Tester' })).toBeVisible()
     await page.getByLabel('Access key').fill('visual-test-admin-key-0000000000000000')
     await page.getByRole('button', { name: 'Sign in', exact: true }).click()
     await page.getByRole('button', { name: 'Order lifecycle simulator', exact: true }).click()
@@ -60,7 +60,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
     await page.screenshot({ path: testInfo.outputPath('catalog.png') })
     expect(await page.locator('main').evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
     await page.getByRole('button', { name: 'Sign out' }).click()
-    await expect(page.getByRole('heading', { name: 'Sign in to MR Bot' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Sign in to Strategy Tester' })).toBeVisible()
     expect(errors).toEqual([])
   })
 }

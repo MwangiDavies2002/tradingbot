@@ -6,3 +6,34 @@ html, body { @apply bg-slate-900 text-slate-100; }
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { @apply bg-slate-800; }
 ::-webkit-scrollbar-thumb { @apply bg-slate-600 rounded-full; }
+
+
+:root {
+  color-scheme: dark;
+  --slate-50: 248 250 252; --slate-100: 241 245 249;
+  --slate-200: 226 232 240; --slate-300: 203 213 225;
+  --slate-400: 148 163 184; --slate-500: 100 116 139;
+  --slate-600: 71 85 105; --slate-700: 51 65 85;
+  --slate-800: 30 41 59; --slate-900: 15 23 42; --slate-950: 2 6 23;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --slate-50: 2 6 23; --slate-100: 15 23 42;
+  --slate-200: 30 41 59; --slate-300: 51 65 85;
+  --slate-400: 71 85 105; --slate-500: 100 116 139;
+  --slate-600: 148 163 184; --slate-700: 203 213 225;
+  --slate-800: 255 255 255; --slate-900: 248 250 252; --slate-950: 241 245 249;
+}
+/* Keep headings and status text readable on light surfaces. */
+:root[data-theme="light"] .text-white { color: #0f172a; }
+:root[data-theme="light"] .text-cyan-400,
+:root[data-theme="light"] .text-cyan-300 { color: #0e7490; }
+:root[data-theme="light"] .text-emerald-400,
+:root[data-theme="light"] .text-green-400 { color: #047857; }
+:root[data-theme="light"] .text-red-400,
+:root[data-theme="light"] .text-red-300 { color: #b91c1c; }
+:root[data-theme="light"] .text-amber-300,
+:root[data-theme="light"] .text-yellow-400 { color: #92400e; }
+:root[data-theme="light"] button.bg-cyan-700,
+:root[data-theme="light"] .bg-cyan-600.text-white,
+:root[data-theme="light"] .bg-blue-600.text-white { color: white; }

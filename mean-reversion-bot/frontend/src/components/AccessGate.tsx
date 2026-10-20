@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode, type FormEvent } from 'react'
+import ThemeToggle from './ThemeToggle'
 import { api, setAccessKey } from '../api/client'
 import { IdentityContext, type Identity } from '../auth/identity'
 
@@ -39,7 +40,8 @@ export default function AccessGate({ children }: { children: ReactNode }) {
   }
   if (!identity) return <main className="min-h-screen bg-slate-900 text-slate-100 grid place-items-center p-6">
     <form onSubmit={login} className="w-full max-w-sm space-y-4 bg-slate-800 p-6 rounded-xl">
-      <h1 className="text-xl font-bold">Sign in to MR Bot</h1>
+      <div className="flex justify-end"><ThemeToggle /></div>
+      <h1 className="text-xl font-bold">Sign in to Strategy Tester</h1>
       <p className="text-sm text-slate-400">Enter the access key provided by your administrator. It stays in memory until you sign out or close this page.</p>
       <label className="block">Access key<input autoComplete="off" type="password" required value={key}
         onChange={e => setKey(e.target.value)} className="block w-full rounded p-2 mt-2 bg-slate-900" /></label>
@@ -50,7 +52,7 @@ export default function AccessGate({ children }: { children: ReactNode }) {
   return <div>
     <div className="bg-slate-950 text-slate-300 text-sm px-4 py-2 flex justify-between">
       <span>{identity.demo ? 'Deriv demo' : 'Deriv LIVE'} · {identity.account_id || 'Account not configured'} · {identity.role}</span>
-      <button type="button" onClick={() => { setAccessKey(''); localStorage.removeItem(ACCESS_KEY_STORAGE); setIdentity(null) }}>Sign out</button>
+      <div className="flex items-center gap-3"><ThemeToggle /><button type="button" onClick={() => { setAccessKey(''); localStorage.removeItem(ACCESS_KEY_STORAGE); setIdentity(null) }}>Sign out</button></div>
     </div>
     <IdentityContext.Provider value={identity}>{children}</IdentityContext.Provider>
   </div>
