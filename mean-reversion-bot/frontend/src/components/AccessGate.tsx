@@ -38,13 +38,13 @@ export default function AccessGate({ children }: { children: ReactNode }) {
     }
     finally { setBusy(false) }
   }
-  if (!identity) return <main className="min-h-screen bg-slate-900 text-slate-100 grid place-items-center p-6">
-    <form onSubmit={login} className="w-full max-w-sm space-y-4 bg-slate-800 p-6 rounded-xl">
+  if (!identity) return <main className="box-border flex min-h-screen w-full items-center justify-center overflow-x-hidden bg-slate-900 p-4 text-slate-100">
+    <form onSubmit={login} className="box-border w-full min-w-0 max-w-sm space-y-4 rounded-xl bg-slate-800 p-6">
       <div className="flex justify-end"><ThemeToggle /></div>
       <h1 className="text-xl font-bold">Sign in to Strategy Tester</h1>
-      <p className="text-sm text-slate-400">Enter the access key provided by your administrator. It stays in memory until you sign out or close this page.</p>
+      <p className="text-sm text-slate-400">Enter the access key for this deployment. Sign-in on localhost and Vercel are separate. After a successful sign-in, this browser remembers the key for this site until you sign out.</p>
       <label className="block">Access key<input autoComplete="off" type="password" required value={key}
-        onChange={e => setKey(e.target.value)} className="block w-full rounded p-2 mt-2 bg-slate-900" /></label>
+        onChange={e => setKey(e.target.value)} className="box-border block w-full min-w-0 rounded p-2 mt-2 bg-slate-900" /></label>
       {error && <p role="alert" className="text-red-300">{error}</p>}
       <button type="submit" disabled={busy} className="bg-cyan-700 rounded px-4 py-2 disabled:opacity-50">{busy ? 'Signing in…' : 'Sign in'}</button>
     </form>
