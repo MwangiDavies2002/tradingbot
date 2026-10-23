@@ -181,7 +181,10 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }))
     const detail = err.detail
+    const legacySchema = (value: unknown) => /(?:research_scope|market_impact_ticks_per_lot|special_hours)[\s\S]*extra inputs are not permitted/i.test(typeof value === 'string' ? value : JSON.stringify(value))
+    const schemaUpgradeMessage = 'The research API connected to this page is outdated. It rejected the selected research settings, so no analysis was saved. Update or restart that backend, then retry.'
     if (Array.isArray(detail)) {
+      if (legacySchema(detail)) throw new Error(schemaUpgradeMessage)
       const messages = detail.map((issue: any) => {
         const loc = Array.isArray(issue.loc) ? issue.loc.filter((part: any) => part !== 'body').join(' · ') : ''
         const message = String(issue.msg || 'Invalid value').replace(/^Value error,\s*/i, '')
@@ -189,9 +192,7 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
       })
       throw new Error(messages.join('\n'))
     }
-    if (typeof detail === 'string' && /research_scope.*extra inputs are not permitted/i.test(detail)) {
-      throw new Error('The research API is outdated and does not support session/setup filters. Restart the app from this project and refresh before running analysis.')
-    }
+    if (legacySchema(detail)) throw new Error(schemaUpgradeMessage)
     throw new Error(typeof detail === 'string' ? detail : JSON.stringify(detail || `HTTP ${res.status}`))
   }
   return res.json() as Promise<T>
