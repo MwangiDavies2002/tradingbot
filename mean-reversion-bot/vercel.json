@@ -12,6 +12,7 @@
   "functions": {
     "api/index.py": {
       "maxDuration": 60,
+      "includeFiles": "backend/app/**",
       "excludeFiles": "{backend/tests/**,backend/info/**,backend/**/__pycache__/**,backend/.pytest_cache/**,backend/.ruff_cache/**,backend/.venv*/**,backend/.micromamba/**,backend/Library/**,backend/micromamba.tar.bz2,frontend/node_modules/**}"
     }
   }
