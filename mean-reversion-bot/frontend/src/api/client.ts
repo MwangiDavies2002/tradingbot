@@ -10,7 +10,11 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
-const BASE = (import.meta as any).env?.VITE_API_URL ?? ''
+const viteEnv = (import.meta as any).env
+// Production is deployed as one Vercel project: its /api rewrites point to
+// the backend bundled with this frontend. Do not let a stale VITE_API_URL
+// override that same-deployment API and send research requests to old code.
+const BASE = viteEnv?.PROD ? '' : (viteEnv?.VITE_API_URL ?? '')
 let accessKey = ''
 export function setAccessKey(value: string) { accessKey = value }
 export function authHeaders(): Record<string, string> {
