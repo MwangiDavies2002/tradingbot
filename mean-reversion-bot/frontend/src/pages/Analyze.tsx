@@ -70,7 +70,6 @@ export default function Analyze() {
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
-  const [apiCompatible, setApiCompatible] = useState<boolean | null>(null)
   const [pair, setPair] = useState('')
   const [strategy, setStrategy] = useState<Record<string, boolean>>(() => Object.fromEntries(STRATEGY_OPTIONS.map(([key]) => [key, ['use_zscore','use_rsi','use_bb'].includes(key)])))
   useEffect(() => {
@@ -82,7 +81,6 @@ export default function Analyze() {
     setCatalog(data.symbols.filter((s: any) => s.eligible).map((s: any) => ({ name: s.name, description: s.description || '' })))
   }
   useEffect(() => {
-    api.get('/health').then((health: any) => setApiCompatible(health.analysis_schema_version === 2)).catch(() => setApiCompatible(false))
     refreshHistory().catch(e => setError(String(e)))
     api.get('/api/mt5/status').then((s: any) => { if (s.connected) catalogLoad().catch(e => setError(String(e))) }).catch(() => {})
   }, [])
@@ -122,10 +120,6 @@ export default function Analyze() {
     setCalendarDraft(symbol, {date: '', open: '', close: ''})
   }
   async function run() {
-    if (apiCompatible !== true) {
-      setError(apiCompatible === false ? 'The research API is out of date or unavailable. Restart the app from this project, then refresh this page before running a test.' : 'Checking that the research API is ready. Try again in a moment.')
-      return
-    }
     const intervalSeconds = Number(timeframe.slice(1)) * (timeframe.startsWith('M') ? 60 : 3600)
     const rangeSeconds = researchScope.opening_range_minutes * 60
     if (researchScope.setup === 'opening_range_breakout' && (intervalSeconds > rangeSeconds || rangeSeconds % intervalSeconds !== 0)) {
@@ -169,7 +163,7 @@ export default function Analyze() {
   const relations = report?.relationships
   const selectedPair = relations?.pairs.find((p: any) => `${p.a}|${p.b}` === pair) || relations?.pairs[0]
   const locked = busy || job?.status === 'running' || !canRunResearch
-  const runDisabled = locked || apiCompatible !== true
+  const runDisabled = locked
   const useIndicators = researchScope.setup === 'strategy_signals' || researchScope.opening_range_indicator_confirmation
   const selectedStrategyNames = STRATEGY_OPTIONS.filter(([key]) => strategy[key]).map(([, label]) => label)
   const customSymbol = custom.trim()
@@ -257,7 +251,7 @@ export default function Analyze() {
       </fieldset>
     </details>})}
     <button className={button} disabled={runDisabled || !symbols.length || (source==='import' && symbols.some(s=>!bars[s]))} onClick={run}>Analyze selected assets</button>
-    {apiCompatible === false && <p role="alert" className="rounded border border-red-500 bg-red-950/40 p-3 text-red-200">This page is connected to an outdated or unavailable research API. Restart the app from this project and refresh before running analysis.</p>}{error && <p role="alert" className="text-red-300 break-words whitespace-pre-line">{error}</p>}{message && <p role="status" className="text-emerald-300">{message}</p>}
+    {error && <p role="alert" className="text-red-300 break-words whitespace-pre-line">{error}</p>}{message && <p role="status" className="text-emerald-300">{message}</p>}
     {job && <section className="bg-slate-800 rounded-xl p-5 space-y-3" aria-label="Analysis progress"><h2 className="text-xl font-bold">{job.status}: {job.stage}</h2><progress aria-label="Research progress" className="w-full" max="1" value={job.progress}/><p className="text-sm text-slate-400">Saved run {job.id}. Progress persists when you leave this page. Cancellation stops at the next analysis checkpoint.</p>{job.status==='running' && <button className={button} disabled={!canRunResearch} onClick={async()=>{try{setJob(await api.post(`/api/analysis/runs/${job.id}/cancel`,{}))}catch(e){setError(String(e))}}}>Cancel analysis</button>}<button className="ml-2 underline" onClick={()=>downloadFile(`/api/analysis/runs/${job.id}/artifact`,`analysis-${job.id}.json`).catch(e=>setError(String(e)))}>Download report and source snapshot</button></section>}
     {report?.decision_summary&&<section className="bg-slate-800 rounded-xl p-5" aria-label="Research decision summary"><h2 className="text-xl font-bold">Run decision: {report.decision_summary.overall_decision==='candidate_available'?'candidate available':'no trade'}</h2><p className="text-sm text-slate-400">{report.decision_summary.demo_candidates} demo candidates · {report.decision_summary.no_trade} no-trade assets · {report.decision_summary.failed} failed</p></section>}
     {report && Object.entries(report.assets||{}).map(([symbol, value])=>{const r:any=value;const scope=r.validation?.research_scope;const holdoutMeta=r.validation?.holdout?.metadata;const researchOnly=scope?.setup==='opening_range_breakout'||Boolean(scope?.sessions?.length);return <section key={symbol} className="bg-slate-800 rounded-xl p-5 space-y-3"><h2 className="text-xl font-bold">{symbol} research report</h2><p className={r.demo_candidate?'text-emerald-300':'text-amber-200'}>{r.demo_candidate?'Validated demo candidate':researchOnly&&r.validation?'Research complete · research-only scope':'No trade: more evidence needed'} · {r.status}</p>{r.error&&<p role="alert" className="text-red-300">{r.error}</p>}{scope&&<p className="text-sm text-cyan-200">Tested: {scope.setup==='opening_range_breakout'?`Opening range breakout · ${scope.opening_range_session.replace('_',' ')} · first ${scope.opening_range_minutes} minutes${scope.opening_range_volume_filter?` · volume ≥ ${scope.opening_range_volume_multiple}× prior 20-bar average`:''}`: `Selected strategy signals · ${scope.sessions.length?scope.sessions.join(', '):'all broker session hours'}`}</p>}{holdoutMeta?.opening_range_volume&&<p className="text-sm text-slate-300">Holdout breakout volume: {holdoutMeta.opening_range_volume.volume_confirmed} confirmed · {holdoutMeta.opening_range_volume.volume_rejected} rejected · {holdoutMeta.opening_range_volume.volume_unavailable} unavailable.</p>}{holdoutMeta?.market_impact_model&&<p className="text-sm text-slate-400">Holdout size impact: {holdoutMeta.market_impact_model.configured_ticks_per_lot} ticks per lot per fill. This is the configured user-supplied scenario; it is not measured market depth.</p>}{holdoutMeta?.intrabar_ambiguity&&<p className="text-sm text-slate-400">Holdout candles touching both stop and target: {holdoutMeta.intrabar_ambiguity.same_bar_stop_and_target}. The simulator resolves these stop first.</p>}{r.no_trade_reasons?.length>0&&<ul className="list-disc pl-5 text-amber-200">{r.no_trade_reasons.map((reason:string)=><li key={reason}>{reason}</li>)}</ul>}{r.quality&&<p>Data coverage: {(r.quality.coverage*100).toFixed(1)}% · {r.quality.missing_bars} missing bars in {r.quality.missing_ranges?.length??0} ranges · {r.quality.outside_session_or_grid} outside the supplied calendar · longest flat close run {r.quality.stale_close_run_bars} bars · spread median/max {r.quality.median_spread??'N/A'} / {r.quality.max_spread??'N/A'} · calendar {r.quality.session_confirmed?'confirmed':'unconfirmed'} ({r.quality.calendar_timezone}; {r.quality.holiday_dates} holidays, {r.quality.early_close_dates} early closes, {r.quality.special_hours_dates} special dates)</p>}{r.market_behavior?.status==='ok'&&<p>Behavior: {r.market_behavior.regime} · annualized volatility {(r.market_behavior.annualized_volatility*100).toFixed(2)}% · lag-1 return correlation {r.market_behavior.lag1_return_autocorrelation.toFixed(3)} · trend z-score {r.market_behavior.trend_zscore.toFixed(2)}</p>}
