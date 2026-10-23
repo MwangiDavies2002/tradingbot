@@ -8,7 +8,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from app.database.models import Base
 from app.execution.safety import ExecutionStore, control_row
-from sqlalchemy.exc import DatabaseError
+from sqlalchemy.exc import DBAPIError
 
 pytestmark = pytest.mark.skipif(not os.getenv("TEST_POSTGRES_URL"), reason="Disposable PostgreSQL URL not configured")
 
@@ -34,7 +34,7 @@ async def test_registry_concurrency_and_immutability(pg):
     for table, column in (("research_families", "name"), ("research_runs", "name"), ("research_outcomes", "status")):
         for statement in (f"UPDATE {table} SET {column}='changed'", f"DELETE FROM {table}"):
             async with sessions() as db:
-                with pytest.raises(DatabaseError, match="append-only"):
+                with pytest.raises(DBAPIError, match="append-only"):
                     await db.execute(text(statement))
                 await db.rollback()
 
