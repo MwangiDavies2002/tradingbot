@@ -21,6 +21,17 @@ class Bar(Record):
     spread: float | None = Field(default=None, ge=0)
 
 
+class SessionHours(Record):
+    open_minute: int = Field(ge=0, lt=1440)
+    close_minute: int = Field(gt=0, le=1440)
+
+    @model_validator(mode='after')
+    def valid(self):
+        if self.open_minute >= self.close_minute:
+            raise ValueError('Special session open must be before its close; split overnight sessions at midnight')
+        return self
+
+
 class Session(Record):
     timezone: str = 'UTC'
     source: str = Field(default='', max_length=500)
@@ -29,6 +40,7 @@ class Session(Record):
     close_minute: int = Field(default=1440, gt=0, le=1440)
     holidays: list[date] = Field(default_factory=list, max_length=366)
     early_closes: dict[date, int] = Field(default_factory=dict, max_length=366)
+    special_hours: dict[date, SessionHours] = Field(default_factory=dict, max_length=366)
     confirmed: bool = False
 
     @model_validator(mode='after')
@@ -38,6 +50,12 @@ class Session(Record):
             raise ValueError('Use weekdays 0–6 and a same-day session; split overnight sessions at midnight')
         if any(not self.open_minute < v <= self.close_minute for v in self.early_closes.values()):
             raise ValueError('Invalid early close minute')
+        if set(self.holidays) & set(self.special_hours):
+            raise ValueError('A date cannot be both a holiday and a special open session')
+        if set(self.holidays) & set(self.early_closes):
+            raise ValueError('A date cannot be both a holiday and an early close')
+        if set(self.early_closes) & set(self.special_hours):
+            raise ValueError('Use either an early close or special hours for a date, not both')
         if self.confirmed and not self.source.strip():
             raise ValueError('Confirmed session calendars require a source or broker schedule reference')
         return self
@@ -60,6 +78,7 @@ class Profile(Record):
     rollover_weights: list[float] = Field(default_factory=lambda: [1, 1, 3, 1, 1, 0, 0], min_length=7, max_length=7)
     spread_price: float | None = Field(default=None, ge=0, le=1e6)
     slippage_ticks: float = Field(default=1, ge=0, le=10000)
+    market_impact_ticks_per_lot: float = Field(default=0, ge=0, le=10000)
     annualization: int = Field(default=252, ge=1, le=366)
     price_basis: Literal['bid', 'mid'] = 'bid'
     costs_confirmed: bool = False
@@ -91,6 +110,17 @@ class Asset(Record):
     bars: list[Bar] | None = Field(default=None, min_length=100, max_length=10000)
 
 
+class ResearchScope(Record):
+    # Empty means all supplied broker-session bars. Presets use local exchange/market clocks.
+    sessions: list[Literal['asia', 'london', 'new_york']] = Field(default_factory=list, max_length=3)
+    setup: Literal['strategy_signals', 'opening_range_breakout'] = 'strategy_signals'
+    opening_range_session: Literal['asia', 'london', 'new_york'] = 'new_york'
+    opening_range_minutes: Literal[15, 30, 60] = 15
+    opening_range_volume_filter: bool = False
+    opening_range_volume_multiple: float = Field(default=1.5, ge=1, le=10)
+    opening_range_indicator_confirmation: bool = False
+
+
 class AnalysisRequest(Record):
     source: Literal['mt5', 'deriv', 'import'] = 'mt5'
     assets: list[Asset] = Field(min_length=1, max_length=8)
@@ -100,6 +130,7 @@ class AnalysisRequest(Record):
     minimum_overlap: int = Field(default=100, ge=30, le=1000)
     initial_balance: float = Field(default=10000, gt=0, le=1e9)
     strategy: DemoConfig = Field(default_factory=DemoConfig)
+    research_scope: ResearchScope = Field(default_factory=ResearchScope)
     exposures: dict[str, float] = Field(default_factory=dict, max_length=8)
 
     @model_validator(mode='after')
@@ -113,6 +144,14 @@ class AnalysisRequest(Record):
             raise ValueError('Each imported asset requires its own candles')
         if self.source != 'import' and any(a.bars is not None for a in self.assets):
             raise ValueError('Use the import source for supplied candles')
+        if len(self.research_scope.sessions) != len(set(self.research_scope.sessions)):
+            raise ValueError('Research sessions must be unique')
+        if self.research_scope.setup == 'opening_range_breakout' and self.research_scope.sessions:
+            raise ValueError('Opening-range research uses its selected opening session; clear the separate entry-session filters')
+        if self.research_scope.setup == 'opening_range_breakout' and self.interval > self.research_scope.opening_range_minutes * 60:
+            raise ValueError('Opening range must be at least one candle long; choose a shorter timeframe')
+        if self.research_scope.setup == 'opening_range_breakout' and (self.research_scope.opening_range_minutes * 60) % self.interval:
+            raise ValueError('Timeframe must divide the opening range evenly')
         return self
 
     @property

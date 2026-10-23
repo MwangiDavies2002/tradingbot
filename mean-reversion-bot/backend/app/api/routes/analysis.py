@@ -2,7 +2,7 @@
 import json
 import threading
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 from app.api.routes.mt5 import local_only, get_runner
 from app.quant.jobs import AnalysisJobs
 from app.quant.schemas import AnalysisRequest
@@ -32,6 +32,12 @@ async def create(request: Request, store=Depends(jobs)):
             with runner.lock:
                 runner._require_connection()
         return store.create(body,runner)
+    except ValidationError as exc:
+        issues = [{"loc": list(issue["loc"]), "msg": issue["msg"], "type": issue["type"]}
+                  for issue in exc.errors()]
+        raise HTTPException(422, detail=issues) from exc
+    except json.JSONDecodeError as exc:
+        raise HTTPException(400, 'Request body must be valid JSON') from exc
     except ValueError as exc:
         raise HTTPException(422,str(exc)) from exc
 

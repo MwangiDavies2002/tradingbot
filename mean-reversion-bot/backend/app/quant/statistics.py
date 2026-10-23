@@ -1,20 +1,16 @@
 """Session audits and cross-asset statistics with no price filling."""
-from datetime import datetime, timezone
 from itertools import combinations
 import math
 import warnings
-from zoneinfo import ZoneInfo
 
 import numpy as np
 from statsmodels.tsa.stattools import adfuller, coint
 from app.data.validation import validate_candles
+from app.quant.research_sessions import market_is_open
 
 
 def is_session(ts, session):
-    local = datetime.fromtimestamp(ts, ZoneInfo(session.timezone))
-    minute = local.hour * 60 + local.minute
-    return (local.weekday() in session.weekdays and local.date() not in session.holidays
-            and session.open_minute <= minute < session.early_closes.get(local.date(), session.close_minute))
+    return market_is_open(ts, session)
 
 
 def audit(bars, interval, session, start, end):
@@ -47,9 +43,11 @@ def audit(bars, interval, session, start, end):
             'spread_observations': len(spreads), 'median_spread': median_spread,
             'max_spread': max(spreads) if spreads else None, 'spread_outlier_bars': spread_outliers,
             'session_confirmed': session.confirmed, 'session_source': session.source,
+            'calendar_timezone': session.timezone, 'holiday_dates': len(session.holidays),
+            'early_close_dates': len(session.early_closes), 'special_hours_dates': len(session.special_hours),
             'start': start, 'end_exclusive': end,
             'passed': bool(expected) and not missing and not unexpected and session.confirmed,
-            'note': 'No candles are filled or invented. Missing counts use the supplied session, holidays and early closes. Flat closes and spread outliers are reported as warnings, not silently repaired.'}
+            'note': 'No candles are filled or invented. Missing counts use the supplied session, holidays, early closes and date-specific special hours. Flat closes and spread outliers are reported as warnings, not silently repaired.'}
 
 
 def returns(bars, interval):

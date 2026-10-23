@@ -27,12 +27,14 @@ import Institutional from './pages/Institutional'
 import InstrumentCatalog from './pages/InstrumentCatalog'
 import PaperTrades from './pages/PaperTrades'
 import Scanner from './pages/Scanner'
+import QuickTest from './pages/QuickTest'
 
-const NAV = [
-  { to: '/',         label: 'Dashboard', icon: LayoutDashboard },
+const TOOLS = [
+  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+
   { to: '/trades',   label: 'Deriv History', icon: TrendingUp  },
   { to: '/signals',  label: 'Deriv Signals', icon: Activity    },
-  { to: '/backtest', label: 'Strategy Lab', icon: FlaskConical },
+  { to: '/backtest', label: 'Full Strategy Lab', icon: FlaskConical },
   { to: '/analyze', label: 'Analyze assets', icon: FlaskConical },
   { to: '/scanner', label: 'Forward scanner', icon: Activity },
   { to: '/paper-trades', label: 'Paper trades', icon: FlaskConical },
@@ -101,7 +103,14 @@ export default function App() {
 
           {/* Nav */}
           <nav className={`flex-1 overflow-y-auto ${sidebarCollapsed ? 'px-1' : 'px-3'} py-4 space-y-1`}>
-            {NAV.map(({ to, label, icon: Icon }) => (
+            <NavLink to="/test" aria-label="Run a test" title="Run a test" className="flex items-center gap-3 rounded-lg bg-cyan-500/15 px-3 py-2.5 text-sm font-semibold text-cyan-300">
+              <FlaskConical className="w-4 h-4 flex-shrink-0" />
+              {!sidebarCollapsed && <span>Run a test</span>}
+            </NavLink>
+            {!sidebarCollapsed && <details className="group pt-2">
+              <summary className="cursor-pointer list-none rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500 hover:bg-slate-700/50 hover:text-slate-300">More tools</summary>
+              <div className="mt-1 space-y-1">
+            {TOOLS.map(({ to, label, icon: Icon }) => (
               <NavLink
                 key={to}
                 to={to}
@@ -120,6 +129,8 @@ export default function App() {
                 {!sidebarCollapsed && <span className="truncate">{label}</span>}
               </NavLink>
             ))}
+              </div>
+            </details>}
           </nav>
 
           {/* Footer */}
@@ -131,7 +142,9 @@ export default function App() {
         {/* ── Main Content ─────────────────────────────────────── */}
         <main className="flex-1 min-w-0 overflow-y-auto">
           <Routes>
-            <Route path="/" element={<Dashboard />} />
+            <Route path="/" element={<QuickTest />} />
+            <Route path="/test" element={<QuickTest />} />
+            <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/trades"   element={<Trades />} />
             <Route path="/signals"  element={<Signals />} />
             <Route path="/backtest" element={<Backtest />} />

@@ -267,6 +267,7 @@ def create_app() -> FastAPI:
             content     = {
                 "status":      status,
                 "version":     settings.APP_VERSION,
+                "analysis_schema_version": 2,
                 "environment": settings.ENVIRONMENT,
                 "database":    "ok" if db_ok else "error",
                 "redis":       "ok" if redis_ok else "unavailable",

@@ -180,7 +180,19 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }))
-    throw new Error(typeof err.detail === 'string' ? err.detail : JSON.stringify(err.detail || `HTTP ${res.status}`))
+    const detail = err.detail
+    if (Array.isArray(detail)) {
+      const messages = detail.map((issue: any) => {
+        const loc = Array.isArray(issue.loc) ? issue.loc.filter((part: any) => part !== 'body').join(' · ') : ''
+        const message = String(issue.msg || 'Invalid value').replace(/^Value error,\s*/i, '')
+        return loc ? `${loc}: ${message}` : message
+      })
+      throw new Error(messages.join('\n'))
+    }
+    if (typeof detail === 'string' && /research_scope.*extra inputs are not permitted/i.test(detail)) {
+      throw new Error('The research API is outdated and does not support session/setup filters. Restart the app from this project and refresh before running analysis.')
+    }
+    throw new Error(typeof detail === 'string' ? detail : JSON.stringify(detail || `HTTP ${res.status}`))
   }
   return res.json() as Promise<T>
 }

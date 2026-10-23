@@ -17,7 +17,8 @@ def validate_strategy(bars, request, profile, symbol, progress):
         raise ValueError('At least 300 candles are required for walk-forward and final holdout validation')
     folds, oos = [], []
     def simulate(data, config, stress=1):
-        return ContractBacktest(config, profile, request.initial_balance, stress).run(data, symbol, request.timeframe)
+        return ContractBacktest(config, profile, request.initial_balance, stress,
+                                request.research_scope.model_dump(), request.interval).run(data, symbol, request.timeframe)
     # Reuse the existing expanding-window selection rule, now with contract cash accounting.
     initial = len(development)//2
     step = (len(development)-initial)//3
@@ -70,6 +71,7 @@ def validate_strategy(bars, request, profile, symbol, progress):
     config = request.strategy.model_dump()
     config.update(symbol=symbol, timeframe=request.timeframe, min_confluence=chosen.min_confluence)
     return {'folds': folds, 'holdout_start': bars[boundary].timestamp, 'holdout': holdout.to_dict(),
+            'research_scope': request.research_scope.model_dump(),
             'holdout_cost_stress': stress.to_dict(),
             'sensitivity': {'rows': sensitivity, 'tested': len(sensitivity),
                             'positive_pnl_cases': positive_sensitivity,
@@ -80,4 +82,4 @@ def validate_strategy(bars, request, profile, symbol, progress):
             'selected_strategy': DemoConfig(**config).model_dump(), 'oos_trades': len(oos), 'oos_pnl': sum(oos),
             'oos_profit_factor': pf, 'monte_carlo': monte_carlo(oos, request.initial_balance),
             'selection_rule': 'Development return minus drawdown, >=5 training trades; thresholds predeclared before fetching data',
-            'note': 'Final 20% is not used for selection. Repeatedly tuning against this report invalidates its holdout status. Independent demo observation is still required.'}
+            'note': 'Final 20% is not used for selection. Repeatedly tuning against this report invalidates its holdout status. Independent demo observation is still required. Session presets are standard clock windows, not a verified instrument holiday or broker calendar.'}

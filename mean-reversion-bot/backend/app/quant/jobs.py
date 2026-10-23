@@ -135,12 +135,21 @@ class AnalysisJobs:
                         self.update(run_id, f'{symbol}: {stage}', (index+.4)/len(request.assets)*.85, report, artifacts)
                     validation = self.validator(bars,request,profile,symbol,progress)
                     row.update(status='complete', validation=validation)
-                    eligible = (request.source == 'mt5' and quality['passed'] and not quality['stale_close_warning']
+                    eligible = (request.source == 'mt5' and request.research_scope.setup == 'strategy_signals'
+                                and not request.research_scope.sessions
+                                and profile.market_impact_ticks_per_lot == 0
+                                and quality['passed'] and not quality['stale_close_warning']
                                 and profile.costs_confirmed
                                 and validation['passed'] and not snapshot.get('warnings'))
                     reasons = []
                     if request.source != 'mt5':
                         reasons.append('Only connected MT5 research can produce a demo candidate')
+                    if request.research_scope.setup == 'opening_range_breakout':
+                        reasons.append('Opening-range breakout results are research-only; the demo scanner does not execute this setup')
+                    elif request.research_scope.sessions:
+                        reasons.append('Session-restricted results are research-only; the demo scanner does not enforce these research windows')
+                    if profile.market_impact_ticks_per_lot > 0:
+                        reasons.append('Size-based market-impact scenario is research-only; the demo scanner does not apply this impact model')
                     if not quality['passed']:
                         reasons.append('Data quality or confirmed session calendar did not pass')
                     if quality['stale_close_warning']:
