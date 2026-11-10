@@ -212,8 +212,8 @@ def test_authentication_roles_and_defaults(monkeypatch):
     def config(): return {"ok": True}
     client = TestClient(app)
     assert client.post("/api/bot/stop").status_code == 401
-    for role in ("viewer", "operator", "admin"):
-        token = role * 32
+    tokens = {"viewer": "viewer01", "operator": "operat01", "admin": "adm1n123"}
+    for role, token in tokens.items():
         role_name = role.upper()
         monkeypatch.setattr(settings, f"API_{role_name}_PASSWORD_HASH",
                             hashlib.sha256(token.encode()).hexdigest())
@@ -222,6 +222,13 @@ def test_authentication_roles_and_defaults(monkeypatch):
         assert client.get("/api/bot/stop", headers=headers).status_code == 200
         assert client.post("/api/bot/stop", headers=headers).status_code == (403 if role == "viewer" else 200)
         assert client.put("/api/config/test", headers=headers).status_code == (200 if role == "admin" else 403)
+
+    short_token = "short77"
+    monkeypatch.setattr(settings, "API_ADMIN_PASSWORD_HASH",
+                        hashlib.sha256(short_token.encode()).hexdigest())
+    assert client.get("/api/bot/stop", headers={
+        "Authorization": f"Bearer {short_token}"
+    }).status_code == 401
 
     legacy_token = "legacy-admin-password-" + "0" * 24
     monkeypatch.setattr(settings, "API_ADMIN_PASSWORD_HASH", "")

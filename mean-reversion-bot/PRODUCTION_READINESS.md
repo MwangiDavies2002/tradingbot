@@ -155,8 +155,9 @@ No code-only audit can establish profitability. The default remains demo, and
 
 1. In `backend`, run `python generate_password_hash.py admin` locally. Store the
    printed `API_ADMIN_PASSWORD_HASH` in the backend environment and enter the password
-   into the dashboard. Passwords must be at least 32 characters. Generate separate
-   operator/viewer passwords as needed. Passwords are held in the current browser
+   into the dashboard. Passwords must be at least 8 characters. Eight-character
+   passwords are weak for internet-facing deployments; use a longer password there.
+   Generate separate operator/viewer passwords as needed. Passwords are held in the current browser
    tab's session storage. Rotate a password by replacing its hash and restarting
    the API. This is a single-key-per-role design, not a
    multi-user identity provider or MFA system.

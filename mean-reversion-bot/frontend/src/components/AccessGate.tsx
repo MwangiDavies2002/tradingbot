@@ -44,8 +44,8 @@ export default function AccessGate({ children }: { children: ReactNode }) {
     <form onSubmit={login} className="box-border w-full min-w-0 max-w-sm space-y-4 rounded-xl bg-slate-800 p-6">
       <div className="flex justify-end"><ThemeToggle /></div>
       <h1 className="text-xl font-bold">Sign in to Strategy Tester</h1>
-      <p className="text-sm text-slate-400">Enter the strong password assigned to your role for this deployment (at least 32 characters). Sign-in on localhost and Vercel are separate. This tab keeps your password only for the current browser session.</p>
-      <label className="block">Password<input autoComplete="current-password" type="password" required minLength={32} value={password}
+      <p className="text-sm text-slate-400">Enter the password assigned to your role for this deployment (at least 8 characters). Sign-in on localhost and Vercel are separate. This tab keeps your password only for the current browser session.</p>
+      <label className="block">Password<input autoComplete="current-password" type="password" required minLength={8} value={password}
         onChange={e => setPassword(e.target.value)} className="box-border block w-full min-w-0 rounded p-2 mt-2 bg-slate-900" /></label>
       {error && <p role="alert" className="text-red-300">{error}</p>}
       <button type="submit" disabled={busy} className="bg-cyan-700 rounded px-4 py-2 disabled:opacity-50">{busy ? 'Signing in…' : 'Sign in'}</button>

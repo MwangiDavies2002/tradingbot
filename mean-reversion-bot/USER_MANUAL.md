@@ -9,7 +9,7 @@ You need:
 - Windows on the same PC as the desktop MT5 terminal.
 - An MT5 demo account and its exact server name.
 - The MR Bot backend and frontend installed.
-- A strong password supplied by the administrator for your assigned role.
+- A password supplied by the administrator for your assigned role.
 - At least 100 closed candles for every asset you want to analyze.
 
 This application does not store your MT5 password. Log in to MT5 first and leave the terminal open.
@@ -44,7 +44,7 @@ The backend is ready when `http://127.0.0.1:8000/health` responds. Keep the back
 
 ## 3. Sign In
 
-1. Enter the strong password supplied by your administrator. Passwords must be at least 32 characters to meet the backend credential policy.
+1. Enter the password supplied by your administrator. Passwords must be at least 8 characters.
 2. If the page says it cannot reach the local API, start `backend/run_local.py` and retry.
 3. If the password is rejected, ask the administrator to confirm the password configured for your role. Do not copy the password hash from `backend/.env` as the password.
 4. Your role controls which research and execution actions are available:
@@ -54,7 +54,9 @@ The backend is ready when `http://127.0.0.1:8000/health` responds. Keep the back
 
 The password is retained only in the current browser tab's session storage and is cleared when you sign out or close the tab.
 
-Administrators can generate a password hash by running `python generate_password_hash.py admin` (replace `admin` with `operator` or `viewer`) from the `backend` directory, then adding the printed value to `backend/.env`.
+Administrators can run `python generate_password_hash.py admin` (replace `admin` with `operator` or `viewer`) from the `backend` directory. Enter the chosen password twice, then replace the matching `API_<ROLE>_PASSWORD_HASH` value in `backend/.env` with the printed line and restart the backend. For Vercel, update that environment variable and redeploy.
+
+Eight-character passwords are weak for a publicly reachable dashboard. Use this shorter minimum only on a trusted network; choose a longer password for internet-facing deployments.
 
 ## 4. Prepare MT5 (Only for MT5 History or Demo Execution)
 

@@ -88,7 +88,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES:  int  = 60
     REFRESH_TOKEN_EXPIRE_DAYS:    int  = 7
     ALGORITHM:          str  = "HS256"
-    # SHA-256 digests of strong role passwords (minimum 32 characters).
+    # SHA-256 digests of role passwords (minimum 8 characters).
     API_ADMIN_PASSWORD_HASH: str = ""
     API_OPERATOR_PASSWORD_HASH: str = ""
     API_VIEWER_PASSWORD_HASH: str = ""

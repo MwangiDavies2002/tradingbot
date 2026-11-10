@@ -10,7 +10,7 @@ from app.config import settings
 
 def authenticate(header: str) -> str | None:
     scheme, _, token = header.partition(" ")
-    if scheme.lower() != "bearer" or len(token) < 32:
+    if scheme.lower() != "bearer" or len(token) < 8:
         return None
     digest = hashlib.sha256(token.encode()).hexdigest()
     for role in ("admin", "operator", "viewer"):

@@ -1,9 +1,9 @@
-"""Hash a strong role password for the backend environment."""
+"""Hash a role password for the backend environment."""
 import argparse
 import getpass
 import hashlib
 
-MIN_PASSWORD_LENGTH = 32
+MIN_PASSWORD_LENGTH = 8
 
 
 def main() -> None:
@@ -11,7 +11,7 @@ def main() -> None:
     parser.add_argument("role", choices=("admin", "operator", "viewer"))
     args = parser.parse_args()
 
-    password = getpass.getpass("Password (minimum 32 characters): ")
+    password = getpass.getpass("Password (minimum 8 characters): ")
     confirmation = getpass.getpass("Confirm password: ")
     if password != confirmation:
         parser.error("passwords do not match")
