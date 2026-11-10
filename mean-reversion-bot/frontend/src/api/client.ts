@@ -184,6 +184,9 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }))
+    if (res.status === 401) {
+      throw new Error('This API is still requiring an access key. Restart the local backend or redeploy the updated API, then refresh this page.')
+    }
     const detail = err.detail
     const legacySchema = (value: unknown) => /(?:research_scope|market_impact_ticks_per_lot|special_hours)[\s\S]*extra inputs are not permitted/i.test(typeof value === 'string' ? value : JSON.stringify(value))
     const schemaUpgradeMessage = 'The research API connected to this page is outdated. It rejected the selected research settings, so no analysis was saved. Update or restart that backend, then retry.'

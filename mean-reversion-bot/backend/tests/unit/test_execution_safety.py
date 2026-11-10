@@ -203,7 +203,7 @@ def test_risk_state_roundtrip_preserves_halt():
     assert restored._week_start_balance == 1000
 
 
-def test_authentication_roles_and_defaults(monkeypatch):
+def test_api_access_requires_no_password_and_uses_admin_role(monkeypatch):
     app = FastAPI()
     app.middleware("http")(protect_api)
     @app.api_route("/api/bot/stop", methods=["GET", "POST"])
@@ -211,7 +211,7 @@ def test_authentication_roles_and_defaults(monkeypatch):
     @app.put("/api/config/test")
     def config(): return {"ok": True}
     client = TestClient(app)
-    assert client.post("/api/bot/stop").status_code == 401
+    assert client.post("/api/bot/stop").status_code == 200
     tokens = {"viewer": "viewer01", "operator": "operat01", "admin": "adm1n123"}
     for role, token in tokens.items():
         role_name = role.upper()
@@ -220,15 +220,15 @@ def test_authentication_roles_and_defaults(monkeypatch):
         monkeypatch.setattr(settings, f"API_{role_name}_KEY_HASH", "")
         headers = {"Authorization": f"Bearer {token}"}
         assert client.get("/api/bot/stop", headers=headers).status_code == 200
-        assert client.post("/api/bot/stop", headers=headers).status_code == (403 if role == "viewer" else 200)
-        assert client.put("/api/config/test", headers=headers).status_code == (200 if role == "admin" else 403)
+        assert client.post("/api/bot/stop", headers=headers).status_code == 200
+        assert client.put("/api/config/test", headers=headers).status_code == 200
 
     short_token = "short77"
     monkeypatch.setattr(settings, "API_ADMIN_PASSWORD_HASH",
                         hashlib.sha256(short_token.encode()).hexdigest())
     assert client.get("/api/bot/stop", headers={
         "Authorization": f"Bearer {short_token}"
-    }).status_code == 401
+    }).status_code == 200
 
     legacy_token = "legacy-admin-password-" + "0" * 24
     monkeypatch.setattr(settings, "API_ADMIN_PASSWORD_HASH", "")
