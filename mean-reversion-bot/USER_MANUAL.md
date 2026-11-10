@@ -54,7 +54,7 @@ The backend is ready when `http://127.0.0.1:8000/health` responds. Keep the back
 
 The password is retained only in the current browser tab's session storage and is cleared when you sign out or close the tab.
 
-Administrators can run `python generate_password_hash.py admin` (replace `admin` with `operator` or `viewer`) from the `backend` directory. Enter the chosen password twice, then replace the matching `API_<ROLE>_PASSWORD_HASH` value in `backend/.env` with the printed line and restart the backend. For Vercel, update that environment variable and redeploy.
+Administrators can run `python generate_password_hash.py admin --update-env` (replace `admin` with `operator` or `viewer`) from the `backend` directory. Enter the chosen password twice; the script updates that role's hash in `backend/.env`. Restart the backend for the new password to take effect. For Vercel, update the matching environment variable and redeploy.
 
 Eight-character passwords are weak for a publicly reachable dashboard. Use this shorter minimum only on a trusted network; choose a longer password for internet-facing deployments.
 

@@ -36,6 +36,8 @@ export default function AccessGate({ children }: { children: ReactNode }) {
       const detail = err instanceof Error ? err.message : String(err)
       setError(detail.includes('Failed to fetch')
         ? 'Cannot reach the local API. Start backend/run_local.py, then try again.'
+        : detail.includes('valid access key')
+          ? 'The local API is still running older sign-in code. Update the admin password hash in backend/.env, then restart the backend.'
         : detail)
     }
     finally { setBusy(false) }
