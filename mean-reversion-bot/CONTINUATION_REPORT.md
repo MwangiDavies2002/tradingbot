@@ -497,7 +497,7 @@ Validation: 12 focused research tests passed; research worker compilation and
 frontend production build passed; changed files report no diagnostics. Existing
 Python datetime deprecation warnings and the Vite bundle-size warning remain.
 The local backend is reachable on port 8000; authentication requires the
-access key matching the configured `API_ADMIN_KEY_HASH` in `backend/.env`.
+password matching the configured `API_ADMIN_PASSWORD_HASH` in `backend/.env`.
 
 ## Checkpoint thirty-four: actionable sign-in failure
 
@@ -537,7 +537,7 @@ connection, orders, deployment, or database migration was performed.
 ## Checkpoint thirty-seven: end-to-end user manual
 
 Created `USER_MANUAL.md` as the primary step-by-step operator guide. It covers
-installation and startup, access-key sign-in, MT5 preparation, Analyze
+installation and startup, role-password sign-in, MT5 preparation, Analyze
 selected assets, cost/session/calendar validation, report interpretation,
 no-trade decisions, candidate loading, demo start/stop, forward monitoring,
 common validation errors and system limitations. `MT5_SETUP.md` now links to it

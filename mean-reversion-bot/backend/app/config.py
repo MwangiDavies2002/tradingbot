@@ -88,7 +88,11 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES:  int  = 60
     REFRESH_TOKEN_EXPIRE_DAYS:    int  = 7
     ALGORITHM:          str  = "HS256"
-    # SHA-256 digests of independently generated, high-entropy access keys.
+    # SHA-256 digests of strong role passwords (minimum 32 characters).
+    API_ADMIN_PASSWORD_HASH: str = ""
+    API_OPERATOR_PASSWORD_HASH: str = ""
+    API_VIEWER_PASSWORD_HASH: str = ""
+    # Legacy names remain supported so existing deployments can migrate safely.
     API_ADMIN_KEY_HASH: str = ""
     API_OPERATOR_KEY_HASH: str = ""
     API_VIEWER_KEY_HASH: str = ""

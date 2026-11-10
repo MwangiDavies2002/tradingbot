@@ -31,7 +31,7 @@ needs the scientific packages listed in `requirements.txt`. The launcher waits
 for a healthy API and points to `logs/backend.err.log` if startup fails.
 
 Open <http://localhost:3000/backtest>. Logs are under `logs/`.
-Sign in with the app's configured admin or operator access key. Enter MT5
+Sign in with the app's configured admin or operator password. Enter MT5
 credentials only in the desktop terminal, never in the dashboard.
 
 To start the backend manually, open a PowerShell window and run:

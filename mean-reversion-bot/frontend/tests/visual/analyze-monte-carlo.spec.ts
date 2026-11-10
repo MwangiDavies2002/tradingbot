@@ -22,7 +22,7 @@ for (const width of [1440, 390]) {
     await page.route('**/api/analysis/runs', route => route.fulfill({ json: [
       { id: 'research-ui', status: 'completed', stage: 'finished', created: 1770000000 } ] }))
     await page.goto('/analyze')
-    await page.getByLabel('Access key').fill('visual-test-admin-key-0000000000000000')
+    await page.getByLabel('Password').fill('visual-test-admin-key-0000000000000000')
     await page.getByRole('button', { name: 'Sign in', exact: true }).click()
     await page.getByRole('button', { name: /completed · finished/ }).click()
     const euro = page.getByRole('region', { name: 'EURUSD.a Monte Carlo risk' })

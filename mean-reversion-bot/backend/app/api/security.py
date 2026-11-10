@@ -14,7 +14,9 @@ def authenticate(header: str) -> str | None:
         return None
     digest = hashlib.sha256(token.encode()).hexdigest()
     for role in ("admin", "operator", "viewer"):
-        expected = getattr(settings, f"API_{role.upper()}_KEY_HASH")
+        role_name = role.upper()
+        expected = (getattr(settings, f"API_{role_name}_PASSWORD_HASH") or
+                    getattr(settings, f"API_{role_name}_KEY_HASH"))
         if len(expected) == 64 and hmac.compare_digest(digest, expected):
             return role
     return None
@@ -25,7 +27,7 @@ async def protect_api(request: Request, call_next):
         return await call_next(request)
     role = authenticate(request.headers.get("authorization", ""))
     if not role:
-        return JSONResponse({"detail": "A valid access key is required"}, 401,
+        return JSONResponse({"detail": "A valid password is required"}, 401,
                             headers={"WWW-Authenticate": "Bearer"})
     request.state.role = role
     if request.method not in {"GET", "HEAD"}:

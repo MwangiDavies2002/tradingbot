@@ -142,7 +142,7 @@ pending-run recovery procedure and append-only migration/rollback limitations.
 
 | Phase | Implemented in the working tree | Validation still required |
 | --- | --- | --- |
-| 1 — Safety | Hashed admin/operator/viewer access keys; protected API and UI; account/mode checks; durable intents, positions and circuit breakers; stopped startup; SQL entry gate; restart reconciliation; cash, symbol and account exposure limits | Demo broker exercise; PostgreSQL ownership and kill-switch concurrency checks on deployment |
+| 1 — Safety | Hashed admin/operator/viewer passwords; protected API and UI; account/mode checks; durable intents, positions and circuit breakers; stopped startup; SQL entry gate; restart reconciliation; cash, symbol and account exposure limits | Demo broker exercise; PostgreSQL ownership and kill-switch concurrency checks on deployment |
 | 2 — Execution | Unique per-candle receipts; no blind buy/sell retries; uncertain-order blocking and audited resolution; reconnect gating; receiver/handler separation; closed-candle processing; stale/gap/invalid data rejection; persisted strategy hash, signal breakdown, latency and broker entry tick | Measure fill slippage and latency on demo; validate broker protection parameters and reconnect behavior against the configured legacy v3 endpoint |
 | 3 — Research | Next-open fills; spread, slippage and commission; gap stops; stop-first ambiguity; simulated risk clock; equity drawdown; daily-return Sharpe/Sortino; reproducible data/config hashes; walk-forward train-only selection; seeded Monte Carlo | Calibrate costs to the instrument, collect sufficient real history, and run the research report; OHLC simulation does not model order books, partial fills, network latency or rejection probability |
 | 4 — Operations | Frozen Alembic baseline, schema drift check, production migration guard; CI; separate production services; worker health check; protected Prometheus metrics, alert rules and Grafana dashboard; backup helper and recovery procedure | Start Docker/PostgreSQL, run deployment integration checks, provision monitoring credentials and alert delivery, restore a backup, exercise image rollback |
@@ -153,11 +153,12 @@ No code-only audit can establish profitability. The default remains demo, and
 
 ## Access and account setup
 
-1. In `backend`, run `python generate_access_key.py admin` locally. Store the
-   printed `API_ADMIN_KEY_HASH` in the backend environment and enter the access key
-   into the dashboard. Generate separate operator/viewer keys as needed. Keys
-   are held in browser memory, not local storage. Rotate a key by replacing its
-   hash and restarting the API. This is a single-key-per-role design, not a
+1. In `backend`, run `python generate_password_hash.py admin` locally. Store the
+   printed `API_ADMIN_PASSWORD_HASH` in the backend environment and enter the password
+   into the dashboard. Passwords must be at least 32 characters. Generate separate
+   operator/viewer passwords as needed. Passwords are held in the current browser
+   tab's session storage. Rotate a password by replacing its hash and restarting
+   the API. This is a single-key-per-role design, not a
    multi-user identity provider or MFA system.
 2. Configure `DERIV_ACCOUNT_ID`, `DERIV_API_TOKEN`, `DERIV_APP_ID`, `DERIV_DEMO=true`,
    and `LIVE_TRADING_ENABLED=false` consistently on API and worker. Use separate
@@ -230,7 +231,7 @@ The API binds to loopback; place an authenticated HTTPS reverse proxy in front.
 Vercel may host the dashboard/API, but never the continuous worker. Production
 startup checks the migration revision rather than modifying tables.
 
-For monitoring, create `.secrets/metrics_key` containing a viewer access key,
+For monitoring, create `.secrets/metrics_key` containing a viewer password,
 configure the matching hash on the API, set `GRAFANA_ADMIN_PASSWORD`, and combine
 `docker-compose.prod.yml` with `docker-compose.monitoring.yml`. Prometheus/Grafana
 bind to loopback. Alert rules detect stale heartbeat, unresolved orders,

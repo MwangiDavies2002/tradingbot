@@ -1,15 +1,13 @@
-import { useState, useEffect, type ChangeEvent } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  Play, FlaskConical, Check, X,
-  TrendingUp, BarChart3, History, Layers, Upload, ChevronDown
+  Play, FlaskConical, Check, X, Info, 
+  TrendingUp, BarChart3, History, Layers
 } from 'lucide-react';
 import { api } from '../api/client';
-import { usePermissions } from '../auth/identity';
-import MT5Panel from '../components/MT5Panel';
-import TradingViewPanel from '../components/TradingViewPanel';
-import { DEFAULT_SELECTION, TV_SUPPORTED, tradingViewUrl } from '../tradingview/strategy';
-import { CandlestickChart, type Candle } from '../components/CandlestickChart';
-import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, 
+  Tooltip, ResponsiveContainer, AreaChart, Area
+} from 'recharts';
 
 const STRATEGIES = [
   { id: 'use_zscore', label: 'Z-Score', description: 'Price deviation from rolling mean' },
@@ -21,53 +19,26 @@ const STRATEGIES = [
   { id: 'use_smc', label: 'SMC Structure', description: 'BOS/CHoCH & Order Blocks' },
   { id: 'use_volume', label: 'Volume Spike', description: 'Unusual volume activity' },
   { id: 'use_hurst', label: 'Hurst Regime', description: 'Mean-reversion vs Trending' },
-  { id: 'use_linear_regression', label: 'Linear Regression', description: 'Regression trend forecast' },
-  { id: 'use_tree_model', label: 'Tree Model', description: 'Non-linear feature classifier' },
-  { id: 'use_time_series_nn', label: 'Time-Series Neural Net', description: 'Sequence forecast filter' },
-  { id: 'use_smt', label: 'SMT Divergence', description: 'Cross-market divergence' },
-  { id: 'use_day_levels', label: 'Day High / Low', description: 'High/low of day reactions' },
-  { id: 'use_candle_reversal', label: 'Candle Reversal', description: 'Closed-candle reversal' },
-  { id: 'use_candle_continuation', label: 'Candle Continuation', description: 'Closed-candle continuation' },
-  { id: 'use_crt', label: 'CRT', description: 'Candle range theory setup' },
 ];
 
-const SYMBOLS = ['1HZ75V', '1HZ100V', '1HZ50V', 'BOOM500', 'CRASH500', 'UK100', 'NAS100', 'SP500', 'GER40', 'FRA40', 'XAUUSD'];
+const SYMBOLS = ['R_10', 'R_25', 'R_50', 'R_75', 'R_100', '1HZ10V', '1HZ25V', '1HZ50V', '1HZ75V', '1HZ100V'];
 
 export default function Backtest() {
-  const { canRunResearch } = usePermissions();
-  const [savedLab] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('v751s-strategy-lab-v2') || '{}') || {} } catch { return {} }
+  const [selectedStrategies, setSelectedStrategies] = useState<Record<string, boolean>>({
+    use_zscore: true, use_rsi: true, use_bb: true, use_vwap: true,
+    use_stoch: true, use_lsl: true, use_smc: true, use_volume: true, use_hurst: true
   });
-  const [platform, setPlatform] = useState<'tradingview' | 'mt5'>('tradingview');
-  const [dataSource, setDataSource] = useState<'deriv' | 'mt5'>('deriv');
-  const [selectedStrategies, setSelectedStrategies] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(STRATEGIES.map(s => [s.id, typeof savedLab.selection?.[s.id] === 'boolean' ? savedLab.selection[s.id] : (DEFAULT_SELECTION[s.id] ?? false)])));
-  const [selectedSymbols, setSelectedSymbols] = useState<string[]>(['1HZ75V']);
-  const [mt5Symbol, setMt5Symbol] = useState('');
-  const testSymbols = platform === 'mt5' && dataSource === 'mt5' ? (mt5Symbol ? [mt5Symbol] : []) : selectedSymbols;
-  const [chartSymbol, setChartSymbol] = useState(() => typeof savedLab.chartSymbol === 'string' && /^[A-Za-z0-9_:. -]+$/.test(savedLab.chartSymbol) ? savedLab.chartSymbol : '1HZ75V');
-  const [customChart, setCustomChart] = useState('');
-  const [chartError, setChartError] = useState('');
-  const [timeframe, setTimeframe] = useState(['M1', 'M5', 'M15', 'M30', 'H1', 'H4'].includes(savedLab.timeframe) ? savedLab.timeframe : 'M5');
+  const [selectedSymbols, setSelectedSymbols] = useState<string[]>(['R_75']);
+  const [timeframe, setTimeframe] = useState('M5');
   const [days, setDays] = useState(7);
-  const [startingCapital, setStartingCapital] = useState(10000);
-  const [minConfluence, setMinConfluence] = useState(Number.isInteger(savedLab.threshold) && savedLab.threshold >= 1 && savedLab.threshold <= 20 ? savedLab.threshold : 3);
+  const [minConfluence, setMinConfluence] = useState(6);
   const [loading, setLoading] = useState(false);
-  const [testErrors, setTestErrors] = useState<string[]>([]);
-  const [progress, setProgress] = useState('');
   const [results, setResults] = useState<any[]>([]);
   const [recentRuns, setRecentRuns] = useState<any[]>([]);
-  const [selectedRun, setSelectedRun] = useState<any | null>(null);
-  const [expandedTrades, setExpandedTrades] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    if (platform === 'mt5') fetchRecentRuns();
-  }, [platform]);
-
-
-  useEffect(() => {
-    try { localStorage.setItem('v751s-strategy-lab-v2', JSON.stringify({ selection: selectedStrategies, threshold: minConfluence, timeframe, chartSymbol })) } catch { /* Download still works without browser storage. */ }
-  }, [selectedStrategies, minConfluence, timeframe, chartSymbol]);
+    fetchRecentRuns();
+  }, []);
 
   const fetchRecentRuns = async () => {
     try {
@@ -83,160 +54,62 @@ export default function Backtest() {
   };
 
   const toggleSymbol = (symbol: string) => {
-    setSelectedSymbols(prev => prev.includes(symbol) ? prev.filter(value => value !== symbol) : [...prev, symbol]);
-    setChartSymbol(symbol);
+    setSelectedSymbols(prev => 
+      prev.includes(symbol) ? prev.filter(s => s !== symbol) : [...prev, symbol]
+    );
   };
 
-  const runBacktest = async (csvText?: string) => {
-    if (!canRunResearch || loading || testSymbols.length === 0) return;
-    if (csvText && testSymbols.length !== 1) {
-      setTestErrors(['Select exactly one asset before importing its candles.']); return;
-    }
-    setLoading(true); setTestErrors([]); setResults([]); setSelectedRun(null);
+  const runBacktest = async () => {
+    if (selectedSymbols.length === 0) return;
+    setLoading(true);
     try {
       const payload = {
-        data_source: dataSource,
+        symbols: selectedSymbols,
         timeframe,
         days,
-        initial_balance: startingCapital,
         min_confluence: minConfluence,
-        csv_data: csvText || null,
-        ...selectedStrategies,
-        strategy_versions: {}, news_only: false,
+        ...selectedStrategies
       };
-      // Independent requests retain successes if another asset's feed fails.
-      for (const [index, symbol] of testSymbols.entries()) {
-        setProgress(`Testing ${symbol} (${index + 1}/${testSymbols.length})`);
-        try {
-          const data = await api.post('/api/backtest/run', { ...payload, symbols: [symbol] }) as any[];
-          setResults(previous => [...previous, ...data.map(result => ({ ...result, timeframe, days }))]);
-        } catch (err) {
-          setTestErrors(previous => [...previous, `${symbol}: ${err instanceof Error ? err.message : 'Unknown error'}`]);
-        }
-      }
-      await fetchRecentRuns();
+      const data = await api.post('/api/backtest/run', payload) as any[];
+      setResults(data);
+      fetchRecentRuns();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error'
-      setTestErrors(previous => [...previous, message]);
+      alert(`Backtest failed: ${message}`)
     } finally {
-      setLoading(false); setProgress('');
+      setLoading(false);
     }
-  };
-
-  const handleCsvUpload = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    try {
-      if (file.name.toLowerCase().endsWith('.csv')) {
-        await runBacktest(await file.text());
-      } else {
-        const bytes = await file.arrayBuffer();
-        let binary = '';
-        const data = new Uint8Array(bytes);
-        for (let i = 0; i < data.length; i += 0x8000) binary += String.fromCharCode(...data.subarray(i, i + 0x8000));
-        await runBacktest(`data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${btoa(binary)}`);
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      setTestErrors([`File import failed: ${message}`]);
-    }
-    event.target.value = '';
   };
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      <a href="/analyze" className="inline-block text-cyan-300 underline">Analyze selected assets with data checks, correlations and out-of-sample validation</a>
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-2">
             <FlaskConical className="text-cyan-400" />
             Strategy Lab
           </h1>
           <p className="text-slate-400 text-sm mt-1">
-            Select assets and test each independently using the same strategy settings.
+            Test combinations of strategies against historical data to identify optimal setups.
           </p>
         </div>
-        {platform === 'mt5' && <div className="flex flex-wrap items-center gap-3">
-          <label className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700 cursor-pointer">
-            <Upload className="w-4 h-4" />
-            Import CSV / Excel
-            <input type="file" accept=".csv,.xlsx,.xls" disabled={!canRunResearch || loading || testSymbols.length !== 1} className="hidden" onChange={handleCsvUpload} />
-          </label>
-          <button
-            onClick={() => runBacktest()}
-            disabled={!canRunResearch || loading || testSymbols.length === 0}
-            className={`flex items-center gap-2 px-6 py-2.5 rounded-lg font-semibold transition-all ${
-              loading || testSymbols.length === 0
-                ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
-                : 'bg-cyan-500 hover:bg-cyan-400 text-slate-900 shadow-lg shadow-cyan-500/20'
-            }`}
-          >
-            {loading ? (
-              <div className="w-5 h-5 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <Play className="w-5 h-5 fill-current" />
-            )}
-            {loading ? 'Running Test...' : 'Run Combined Test'}
-          </button>
-        </div>}
+        <button
+          onClick={runBacktest}
+          disabled={loading || selectedSymbols.length === 0}
+          className={`flex items-center gap-2 px-6 py-2.5 rounded-lg font-semibold transition-all ${
+            loading || selectedSymbols.length === 0
+              ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
+              : 'bg-cyan-500 hover:bg-cyan-400 text-slate-900 shadow-lg shadow-cyan-500/20'
+          }`}
+        >
+          {loading ? (
+            <div className="w-5 h-5 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <Play className="w-5 h-5 fill-current" />
+          )}
+          {loading ? 'Running Test...' : 'Run Combined Test'}
+        </button>
       </div>
-      {!canRunResearch && <p className="text-sm text-slate-400">Viewer access: browse strategy results and reports. Running backtests requires an operator or administrator.</p>}
-      {progress && <p role="status" className="text-cyan-300">{progress}</p>}
-      {testErrors.length > 0 && <section role="alert" aria-label="Backtest errors" className="rounded-xl border border-red-800 bg-red-950/30 p-4 text-red-200 space-y-2">
-        <p>Some tests could not run. Successful results are retained below.</p>
-        <ul className="list-disc pl-5 break-words">{testErrors.map((error, index) => <li key={index}>{error}</li>)}</ul>
-      </section>}
-      {platform === 'mt5' && <section aria-label="Historical data source" className="rounded-xl border border-slate-700 bg-slate-800 p-4 space-y-2">
-        <label className="block text-sm">Historical data source
-          <select aria-label="Historical data source" value={dataSource} disabled={loading}
-            onChange={e => {
-              const source = e.target.value as 'deriv' | 'mt5';
-              setDataSource(source);
-            }} className="block mt-2 max-w-full bg-slate-900 border border-slate-600 rounded p-2">
-            <option value="deriv">Deriv history</option>
-            <option value="mt5">Connected MT5 history</option>
-          </select>
-        </label>
-        <p className="text-sm text-slate-300">{dataSource === 'mt5'
-          ? 'Requires the local connected demo terminal. Reads closed candles for the exact MT5 broker pair selected below; unavailable history produces an error, with no Deriv fallback.'
-          : 'Run Combined Test loads Deriv history separately for each selected asset. Unsupported or unavailable feeds are reported per asset.'}</p>
-        <p className="text-xs text-slate-400">Import CSV / Excel uses your file instead of either history source. Results use simulated fills, not MT5 broker execution. Running a test does not start demo entries.</p>
-        <p className="text-xs text-slate-400">Select one asset to enable file import. Each asset test starts with the full starting capital; this is not a shared portfolio simulation.</p>
-      </section>}
-
-      <div className="flex flex-wrap items-center gap-3">
-        <label className="text-sm">Platform <select aria-label="Platform" disabled={loading} value={platform} onChange={e => setPlatform(e.target.value as 'tradingview' | 'mt5')} className="ml-2 bg-slate-800 border border-slate-600 rounded p-2">
-          <option value="tradingview">TradingView</option><option value="mt5">MT5 / Python</option>
-        </select></label>
-        <label className="text-sm">Timeframe <select aria-label="Timeframe" value={timeframe} onChange={e => setTimeframe(e.target.value)} className="ml-2 bg-slate-800 border border-slate-600 rounded p-2">
-          {['M1', 'M5', 'M15', 'M30', 'H1', 'H4'].map(tf => <option key={tf}>{tf}</option>)}
-        </select></label>
-        <span className="text-sm text-cyan-300">{testSymbols.length} selected · {minConfluence} points required</span>
-        <label className="text-sm">Minimum score <input aria-label="Minimum weighted score" type="number" min="1" max="20" step="1" value={minConfluence} onChange={e => { const value = Number(e.target.value); if (Number.isInteger(value) && value >= 1 && value <= 20) setMinConfluence(value) }} className="ml-2 w-20 bg-slate-800 border border-slate-600 rounded p-2" /></label>
-        {[1, 2, 3, 6].map(score => <button key={score} onClick={() => setMinConfluence(score)} aria-pressed={minConfluence === score} className={`px-3 py-2 rounded ${minConfluence === score ? 'bg-cyan-600' : 'bg-slate-800'}`}>{score} points</button>)}
-      </div>
-      {platform === 'tradingview' && <section aria-label="Chart asset selection" className="bg-slate-800 border border-slate-700 rounded-xl p-4 space-y-3">
-        <label className="block text-sm">Chart asset<select aria-label="Chart asset" value={chartSymbol} onChange={e => setChartSymbol(e.target.value)} className="block mt-2 bg-slate-900 border border-slate-600 rounded p-2 max-w-full">
-          {[...new Set([...SYMBOLS, chartSymbol])].map(symbol => <option key={symbol}>{symbol}</option>)}
-        </select></label>
-        <div className="flex flex-wrap gap-2 items-end">
-          <label className="text-sm min-w-0">Other TradingView pair<input aria-label="Other TradingView pair" placeholder="EXCHANGE:SYMBOL" value={customChart} onChange={e => setCustomChart(e.target.value)} className="block mt-2 w-full bg-slate-900 border border-slate-600 rounded p-2" /></label>
-          <button className="px-3 py-2 bg-slate-700 rounded" onClick={() => {
-            const symbol = customChart.trim().toUpperCase();
-            if (!/^[A-Z0-9_]+:[A-Z0-9_.-]+$/.test(symbol)) { setChartError('Enter the exact TradingView exchange and symbol, separated by a colon.'); return; }
-            setChartSymbol(symbol); setChartError('');
-          }}>Show pair</button>
-        </div>
-        {chartError && <p role="alert" className="text-red-300">{chartError}</p>}
-        <p className="text-xs text-slate-400">The chart, external link and Pine export follow this asset. Batch-test selections below are kept separately. Custom symbols are for TradingView charts/exports; data availability depends on TradingView and does not add broker execution support.</p>
-      </section>}
-      {platform === 'tradingview' ? <TradingViewPanel selection={selectedStrategies} threshold={minConfluence} timeframe={timeframe} symbol={chartSymbol} startingCapital={startingCapital} /> :
-      <MT5Panel onSymbolChange={setMt5Symbol} selection={{ timeframe, min_confluence: minConfluence, ...selectedStrategies }}
-        onLoad={config => {
-          setTimeframe(config.timeframe); setMinConfluence(config.min_confluence);
-          setSelectedStrategies(Object.fromEntries(STRATEGIES.map(s => [s.id, config[s.id]])));
-        }} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Sidebar: Controls */}
@@ -249,37 +122,27 @@ export default function Backtest() {
             </h2>
             <div className="grid grid-cols-1 gap-2">
               {STRATEGIES.map(s => (
-                <div
+                <button
                   key={s.id}
+                  onClick={() => toggleStrategy(s.id)}
                   className={`flex items-center justify-between px-3 py-2.5 rounded-lg border transition-all text-left group ${
                     selectedStrategies[s.id]
                       ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400'
                       : 'bg-slate-900/50 border-slate-700 text-slate-500 hover:border-slate-600'
                   }`}
                 >
-                  <button aria-pressed={selectedStrategies[s.id]} onClick={() => toggleStrategy(s.id)} className="flex items-center gap-2 text-left min-w-0">
                   <div>
                     <div className="text-sm font-medium">{s.label}</div>
-                    {s.id === 'use_smt' && platform === 'mt5' && <div className="text-xs text-amber-300">Unavailable in Python: deselect SMT before testing. Requires comparison-market history.</div>}
-                    {!TV_SUPPORTED.includes(s.id) && <div className="text-xs text-amber-300">Python / MT5 only · exact Pine port pending</div>}
                     <div className="text-[10px] opacity-60 leading-tight mt-0.5">{s.description}</div>
                   </div>
-                  </button>
-                  {!TV_SUPPORTED.includes(s.id) && <span className="ml-2 text-[10px] text-slate-400">Python only</span>}
                   {selectedStrategies[s.id] ? (
                     <Check className="w-4 h-4 flex-shrink-0" />
                   ) : (
                     <X className="w-4 h-4 flex-shrink-0 opacity-20 group-hover:opacity-100" />
                   )}
-                </div>
+                </button>
               ))}
             </div>
-          </div>
-
-          <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 space-y-3">
-            <h2 className="text-sm font-bold text-slate-300 uppercase tracking-wider">News-volatility mode</h2>
-            <label className="flex items-center gap-2 text-sm text-slate-400"><input type="checkbox" checked={false} disabled /> High-impact news only</label>
-            <p className="text-xs text-slate-400">News-only execution is not implemented in this backtester. Tests use Python indicators; Pine scripts run separately in TradingView. News signals do not filter these tests.</p>
           </div>
 
           {/* Symbols */}
@@ -288,15 +151,12 @@ export default function Backtest() {
               <TrendingUp className="w-4 h-4 text-cyan-400" />
               Assets to Include
             </h2>
-            <p className="text-xs text-slate-400 mb-3">{platform === 'mt5' && dataSource === 'mt5' ? 'Choose the exact MT5 broker pair above for this test.' : 'Choose multiple batch-test assets. Clicking an asset also selects its chart; use Chart asset above to change only the chart.'}</p>
             <div className="flex flex-wrap gap-2">
               {SYMBOLS.map(symbol => (
                 <button
                   key={symbol}
-                  aria-pressed={selectedSymbols.includes(symbol)}
-                  disabled={loading || (platform === 'mt5' && dataSource === 'mt5')}
                   onClick={() => toggleSymbol(symbol)}
-                  className={`px-3 py-1.5 rounded-md text-xs font-semibold border transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
+                  className={`px-3 py-1.5 rounded-md text-xs font-semibold border transition-all ${
                     selectedSymbols.includes(symbol)
                       ? 'bg-cyan-500 border-cyan-500 text-slate-900'
                       : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:border-slate-600'
@@ -312,13 +172,8 @@ export default function Backtest() {
           <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-sm space-y-4">
             <h2 className="text-sm font-bold text-slate-300 uppercase tracking-wider mb-2">Parameters</h2>
             <div>
-              <label htmlFor="starting-capital" className="text-xs text-slate-500 block mb-1.5">Starting capital (USD)</label>
-              <input id="starting-capital" type="number" min="1" step="100" value={startingCapital} onChange={e => setStartingCapital(Math.max(1, Number(e.target.value) || 1))} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200" />
-              <p className="text-[10px] text-slate-500 mt-1">Used in the generated TradingView strategy. It is not a broker deposit.</p>
-            </div>
-            <div>
-              <label htmlFor="lookback-days" className="text-xs text-slate-500 block mb-1.5">Lookback (Days)</label>
-              <select id="lookback-days"
+              <label className="text-xs text-slate-500 block mb-1.5">Lookback (Days)</label>
+              <select 
                 value={days} 
                 onChange={e => setDays(Number(e.target.value))}
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 outline-none focus:border-cyan-500"
@@ -330,9 +185,9 @@ export default function Backtest() {
               </select>
             </div>
             <div>
-              <label htmlFor="min-confluence" className="text-xs text-slate-500 block mb-1.5">Min. Confluence Score ({minConfluence})</label>
-              <input id="min-confluence"
-                type="range" min="1" max="20" step="1"
+              <label className="text-xs text-slate-500 block mb-1.5">Min. Confluence Score ({minConfluence})</label>
+              <input 
+                type="range" min="4" max="12" step="1"
                 value={minConfluence}
                 onChange={e => setMinConfluence(Number(e.target.value))}
                 className="w-full accent-cyan-500"
@@ -342,28 +197,18 @@ export default function Backtest() {
         </div>
 
         {/* Main Result Area */}
-        <div className="lg:col-span-2 space-y-6 min-w-0">
-          {platform === 'tradingview' ? (
-            <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 space-y-3">
-              <h3 className="text-lg font-semibold">Your selection: {minConfluence} weighted points</h3>
-              <p className="text-slate-300">{STRATEGIES.filter(s => selectedStrategies[s.id]).map(s => s.label).join(', ') || 'Select an indicator to begin.'}</p>
-              <p className="text-sm text-slate-400">There is no required six-point minimum. A one-point Bollinger setup is allowed. Lower thresholds admit more setups; they do not guarantee profitable trades.</p>
-              <p className="text-sm text-slate-400">Download or copy your Pine strategy above. Run the test in TradingView, where the script can access this instrument's price history and draw its simulated trades.</p>
-              <p className="text-sm text-cyan-200">Current chart/export: {chartSymbol} · {timeframe} · ${startingCapital.toLocaleString()} starting capital · {STRATEGIES.filter(s => selectedStrategies[s.id]).map(s => s.label).join(', ') || 'no indicators'}.</p>
-              <a className="inline-block text-cyan-300" href={tradingViewUrl(chartSymbol)} target="_blank" rel="noopener noreferrer">Open TradingView chart and Strategy Tester ↗</a>
-            </div>
-          ) : results.length > 0 ? (
+        <div className="lg:col-span-2 space-y-6">
+          {results.length > 0 ? (
             results.map((res, idx) => (
               <div key={idx} className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden shadow-sm">
-                <div className="p-5 border-b border-slate-700 flex flex-wrap gap-3 items-center justify-between">
+                <div className="p-5 border-b border-slate-700 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-cyan-500/20 flex items-center justify-center">
                       <BarChart3 className="w-6 h-6 text-cyan-400" />
                     </div>
                     <div>
                       <h3 className="font-bold text-white text-lg">{res.symbol} Analysis</h3>
-                      <p className="text-xs text-cyan-300">Historical source: {res.data_source === 'mt5' ? 'MT5' : res.data_source === 'import' ? 'Imported file' : res.data_source === 'deriv' ? 'Deriv' : 'Not recorded'}</p>
-                      <p className="text-xs text-slate-500">Backtest Period: {res.days} days · Timeframe: {res.timeframe}</p>
+                      <p className="text-xs text-slate-500">Backtest Period: {days} days · Timeframe: {timeframe}</p>
                     </div>
                   </div>
                   <div className="text-right">
@@ -401,7 +246,7 @@ export default function Backtest() {
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={res.equity_curve}>
                       <defs>
-                        <linearGradient id={`colorBalance-${idx}`} x1="0" y1="0" x2="0" y2="1">
+                        <linearGradient id="colorBalance" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.3}/>
                           <stop offset="95%" stopColor="#06b6d4" stopOpacity={0}/>
                         </linearGradient>
@@ -421,7 +266,7 @@ export default function Backtest() {
                         dataKey="balance" 
                         stroke="#06b6d4" 
                         fillOpacity={1} 
-                        fill={`url(#colorBalance-${idx})`}
+                        fill="url(#colorBalance)" 
                         strokeWidth={2}
                       />
                     </AreaChart>
@@ -448,11 +293,7 @@ export default function Backtest() {
             <div className="divide-y divide-slate-700">
               {recentRuns.length > 0 ? (
                 recentRuns.map((run, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setSelectedRun(run)}
-                    className={`w-full px-5 py-3 flex items-center justify-between hover:bg-slate-700/30 transition-colors text-left ${selectedRun?.run_id === run.run_id ? 'bg-cyan-500/10' : ''}`}
-                  >
+                  <div key={i} className="px-5 py-3 flex items-center justify-between hover:bg-slate-700/30 transition-colors">
                     <div className="flex items-center gap-4">
                       <span className="text-xs font-mono text-slate-500">#{run.run_id}</span>
                       <div>
@@ -472,63 +313,13 @@ export default function Backtest() {
                         </div>
                       </div>
                     </div>
-                  </button>
+                  </div>
                 ))
               ) : (
                 <div className="p-8 text-center text-slate-500 text-sm italic">No recent experiments found.</div>
               )}
             </div>
           </div>
-
-          {selectedRun && (
-              <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 space-y-4">
-                <p className="text-xs text-cyan-300">Historical source: {selectedRun.data_source === 'mt5' ? 'MT5' : selectedRun.data_source === 'import' ? 'Imported file' : selectedRun.data_source === 'deriv' ? 'Deriv' : 'Not recorded'}</p>
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-[10px] uppercase tracking-wider text-slate-500">Selected Experiment</div>
-                  <h3 className="text-lg font-bold text-white">{selectedRun.symbol} · {selectedRun.timeframe}</h3>
-                </div>
-                <div className="text-right">
-                  <div className="text-[10px] text-slate-500 uppercase font-bold">Sharpe</div>
-                  <div className="text-xl font-black text-cyan-400">{Number(selectedRun.sharpe_ratio || 0).toFixed(2)}</div>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                <div className="bg-slate-900 border border-slate-700 rounded-lg p-3"><div className="text-slate-500">P&L</div><div className={`font-bold ${selectedRun.total_pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>{selectedRun.total_pnl >= 0 ? '+' : ''}{Number(selectedRun.total_pnl || 0).toFixed(2)}</div></div>
-                <div className="bg-slate-900 border border-slate-700 rounded-lg p-3"><div className="text-slate-500">Win rate</div><div className="font-bold text-white">{Number(selectedRun.win_rate || 0).toFixed(1)}%</div></div>
-                <div className="bg-slate-900 border border-slate-700 rounded-lg p-3"><div className="text-slate-500">Trades</div><div className="font-bold text-white">{selectedRun.total_trades}</div></div>
-                <div className="bg-slate-900 border border-slate-700 rounded-lg p-3"><div className="text-slate-500">Max DD</div><div className="font-bold text-red-400">{Number(selectedRun.max_drawdown || 0).toFixed(1)}%</div></div>
-              </div>
-              {selectedRun.candles && selectedRun.candles.length > 0 && (
-                <div className="bg-slate-900 border border-slate-700 rounded-lg p-4">
-                  <h4 className="text-sm font-bold text-white mb-3 flex items-center gap-2"><BarChart3 className="w-4 h-4 text-cyan-400" /> Price Action</h4>
-                  <CandlestickChart candles={selectedRun.candles as Candle[]} width={750} height={250} />
-                </div>
-              )}
-              {selectedRun.trades && selectedRun.trades.length > 0 && (
-                <div className="bg-slate-900 border border-slate-700 rounded-lg overflow-hidden">
-                  <div className="p-4 border-b border-slate-700"><h4 className="text-sm font-bold text-white">Trades ({selectedRun.trades.length})</h4></div>
-                  <div className="divide-y divide-slate-700">
-                    {selectedRun.trades.map((trade: any) => (
-                      <div key={trade.id} className="p-4">
-                        <button type="button" onClick={() => setExpandedTrades(prev => ({ ...prev, [trade.id]: !prev[trade.id] }))} className="w-full flex items-center justify-between hover:text-cyan-400 transition-colors text-left">
-                          <div className="flex items-center gap-3">
-                            <div className={`px-2 py-1 rounded text-xs font-bold ${trade.direction === 'buy' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>{trade.direction.toUpperCase()}</div>
-                            <div><div className="text-sm font-mono">{trade.id.slice(0, 8)}</div><div className="text-xs text-slate-500">{trade.reason || 'manual'}</div></div>
-                          </div>
-                          <div className="flex items-center gap-6">
-                            <div className="text-right"><div className={`text-sm font-bold ${(trade.pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>{(trade.pnl || 0) >= 0 ? '+' : ''}{trade.pnl?.toFixed(2)}</div><div className="text-xs text-slate-500">{trade.pnl_pct?.toFixed(1)}%</div></div>
-                            <ChevronDown className={`w-4 h-4 transition-transform ${expandedTrades[trade.id] ? 'rotate-180' : ''}`} />
-                          </div>
-                        </button>
-                        {expandedTrades[trade.id] && (<div className="mt-3 pt-3 border-t border-slate-600 text-xs grid grid-cols-2 gap-2"><div><span className="text-slate-500">Entry:</span> <span className="text-white font-mono">{trade.entry?.toFixed(4)}</span></div><div><span className="text-slate-500">Exit:</span> <span className="text-white font-mono">{trade.exit?.toFixed(4)}</span></div></div>)}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </div>
     </div>

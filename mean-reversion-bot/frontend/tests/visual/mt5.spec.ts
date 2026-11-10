@@ -18,7 +18,7 @@ for (const width of [1440, 390]) {
     })
     await page.route('**/api/backtest/results', route => route.fulfill({ json: [] }))
     await page.goto('/backtest')
-    await page.getByLabel('Access key').fill('visual-test-admin-key-0000000000000000')
+    await page.getByLabel('Password').fill('visual-test-admin-key-0000000000000000')
     await page.getByRole('button', { name: 'Sign in', exact: true }).click()
     await page.getByLabel('Platform', { exact: true }).selectOption('mt5')
     await page.getByRole('button', { name: 'Connect MT5 demo' }).click()

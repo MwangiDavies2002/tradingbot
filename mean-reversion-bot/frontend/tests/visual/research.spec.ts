@@ -8,7 +8,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
     page.on('pageerror', error => errors.push(error.message))
     await page.goto('/institutional')
     await expect(page.getByRole('heading', { name: 'Sign in to Strategy Tester' })).toBeVisible()
-    await page.getByLabel('Access key').fill('visual-test-admin-key-0000000000000000')
+    await page.getByLabel('Password').fill('visual-test-admin-key-0000000000000000')
     await page.getByRole('button', { name: 'Sign in', exact: true }).click()
     await page.getByRole('button', { name: 'Order lifecycle simulator', exact: true }).click()
     const editor = page.getByRole('textbox', { name: 'Scenario JSON', exact: true })

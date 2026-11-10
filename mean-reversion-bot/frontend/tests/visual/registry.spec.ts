@@ -6,7 +6,7 @@ const keys = {
   viewer: 'visual-test-viewer-key-0000000000000000',
 }
 async function login(page: Page, role: keyof typeof keys) {
-  await page.getByLabel('Access key').fill(keys[role])
+  await page.getByLabel('Password').fill(keys[role])
   await page.getByRole('button', { name: 'Sign in', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Institutional research lab' })).toBeVisible()
 }

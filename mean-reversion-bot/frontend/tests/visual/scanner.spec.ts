@@ -30,7 +30,7 @@ for (const width of [1440, 390]) {
       return route.fulfill({json:state})
     })
     await page.goto('/scanner')
-    await page.getByLabel('Access key').fill('visual-test-admin-key-0000000000000000')
+    await page.getByLabel('Password').fill('visual-test-admin-key-0000000000000000')
     await page.getByRole('button',{name:'Sign in',exact:true}).click()
     await expect(page.getByRole('button',{name:'Start paper scanner'})).toBeDisabled()
     await page.getByRole('button',{name:'Load broker symbols'}).click()

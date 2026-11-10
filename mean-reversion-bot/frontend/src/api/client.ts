@@ -16,7 +16,7 @@ const viteEnv = (import.meta as any).env
 // override that same-deployment API and send research requests to old code.
 const BASE = viteEnv?.PROD ? '' : (viteEnv?.VITE_API_URL ?? '')
 let accessKey = ''
-export function setAccessKey(value: string) { accessKey = value }
+export function setApiCredential(value: string) { accessKey = value }
 export function authHeaders(): Record<string, string> {
   return accessKey ? { Authorization: `Bearer ${accessKey}` } : {}
 }

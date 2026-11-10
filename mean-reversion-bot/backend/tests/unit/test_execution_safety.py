@@ -214,12 +214,22 @@ def test_authentication_roles_and_defaults(monkeypatch):
     assert client.post("/api/bot/stop").status_code == 401
     for role in ("viewer", "operator", "admin"):
         token = role * 32
-        monkeypatch.setattr(settings, f"API_{role.upper()}_KEY_HASH",
+        role_name = role.upper()
+        monkeypatch.setattr(settings, f"API_{role_name}_PASSWORD_HASH",
                             hashlib.sha256(token.encode()).hexdigest())
+        monkeypatch.setattr(settings, f"API_{role_name}_KEY_HASH", "")
         headers = {"Authorization": f"Bearer {token}"}
         assert client.get("/api/bot/stop", headers=headers).status_code == 200
         assert client.post("/api/bot/stop", headers=headers).status_code == (403 if role == "viewer" else 200)
         assert client.put("/api/config/test", headers=headers).status_code == (200 if role == "admin" else 403)
+
+    legacy_token = "legacy-admin-password-" + "0" * 24
+    monkeypatch.setattr(settings, "API_ADMIN_PASSWORD_HASH", "")
+    monkeypatch.setattr(settings, "API_ADMIN_KEY_HASH",
+                        hashlib.sha256(legacy_token.encode()).hexdigest())
+    assert client.get("/api/bot/stop", headers={
+        "Authorization": f"Bearer {legacy_token}"
+    }).status_code == 200
 
 
 @pytest.mark.asyncio

@@ -338,7 +338,7 @@ of absolute modeled position values, not notional exposure or capital required.
 Greek terminology follows the [OIC reference](https://prd-web.optionseducation.org/advancedconcepts/volatility-the-greeks).
 
 `GET /api/institutional/capabilities` returns input JSON schemas. Submit a schema-
-matching body to `POST /api/institutional/{operation}`. Existing access keys apply:
+matching body to `POST /api/institutional/{operation}`. Existing role passwords apply:
 viewer can read schemas; operator/admin can run analyses. HTTP bodies are capped
 at 2 MB, with at most two concurrent analyses per API process. Work runs off the
 event loop; this is not a durable distributed job queue. The CLI retains schema

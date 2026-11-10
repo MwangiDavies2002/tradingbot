@@ -40,7 +40,7 @@ for (const width of [1440, 390]) {
       return route.fulfill({ json: { run:saved, latest, execution_enabled:false } })
     })
     await page.goto('/scanner')
-    await page.getByLabel('Access key').fill('visual-test-operator-key-0000000000000000')
+    await page.getByLabel('Password').fill('visual-test-operator-key-0000000000000000')
     await page.getByRole('button', { name: 'Sign in', exact:true }).click()
     await page.getByRole('button', { name:'Use loaded research candidate' }).click()
     await expect(page.getByRole('alert')).toContainText('Load a passing single-pair candidate')

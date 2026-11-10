@@ -58,7 +58,7 @@ t=p('Practical user guide • Connected MT5 workflow','Subtitle'); t.alignment=W
 p('For the local Windows application, based on the code present on 24 September 2026. Your MT5 connection is assumed to be set up; this guide does not certify its current status.')
 h('Start here: your first session')
 p('The MT5 runner supports demo accounts and Volatility 75 (1s) Index only. Its lab symbol is 1HZ75V. It rejects real accounts. Connecting the terminal does not start entries.')
-step('Open http://localhost:3000/backtest on the Windows PC running MT5 and the backend. Sign in with your app access key if prompted; this is separate from your MT5 login.')
+step('Open http://localhost:3000/backtest on the Windows PC running MT5 and the backend. Sign in with your app password if prompted; this is separate from your MT5 login.')
 step('In Strategy Lab, change Platform from TradingView to MT5 / Python. Check the connected account and server. If disconnected, click Connect MT5 demo.')
 step('Click Load saved selection to restore the configuration saved for the runner. Review the timeframe, Active Strategies and Minimum score.')
 step('Review Risk per trade (%) and Daily equity loss limit (%). Click Save lab selection after any changes. Confirm the saved summary matches your intended settings.')

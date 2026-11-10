@@ -25,7 +25,7 @@ for (const width of [1440, 390]) {
       return route.fulfill({ json: { source, items: empty ? [] : [row], next_cursor: cursor || empty ? null : `${source}-older` } })
     })
     await page.goto('/paper-trades')
-    await page.getByLabel('Access key').fill('visual-test-viewer-key-0000000000000000')
+    await page.getByLabel('Password').fill('visual-test-viewer-key-0000000000000000')
     await page.getByRole('button', { name: 'Sign in', exact: true }).click()
     const evidence = page.getByRole('region', { name: 'Unified paper evidence' })
     await expect(evidence.getByRole('cell', { name: 'buy unresolved' })).toBeVisible()
