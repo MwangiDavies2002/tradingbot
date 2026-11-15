@@ -271,7 +271,7 @@ class MT5DemoRunner:
                     raise ValueError("Install backend requirements-mt5.txt on Windows first") from exc
             self.account_key = None
             path = os.getenv("MT5_TERMINAL_PATH")
-            ok = self.mt5.initialize(path, timeout=5000) if path else self.mt5.initialize(timeout=5000)
+            ok = self.mt5.initialize(path, timeout=60000) if path else self.mt5.initialize(timeout=60000)
             if not ok:
                 message = f"Cannot connect to MT5: {self.mt5.last_error()}. Open the desktop terminal and log in"
                 self.state.update(connected=False, message=message)
