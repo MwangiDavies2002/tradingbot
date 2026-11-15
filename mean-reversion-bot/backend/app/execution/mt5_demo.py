@@ -251,8 +251,12 @@ class MT5DemoRunner:
     def _account(self):
         terminal = self.mt5.terminal_info()
         account = self.mt5.account_info()
-        if not terminal or not terminal.connected or not account:
-            raise ValueError("MT5 is disconnected. Log into your demo account in the desktop terminal")
+        if not terminal:
+            raise ValueError("Could not communicate with MT5 terminal. Check that it is open.")
+        if not terminal.connected:
+            raise ValueError("MT5 terminal is not connected to a broker server. Check your internet and broker login.")
+        if not account:
+            raise ValueError("No MT5 account info. Log into your demo account in the desktop terminal.")
         if account.trade_mode != self.mt5.ACCOUNT_TRADE_MODE_DEMO:
             raise ValueError("Demo account required. This runner does not execute real-money trades")
         key = f"{account.server}:{account.login}"
@@ -271,9 +275,24 @@ class MT5DemoRunner:
                     raise ValueError("Install backend requirements-mt5.txt on Windows first") from exc
             self.account_key = None
             path = os.getenv("MT5_TERMINAL_PATH")
-            ok = self.mt5.initialize(path, timeout=60000) if path else self.mt5.initialize(timeout=60000)
+            # Try some common default paths if not set
+            if not path:
+                defaults = [
+                    r"C:\Program Files\MetaTrader 5\terminal64.exe",
+                    r"C:\Program Files\Deriv MetaTrader 5\terminal64.exe",
+                    r"C:\Program Files\MetaTrader 5 Terminal\terminal64.exe"
+                ]
+                for d in defaults:
+                    if os.path.exists(d):
+                        path = d
+                        break
+
+            ok = self.mt5.initialize(path=path, timeout=60000) if path else self.mt5.initialize(timeout=60000)
             if not ok:
-                message = f"Cannot connect to MT5: {self.mt5.last_error()}. Open the desktop terminal and log in"
+                err = self.mt5.last_error()
+                message = f"Cannot connect to MT5: {err}. Open the desktop terminal and log in. Error code: {err}"
+                if err == -5: # Terminal not found
+                    message += " (Terminal executable not found. Set MT5_TERMINAL_PATH in .env)"
                 self.state.update(connected=False, message=message)
                 raise ValueError(message)
             try:

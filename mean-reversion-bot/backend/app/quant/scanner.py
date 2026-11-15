@@ -97,8 +97,11 @@ class ScanConfig(Record):
         if self.strategy_mode == 'research_candidate':
             if len(self.assets) != 1:
                 raise ValueError('A validated research scan requires exactly one broker pair')
-        elif self.strategy is not None or self.research_run_id is not None or self.candidate_snapshot is not None:
+        elif self.research_run_id is not None or self.candidate_snapshot is not None:
             raise ValueError('Manual scanner settings cannot assert research-candidate evidence')
+        if self.strategy is not None and (self.strategy.timeframe != self.timeframe
+                                          or self.strategy.min_confluence != self.threshold):
+            raise ValueError('Signal strategy timeframe and minimum score must match scanner settings')
         return self
 
     @property
@@ -186,7 +189,7 @@ def evaluate(data, config, symbol, now):
     if config.strategy_mode == 'research_candidate' and config.strategy is None:
         raise ValueError('Validated research strategy must be loaded by the scanner server')
     settings = (config.strategy.model_dump(exclude={'symbol', 'timeframe', 'daily_loss_pct'})
-                if config.strategy_mode == 'research_candidate' and config.strategy else
+                if config.strategy else
                 {'min_confluence': config.threshold, 'use_hurst': False})
     engine = SignalEngine(EngineConfig(**settings))
     engine.initialise(data.get('balance', 10000))
@@ -384,6 +387,9 @@ class Scanner:
                 if config.strategy_mode == 'research_candidate':
                     policy_data.update(strategy_mode='research_candidate', strategy=config.strategy.model_dump(),
                                        research_run_id=config.research_run_id, candidate_snapshot=config.candidate_snapshot)
+                elif config.strategy:
+                    policy_data.update(strategy=config.strategy.model_dump(
+                        exclude={'symbol', 'timeframe', 'daily_loss_pct'}))
                 if config.spread_model == 'fixed_quote':
                     policy_data.pop('spread_model')  # Preserve existing fixed-model policy IDs.
                 if asset.calendar:

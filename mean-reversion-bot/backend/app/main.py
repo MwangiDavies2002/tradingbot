@@ -223,8 +223,9 @@ def create_app() -> FastAPI:
     app.include_router(test.router,        prefix="/api",          tags=["Diagnostics"])
     from app.api.routes import scanner
     app.include_router(scanner.router, prefix="/api/scanner", tags=["Forward Scanner"])
-    from app.api.routes import backtest, analysis
+    from app.api.routes import backtest, analysis, optimization
     app.include_router(analysis.router, prefix="/api/analysis", tags=["Automated Research"])
+    app.include_router(optimization.router, prefix="/api/optimization", tags=["Strategy Optimization"])
     from app.api.routes import metrics
     app.include_router(metrics.router, prefix="/api", tags=["Monitoring"])
 

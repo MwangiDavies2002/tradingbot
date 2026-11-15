@@ -109,6 +109,26 @@ Backtests share the indicator engine, but the existing backtest simulator uses
 its original sizing/fill model. Its P&L is not an exact MT5 CFD simulation;
 demo fills include broker spread, lot constraints and execution costs.
 
+## Receive forward signals
+
+The **Forward scanner** monitors selected MT5 symbols and displays hypothetical
+BUY/SELL signals without starting the demo execution worker. Connect the local
+MT5 demo, load broker symbols, select the exact pair(s), timeframe, indicators,
+minimum score, poll interval and spread/slippage filters, then click
+**Start paper scanner**. New eligible directions appear under **Latest
+observations**. Click **Enable browser alerts** for desktop notifications while
+the scanner page is open. Leave the local app and MT5 terminal running; signal
+scanning does not require enabling Algo Trading.
+
+An indicator direction is not by itself an alert: the scanner also blocks
+stale/gapped candles, wide spreads, volatility spikes and non-range regimes.
+These are exploratory paper signals, not instructions or guarantees to trade.
+For the Germany 40 analysis result, choose the broker's exact Germany 40 symbol,
+M30, RSI and CRT, and minimum score 2 to mirror the submitted signal settings.
+That report's failed validation and incomplete data quality do not support live
+trading. Use paper/demo observation only until substantially more data and
+cost-confirmed out-of-sample testing support the strategy.
+
 ## Risk and recording behavior
 
 ### Multiple-asset historical tests

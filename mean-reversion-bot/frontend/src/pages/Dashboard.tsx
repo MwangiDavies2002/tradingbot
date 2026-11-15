@@ -62,10 +62,10 @@ function StatCard({ label, value, sub, accent = false }: {
   label: string; value: string; sub?: string; accent?: boolean
 }) {
   return (
-    <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
-      <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">{label}</p>
-      <p className={`text-2xl font-bold ${accent ? 'text-cyan-400' : 'text-white'}`}>{value}</p>
-      {sub && <p className="text-xs text-slate-500 mt-1">{sub}</p>}
+    <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 sm:p-4">
+      <p className="text-[10px] sm:text-xs text-slate-400 uppercase tracking-wider mb-1">{label}</p>
+      <p className={`text-lg sm:text-2xl font-bold ${accent ? 'text-cyan-400' : 'text-white'}`}>{value}</p>
+      {sub && <p className="text-[10px] sm:text-xs text-slate-500 mt-1">{sub}</p>}
     </div>
   )
 }
@@ -157,23 +157,23 @@ export default function Dashboard() {
     <div className="p-6 space-y-6">
 
       {/* ── Header ─────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <Zap className="text-cyan-400 w-6 h-6" />
+          <h1 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
+            <Zap className="text-cyan-400 w-5 h-5 sm:w-6 sm:h-6" />
             Strategy Tester
           </h1>
-          <p className="text-slate-400 text-sm mt-0.5">
+          <p className="text-slate-400 text-xs sm:text-sm mt-0.5">
             {lastRefresh ? `Updated ${format(lastRefresh, 'HH:mm:ss')}` : 'Loading...'}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <CBBadge state={cbState} />
           {cbState === 'halted' && (
             <button
               onClick={handleResetCB}
               disabled={actionLoading}
-              className="px-3 py-1.5 text-xs bg-orange-500/20 text-orange-400 border border-orange-500/30 rounded-lg hover:bg-orange-500/30 transition"
+              className="px-2 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs bg-orange-500/20 text-orange-400 border border-orange-500/30 rounded-lg hover:bg-orange-500/30 transition"
             >
               Reset CB
             </button>
@@ -182,15 +182,15 @@ export default function Dashboard() {
             title={status?.bot_running ? "Disable Deriv entries and request managed-position closure" : "Enable entries for the existing Deriv worker; does not start MT5 demo or a backtest"}
             onClick={status?.bot_running ? handleStop : handleStart}
             disabled={actionLoading}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition
+            className={`flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition
               ${status?.bot_running
                 ? 'bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30'
                 : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30'
               }`}
           >
             {status?.bot_running
-              ? <><StopCircle className="w-4 h-4" /> Stop Deriv worker</>
-              : <><PlayCircle className="w-4 h-4" /> Enable Deriv entries</>
+              ? <><StopCircle className="w-3 h-3 sm:w-4 sm:h-4" /> Stop Deriv worker</>
+              : <><PlayCircle className="w-3 h-3 sm:w-4 sm:h-4" /> Enable Deriv entries</>
             }
           </button>
         </div>
@@ -204,7 +204,7 @@ export default function Dashboard() {
       )}
 
       {/* ── Stats Row ──────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label="Account Balance"
           value={balance != null ? `$${balance.toFixed(2)}` : '—'}
@@ -229,7 +229,7 @@ export default function Dashboard() {
 
       {/* ── Phase 6: Advanced Analytics Row ───────────────────── */}
       {state.performance && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
             label="Win Rate"
             value={`${state.performance.win_rate}%`}

@@ -86,6 +86,9 @@ class BTTrade:
     entry_ts:      Optional[int] = None
     exit_ts:       Optional[int] = None
     regime: str = "unknown"
+    mae: float = 0.0
+    mfe: float = 0.0
+    risk_amount: float = 0.0
 
     @property
     def is_open(self) -> bool:
@@ -137,8 +140,14 @@ class BacktestReport:
     run_duration_sec: float = 0.0
     sortino_ratio: float = 0.0
     expectancy: float = 0.0
+    expectancy_r: float = 0.0
+    expectancy_r_lb: float = 0.0
+    mae_avg: float = 0.0
+    mfe_avg: float = 0.0
+    exit_efficiency: float = 0.0
     metadata: dict = field(default_factory=dict)
     attribution: dict = field(default_factory=dict)
+    market_analysis: dict = field(default_factory=dict)
 
     def summary(self) -> str:
         lines = [
@@ -300,6 +309,14 @@ class BacktestEngine:
             # ── 1. Check SL/TP on open trades (use current candle's OHLC) ────
             just_closed = []
             for trade in open_trades:
+                # Update MAE/MFE
+                if trade.direction == "buy":
+                    trade.mae = max(trade.mae, trade.entry_price - current.low)
+                    trade.mfe = max(trade.mfe, current.high - trade.entry_price)
+                else:
+                    trade.mae = max(trade.mae, current.high - trade.entry_price)
+                    trade.mfe = max(trade.mfe, trade.entry_price - current.low)
+
                 closed, pnl = self._check_exit(trade, current)
                 if closed:
                     trade.exit_bar = i
@@ -358,6 +375,7 @@ class BacktestEngine:
                         confluence_score = decision.confluence_score,
                         reason_code   = decision.reason,
                         regime = decision.hurst.regime if decision.hurst else "unknown",
+                        risk_amount   = abs(entry - sizing.stop_loss)
                     )
                     open_trades.append(trade)
                     all_trades.append(trade)
@@ -562,6 +580,40 @@ class BacktestEngine:
                 max_l  = max(max_l, abs(streak))
         report.max_consec_wins   = max_w
         report.max_consec_losses = max_l
+
+        # Intelligence metrics (Phase 4)
+        if trades:
+            report.mae_avg = float(np.mean([t.mae for t in trades]))
+            report.mfe_avg = float(np.mean([t.mfe for t in trades]))
+            
+            # Expectancy in R
+            r_returns = []
+            for t in trades:
+                if t.risk_amount > 0:
+                    r_returns.append(t.pnl / (t.stake * (t.risk_amount / t.entry_price) * self.multiplier))
+            
+            if r_returns:
+                report.expectancy_r = float(np.mean(r_returns))
+                # Phase 5: Confidence bound (Block Bootstrap or simple T-stat for now)
+                if len(r_returns) >= 30:
+                    # Simple T-distribution based lower bound
+                    from scipy import stats
+                    sem = stats.sem(r_returns)
+                    report.expectancy_r_lb = report.expectancy_r - 1.96 * sem
+                else:
+                    report.expectancy_r_lb = -999.0 # Insufficient samples
+
+            # Exit efficiency: (exit - entry) / (mfe - mae) normalized
+            # Simplified: how much of the total possible move did we capture?
+            effs = []
+            for t in trades:
+                total_move = t.mfe + t.mae
+                if total_move > 0:
+                    actual_move = (t.exit_price - t.entry_price) if t.direction == "buy" else (t.entry_price - t.exit_price)
+                    effs.append((actual_move + t.mae) / total_move)
+            if effs:
+                report.exit_efficiency = float(np.mean(effs))
+
         for trade in trades:
             hour = datetime.fromtimestamp(trade.entry_ts, timezone.utc).hour
             weekday = datetime.fromtimestamp(trade.entry_ts, timezone.utc).strftime('%a')
@@ -569,3 +621,17 @@ class BacktestEngine:
             group = report.attribution.setdefault(key, {"trades": 0, "pnl": 0})
             group["trades"] += 1
             group["pnl"] += trade.pnl
+            
+            # Phase 4: Market condition analysis
+            hour_key = f"hour_{hour:02d}"
+            hour_stats = report.market_analysis.setdefault("by_hour", {}).setdefault(hour_key, {"trades": 0, "pnl": 0})
+            hour_stats["trades"] += 1
+            hour_stats["pnl"] += trade.pnl
+            
+            regime_stats = report.market_analysis.setdefault("by_regime", {}).setdefault(trade.regime, {"trades": 0, "pnl": 0})
+            regime_stats["trades"] += 1
+            regime_stats["pnl"] += trade.pnl
+            
+            side_stats = report.market_analysis.setdefault("by_side", {}).setdefault(trade.direction, {"trades": 0, "pnl": 0})
+            side_stats["trades"] += 1
+            side_stats["pnl"] += trade.pnl

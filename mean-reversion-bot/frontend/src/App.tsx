@@ -10,7 +10,7 @@ import { useState } from 'react'
 import {
   LayoutDashboard, TrendingUp, Activity, Shield,
   Settings as SettingsIcon, FileText, Zap, FlaskConical,
-  PanelLeftClose, PanelLeftOpen
+  PanelLeftClose, PanelLeftOpen, Menu, X
 } from 'lucide-react'
 import Dashboard from './pages/Dashboard'
 import Trades from './pages/Trades'
@@ -65,6 +65,7 @@ export default function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     try { return localStorage.getItem('sidebar-collapsed') === 'true' } catch { return false }
   })
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   function toggleSidebar() {
     setSidebarCollapsed(current => {
@@ -76,12 +77,33 @@ export default function App() {
 
   return (
     <AccessGate><BrowserRouter>
-      <div className="flex h-[calc(100vh-36px)] bg-slate-900 text-slate-100 overflow-hidden">
+      <div className="flex flex-col md:flex-row h-screen md:h-[calc(100vh-36px)] bg-slate-900 text-slate-100 overflow-hidden">
+
+        {/* ── Mobile Header ─────────────────────────────────────── */}
+        <header className="md:hidden flex items-center justify-between px-4 py-3 bg-slate-800 border-b border-slate-700 z-50">
+          <div className="flex items-center gap-2">
+            <Zap className="w-5 h-5 text-cyan-400" />
+            <span className="font-bold text-sm text-white">Strategy Tester</span>
+          </div>
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700"
+          >
+            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
+        </header>
 
         {/* ── Sidebar ─────────────────────────────────────────── */}
-        <aside className={`${sidebarCollapsed ? 'w-16' : 'w-56'} flex-shrink-0 bg-slate-800 border-r border-slate-700 flex flex-col transition-[width] duration-200`}>
-          {/* Logo */}
-          <div className={`${sidebarCollapsed ? 'px-2' : 'px-4'} py-4 border-b border-slate-700`}>
+        <aside className={`
+          ${sidebarCollapsed ? 'md:w-16' : 'md:w-56'} 
+          ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+          fixed md:relative inset-y-0 left-0 z-40
+          flex-shrink-0 bg-slate-800 border-r border-slate-700 flex flex-col 
+          transition-transform md:transition-[width] duration-200 ease-in-out
+          w-64 md:w-auto
+        `}>
+          {/* Logo (Hidden on mobile as it's in the header) */}
+          <div className={`${sidebarCollapsed ? 'px-2' : 'px-4'} py-4 border-b border-slate-700 hidden md:block`}>
             <div className={`flex items-center ${sidebarCollapsed ? 'flex-col gap-3' : 'justify-between gap-2'}`}>
               <div className="flex items-center gap-2 min-w-0">
               <Zap className="w-5 h-5 text-cyan-400" />
@@ -102,42 +124,60 @@ export default function App() {
           </div>
 
           {/* Nav */}
-          <nav className={`flex-1 overflow-y-auto ${sidebarCollapsed ? 'px-1' : 'px-3'} py-4 space-y-1`}>
-            <NavLink to="/test" aria-label="Run a test" title="Run a test" className="flex items-center gap-3 rounded-lg bg-cyan-500/15 px-3 py-2.5 text-sm font-semibold text-cyan-300">
+          <nav className={`flex-1 overflow-y-auto ${sidebarCollapsed ? 'md:px-1' : 'md:px-3'} px-3 py-4 space-y-1`}>
+            <NavLink 
+              to="/test" 
+              onClick={() => setMobileMenuOpen(false)}
+              aria-label="Run a test" 
+              title="Run a test" 
+              className="flex items-center gap-3 rounded-lg bg-cyan-500/15 px-3 py-2.5 text-sm font-semibold text-cyan-300"
+            >
               <FlaskConical className="w-4 h-4 flex-shrink-0" />
-              {!sidebarCollapsed && <span>Run a test</span>}
+              <span className={sidebarCollapsed ? 'md:hidden' : ''}>Run a test</span>
             </NavLink>
-            {!sidebarCollapsed && <details className="group pt-2">
-              <summary className="cursor-pointer list-none rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500 hover:bg-slate-700/50 hover:text-slate-300">More tools</summary>
-              <div className="mt-1 space-y-1">
-            {TOOLS.map(({ to, label, icon: Icon }) => (
-              <NavLink
-                key={to}
-                to={to}
-                aria-label={label}
-                title={label}
-                end={to === '/'}
-                className={({ isActive }) =>
-                  `flex items-center ${sidebarCollapsed ? 'justify-center px-2' : 'gap-3 px-3'} py-2 rounded-lg text-sm transition-colors ${
-                    isActive
-                      ? 'bg-cyan-500/15 text-cyan-400'
-                      : 'text-slate-400 hover:text-white hover:bg-slate-700/60'
-                  }`
-                }
-              >
-                <Icon className="w-4 h-4 flex-shrink-0" />
-                {!sidebarCollapsed && <span className="truncate">{label}</span>}
-              </NavLink>
-            ))}
-              </div>
-            </details>}
+            
+            <div className="pt-2 space-y-1">
+              {!sidebarCollapsed && (
+                <div className="hidden md:block px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Tools
+                </div>
+              )}
+              {TOOLS.map(({ to, label, icon: Icon }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  onClick={() => setMobileMenuOpen(false)}
+                  aria-label={label}
+                  title={label}
+                  end={to === '/'}
+                  className={({ isActive }) =>
+                    `flex items-center ${sidebarCollapsed ? 'md:justify-center md:px-2' : 'gap-3 px-3'} py-2 rounded-lg text-sm transition-colors ${
+                      isActive
+                        ? 'bg-cyan-500/15 text-cyan-400'
+                        : 'text-slate-400 hover:text-white hover:bg-slate-700/60'
+                    }`
+                  }
+                >
+                  <Icon className="w-4 h-4 flex-shrink-0" />
+                  <span className={`truncate ${sidebarCollapsed ? 'md:hidden' : ''}`}>{label}</span>
+                </NavLink>
+              ))}
+            </div>
           </nav>
 
           {/* Footer */}
-          <div className={`${sidebarCollapsed ? 'px-1 text-center' : 'px-5'} py-4 border-t border-slate-700`}>
-            {!sidebarCollapsed && <p className="text-xs text-slate-500">v1.0.0 · protected controls</p>}
+          <div className={`${sidebarCollapsed ? 'md:px-1 text-center' : 'md:px-5'} px-5 py-4 border-t border-slate-700`}>
+            <p className={`text-xs text-slate-500 ${sidebarCollapsed ? 'md:hidden' : ''}`}>v1.0.0 · protected controls</p>
           </div>
         </aside>
+
+        {/* Mobile Overlay */}
+        {mobileMenuOpen && (
+          <div 
+            className="fixed inset-0 bg-black/50 z-30 md:hidden" 
+            onClick={() => setMobileMenuOpen(false)}
+          />
+        )}
 
         {/* ── Main Content ─────────────────────────────────────── */}
         <main className="flex-1 min-w-0 overflow-y-auto">

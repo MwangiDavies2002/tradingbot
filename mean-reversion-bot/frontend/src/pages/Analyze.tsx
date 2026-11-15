@@ -204,7 +204,27 @@ export default function Analyze() {
           <label>Opening session<select className={input} value={researchScope.opening_range_session} disabled={locked} onChange={e=>setResearchScope({...researchScope,opening_range_session:e.target.value})}><option value="asia">Asia · Tokyo 09:00</option><option value="london">London · 08:00</option><option value="new_york">New York · 09:30</option></select></label>
           <label>Opening range<select className={input} value={researchScope.opening_range_minutes} disabled={locked} onChange={e=>setResearchScope({...researchScope,opening_range_minutes:+e.target.value})}><option value={15}>First 15 minutes</option><option value={30}>First 30 minutes</option><option value={60}>First 60 minutes</option></select></label>
           <label className="sm:col-span-2"><input type="checkbox" checked={researchScope.opening_range_volume_filter} disabled={locked} onChange={e=>setResearchScope({...researchScope,opening_range_volume_filter:e.target.checked})}/> Require breakout volume above its recent average</label>
-          <label className="sm:col-span-2"><input type="checkbox" checked={researchScope.opening_range_indicator_confirmation} disabled={locked} onChange={e=>setResearchScope({...researchScope,opening_range_indicator_confirmation:e.target.checked})}/> Also require selected strategy indicators to agree with the breakout direction</label>
+          <div className="sm:col-span-2 space-y-2">
+            <label className="flex items-center gap-2"><input type="checkbox" checked={researchScope.opening_range_indicator_confirmation} disabled={locked} onChange={e=>setResearchScope({...researchScope,opening_range_indicator_confirmation:e.target.checked})}/> Require selected strategy indicators to agree with the breakout direction</label>
+            {researchScope.opening_range_indicator_confirmation && (
+              <div className="ml-6 p-3 rounded border border-cyan-800 bg-cyan-950/20">
+                <p className="text-xs text-cyan-200 mb-2 font-medium">Active confirmation strategies:</p>
+                <div className="flex flex-wrap gap-2">
+                  {STRATEGY_OPTIONS.map(([key, label]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      disabled={locked}
+                      onClick={() => setStrategy({ ...strategy, [key]: !strategy[key] })}
+                      className={`text-xs px-2 py-1 rounded border ${strategy[key] ? 'bg-cyan-700 border-cyan-500 text-white' : 'bg-slate-800 border-slate-600 text-slate-400'}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
           {researchScope.opening_range_volume_filter && <label>Minimum volume vs prior 20 candles<input className={input} type="number" min="1" max="10" step="0.1" value={researchScope.opening_range_volume_multiple} disabled={locked} onChange={e=>setResearchScope({...researchScope,opening_range_volume_multiple:+e.target.value})}/></label>}
           <p className="sm:col-span-2 text-xs text-slate-400">The range begins at the later of the preset session open and this asset’s calendar open; it ends at the earlier close. A close beyond the range high/low triggers an entry at the next candle open; the opposite range edge is the stop. Optional volume confirmation requires the breakout candle to exceed the prior 20 candle average by the selected multiple. MT5 volume is tick volume, not traded quantity; missing or zero volume skips a filtered breakout. Preset clocks follow daylight saving time, and each asset’s holidays, early closes and special-hours calendar are applied. If any range candle is missing or the market is closed, that session is skipped. The chosen timeframe must divide this range evenly.</p>
         </div> : <fieldset disabled={locked} className="space-y-2"><legend className="text-sm">Only allow new entries during</legend><p className="text-xs text-slate-400">Leave all unchecked to include every candle inside the supplied broker calendar. Presets: Tokyo 09:00–15:00 JST, London 08:00–16:30 local, New York 09:30–16:00 ET. Positions may exit outside the selected entry window.</p><div className="flex flex-wrap gap-4">{[['asia','Asia · Tokyo'],['london','London'],['new_york','New York']].map(([key,label])=><label key={key}><input type="checkbox" checked={researchScope.sessions.includes(key)} onChange={e=>setResearchScope({...researchScope,sessions:e.target.checked?[...researchScope.sessions,key]:researchScope.sessions.filter(s=>s!==key)})}/> {label}</label>)}</div></fieldset>}

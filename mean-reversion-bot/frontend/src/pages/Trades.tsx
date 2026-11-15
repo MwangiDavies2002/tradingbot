@@ -48,17 +48,17 @@ export default function Trades() {
   }, [loadTrades])
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-4 sm:p-6 space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Trade History</h1>
-          <p className="text-slate-400 text-sm">Review all executed and pending orders</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-white">Trade History</h1>
+          <p className="text-slate-400 text-xs sm:text-sm">Review all executed and pending orders</p>
         </div>
         <div className="flex items-center gap-3">
             <select 
                 value={statusFilter}
                 onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-                className="bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-lg px-3 py-2 outline-none focus:border-cyan-500"
+                className="flex-1 sm:flex-none bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-lg px-3 py-2 outline-none focus:border-cyan-500"
             >
                 <option value="">All Status</option>
                 <option value="open">Open</option>

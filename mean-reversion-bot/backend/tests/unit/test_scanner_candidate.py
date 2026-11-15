@@ -164,9 +164,11 @@ def test_invalid_candidate_cannot_start_or_submit_orders(setup, case, match):
     runner.mt5.order_send.assert_not_called()
 
 
-def test_manual_mode_cannot_claim_research_evidence_and_candidate_is_one_pair():
+def test_manual_strategy_is_allowed_but_cannot_claim_research_evidence():
+    manual = ScanConfig(assets=[{'symbol':'TEST.a'}], timeframe='M5', threshold=9, strategy=strategy())
+    assert manual.strategy.use_zscore is True
     with pytest.raises(ValidationError):
-        ScanConfig(assets=[{'symbol':'TEST.a'}], strategy=strategy())
+        ScanConfig(assets=[{'symbol':'TEST.a'}], strategy=strategy(), research_run_id='forged')
     with pytest.raises(ValidationError):
         config(assets=[{'symbol':'TEST.a'},{'symbol':'OTHER.a'}])
 
@@ -197,6 +199,28 @@ def test_engine_uses_research_signal_toggles_and_threshold(monkeypatch):
     engine.evaluate.return_value = NS(should_trade=False,direction='buy',reason='no setup',confluence_score=9)
     no_setup = evaluate(data,cfg,'TEST.a',30010)
     assert no_setup['strategy_setup'] is False and no_setup['eligible'] is False
+
+
+def test_engine_uses_manual_signal_toggles_and_threshold(monkeypatch):
+    import app.quant.scanner as scanner
+    observed = []
+    engine = Mock()
+    engine.evaluate.return_value = NS(should_trade=False,direction='sell',reason='below threshold',confluence_score=4)
+    engine.atr_ind.compute.return_value = NS(value=1,is_spike=False)
+    engine.hurst_ind.compute.return_value = NS(value=.3)
+    engine.zscore.compute.return_value = NS(value=-1)
+    monkeypatch.setattr(scanner, 'SignalEngine', lambda settings: observed.append(settings) or engine)
+    manual_strategy = strategy(min_confluence=4, use_rsi=True, use_zscore=False)
+    cfg = ScanConfig(assets=[{'symbol':'TEST.a'}], timeframe='M5', threshold=4, strategy=manual_strategy)
+    bars = [dict(timestamp=i*300,open=100,high=101,low=99,close=100,volume=100) for i in range(100)]
+    data = dict(scope='demo:1', bars=bars, bid=100,ask=100.01,quote_time=30010,balance=10000)
+
+    result = evaluate(data,cfg,'TEST.a',30010)
+
+    assert observed[0].min_confluence == 4
+    assert observed[0].use_rsi is True and observed[0].use_zscore is False
+    assert result['direction'] == 'sell'
+    assert result['strategy_setup'] is False
 
 
 def test_contract_drift_unresolves_candidate_exposure(setup):

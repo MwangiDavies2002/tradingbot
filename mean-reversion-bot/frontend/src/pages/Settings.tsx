@@ -61,11 +61,11 @@ export default function Settings() {
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-4xl">
+    <div className="p-4 sm:p-6 space-y-6 max-w-4xl">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">System Settings</h1>
-          <p className="text-slate-400 text-sm">Trading parameters are read-only here. Update server settings and restart the worker to apply changes.</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-white">System Settings</h1>
+          <p className="text-slate-400 text-xs sm:text-sm">Trading parameters are read-only here. Update server settings and restart the worker to apply changes.</p>
         </div>
         <button 
             onClick={() => loadConfig()}
@@ -88,10 +88,10 @@ export default function Settings() {
         </div>
         <div className="divide-y divide-slate-700">
           {config.filter(c => !['DERIV_APP_ID', 'DERIV_API_TOKEN', 'SECRET_KEY', 'DATABASE_URL', 'REDIS_URL'].includes(c.key)).map((item) => (
-            <div key={item.key} className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div key={item.key} className="p-4 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="flex-1">
                 <div className="text-sm font-bold text-white mb-1">{item.key}</div>
-                <div className="text-xs text-slate-500">{item.description}</div>
+                <div className="text-[10px] sm:text-xs text-slate-500">{item.description}</div>
               </div>
               <div className="flex items-center gap-3">
                 <input 
@@ -103,9 +103,9 @@ export default function Settings() {
                             handleUpdate(item.key, e.target.value)
                         }
                     }}
-                    className="bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-lg px-3 py-2 outline-none focus:border-cyan-500 w-32 font-mono"
+                    className="flex-1 md:flex-none bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-lg px-3 py-2 outline-none focus:border-cyan-500 w-full md:w-32 font-mono text-right md:text-left"
                 />
-                {saving === item.key && <RefreshCw className="w-4 h-4 text-cyan-400 animate-spin" />}
+                {saving === item.key && <RefreshCw className="w-4 h-4 text-cyan-400 animate-spin flex-shrink-0" />}
               </div>
             </div>
           ))}

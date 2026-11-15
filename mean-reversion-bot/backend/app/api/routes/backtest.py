@@ -270,6 +270,7 @@ class BacktestRequest(BaseModel):
     min_confluence: int = Field(6, ge=1, le=20)
     strategy_versions: dict[str, Literal['python_mt5', 'pine']] = Field(default_factory=dict)
     news_only: bool = False
+    combination_id: Optional[str] = None
 
 
 class BacktestReportResponse(BaseModel):
@@ -344,6 +345,7 @@ async def run_backtest(req: BacktestRequest, request: Request, db: AsyncSession 
             run_id = str(uuid.uuid4())[:8]
             db_res = BacktestResult(
                 run_id=run_id,
+                combination_id=req.model_dump().get("combination_id"), # If provided
                 symbol=symbol,
                 timeframe=req.timeframe,
                 date_from=datetime.fromtimestamp(candles[0].timestamp),
@@ -357,6 +359,16 @@ async def run_backtest(req: BacktestRequest, request: Request, db: AsyncSession 
                 max_drawdown=report.max_drawdown_pct,
                 total_pnl=report.total_pnl,
                 total_pnl_pct=report.total_pnl_pct,
+                
+                # Intelligence (Phase 4)
+                expectancy_r=report.expectancy_r,
+                expectancy_r_lb=report.expectancy_r_lb,
+                mae_avg=report.mae_avg,
+                mfe_avg=report.mfe_avg,
+                exit_efficiency=report.exit_efficiency,
+                market_analysis_json=report.market_analysis,
+                feedback_json=getattr(report, "feedback", []),
+
                 params_json={**req.model_dump(exclude={"csv_data"}),
                              "input_source": 'import' if req.csv_data else req.data_source,
                              "provenance": report.metadata},

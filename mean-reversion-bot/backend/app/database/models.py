@@ -442,6 +442,7 @@ class BacktestResult(Base):
 
     id              = Column(Integer, primary_key=True, autoincrement=True)
     run_id          = Column(String(32), unique=True, nullable=False, index=True)
+    combination_id  = Column(String(64), ForeignKey("strategy_combinations.fingerprint"), nullable=True, index=True)
     symbol          = Column(String(32), nullable=False)
     timeframe       = Column(String(8),  nullable=False)
     date_from       = Column(DateTime,   nullable=False)
@@ -458,12 +459,21 @@ class BacktestResult(Base):
     max_drawdown    = Column(Float,   nullable=True)
     total_pnl       = Column(Float,   nullable=True)
     total_pnl_pct   = Column(Float,   nullable=True)
+    
+    # Intelligence metrics (Phase 4)
+    expectancy_r    = Column(Float, nullable=True)
+    expectancy_r_lb = Column(Float, nullable=True) # Lower 95% bound
+    mae_avg         = Column(Float, nullable=True)
+    mfe_avg         = Column(Float, nullable=True)
+    exit_efficiency = Column(Float, nullable=True)
 
     # Config snapshot used for this run
     params_json     = Column(JSON, nullable=True)
     # Full equity curve [{ts, balance}] and trade list
     equity_curve_json = Column(JSON, nullable=True)
     trades_json       = Column(JSON, nullable=True)
+    market_analysis_json = Column(JSON, nullable=True) # Breakdown by session, etc.
+    feedback_json     = Column(JSON, nullable=True)    # Human-readable insights (Phase 6)
 
     run_at          = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
     duration_seconds= Column(Float,    nullable=True)
@@ -472,3 +482,56 @@ class BacktestResult(Base):
         return (f"<BacktestResult {self.run_id} | {self.symbol} | "
                 f"trades={self.total_trades} | wr={self.win_rate:.1%} | "
                 f"sharpe={self.sharpe_ratio}>")
+
+
+class StrategyCombination(Base):
+    """
+    Registry of unique strategy configurations.
+    """
+    __tablename__ = "strategy_combinations"
+
+    fingerprint     = Column(String(64), primary_key=True)
+    strategy_name   = Column(String(64), nullable=False, index=True)
+    version         = Column(String(16), nullable=False, default="1.0.0")
+    instrument      = Column(String(32), nullable=False, index=True)
+    timeframe       = Column(String(8),  nullable=False, index=True)
+    
+    parameters_json = Column(JSON, nullable=False)
+    
+    status          = Column(String(16), nullable=False, default="candidate", index=True)
+    # candidate, queued, running, completed, failed, paper, live, retired
+    
+    cluster_id      = Column(Integer, nullable=True, index=True)
+    
+    created_at      = Column(DateTime, nullable=False, default=datetime.utcnow)
+    last_run_at     = Column(DateTime, nullable=True)
+
+    def __repr__(self) -> str:
+        return f"<StrategyCombination {self.strategy_name} | {self.instrument} | {self.status}>"
+
+
+class SimilarityCluster(Base):
+    """
+    Groups similar strategy combinations to ensure diversity in exploration.
+    """
+    __tablename__ = "similarity_clusters"
+
+    id              = Column(Integer, primary_key=True, autoincrement=True)
+    strategy_family = Column(String(64), nullable=False, index=True)
+    centroid_json   = Column(JSON, nullable=True)
+    created_at      = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
+class ExplorationRound(Base):
+    """
+    Tracks iterations of the diversity-first scheduler.
+    """
+    __tablename__ = "exploration_rounds"
+
+    id              = Column(Integer, primary_key=True, autoincrement=True)
+    name            = Column(String(128), nullable=False)
+    status          = Column(String(16), nullable=False, default="active") # active, paused, completed
+    current_batch   = Column(Integer, nullable=False, default=1)
+    total_candidates= Column(Integer, nullable=False, default=0)
+    tested_count    = Column(Integer, nullable=False, default=0)
+    created_at      = Column(DateTime, nullable=False, default=datetime.utcnow)

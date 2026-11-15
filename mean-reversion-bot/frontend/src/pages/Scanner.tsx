@@ -1,8 +1,18 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { api, downloadFile } from '../api/client'
 import { usePermissions } from '../auth/identity'
 
 const button = 'px-3 py-2 rounded bg-cyan-800 disabled:opacity-40'
+const SIGNAL_INDICATORS = [
+  ['use_zscore', 'Z-Score'], ['use_rsi', 'RSI'], ['use_bb', 'Bollinger Bands'],
+  ['use_vwap', 'VWAP'], ['use_stoch', 'Stochastic'], ['use_lsl', 'Liquidity Sweep'],
+  ['use_smc', 'SMC Structure'], ['use_volume', 'Volume Filter'], ['use_hurst', 'Hurst Regime'],
+  ['use_crt', 'CRT'],
+] as const
+const defaultStrategyOptions = () => ({
+  use_zscore: true, use_rsi: true, use_bb: true, use_vwap: true, use_stoch: true,
+  use_lsl: true, use_smc: true, use_volume: true, use_hurst: false, use_crt: false,
+})
 export default function Scanner() {
   const { canRunResearch } = usePermissions()
   const [state, setState] = useState<any>(null)
@@ -21,6 +31,10 @@ export default function Scanner() {
   const [historyBusy, setHistoryBusy] = useState(false)
   const [exportBusy, setExportBusy] = useState(false)
   const [group, setGroup] = useState('symbol')
+  const [strategyOptions, setStrategyOptions] = useState<Record<string, boolean>>(defaultStrategyOptions)
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false)
+  const notifiedSignals = useRef<Set<string>>(new Set())
+  const initialLoad = useRef(true)
   const local = ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname)
   const active = state?.run?.status === 'running'
   const candidateMode = restored.strategy_mode === 'research_candidate'
@@ -33,7 +47,24 @@ export default function Scanner() {
     row.timeframe === singlePairRun.config.timeframe && (!singleScope || row.scope === singleScope))
   const refresh = async () => {
     const [s, l, a] = await Promise.all([api.get('/api/scanner'), api.get('/api/scanner/ledger'), api.get('/api/scanner/analytics')])
-    setState(s); setLedger(l); setAnalytics(a)
+    const scannerStatus = s as any
+    const latest = scannerStatus.latest || []
+    if (initialLoad.current) {
+      latest.forEach((row: any) => { if (row.id) notifiedSignals.current.add(row.id) })
+      initialLoad.current = false
+    } else if (notificationsEnabled && 'Notification' in window && Notification.permission === 'granted') {
+      latest.forEach((row: any) => {
+        if (!row.id || notifiedSignals.current.has(row.id)) return
+        notifiedSignals.current.add(row.id)
+        if (row.eligible && ['buy', 'sell'].includes(row.direction)) {
+          const notice = new Notification(`${row.direction.toUpperCase()} signal · ${row.symbol}`, {
+            body: `${row.timeframe} · score ${row.score ?? 'N/A'}/100 · ${row.strategy_reason || 'Paper setup eligible'}`,
+          })
+          notice.onclick = () => window.focus()
+        }
+      })
+    }
+    setState(scannerStatus); setLedger(l); setAnalytics(a)
   }
   useEffect(() => {
     if (!local) return
@@ -41,7 +72,7 @@ export default function Scanner() {
     const poll = () => { if (mounted) refresh().catch(e => setError(String(e))) }
     poll(); const timer = setInterval(poll, 5000)
     return () => { mounted = false; clearInterval(timer) }
-  }, [])
+  }, [notificationsEnabled])
   async function catalog() {
     setBusy(true); setError('')
     try { const data: any = await api.get('/api/mt5/symbols'); setSymbols(data.symbols || []) }
@@ -63,6 +94,7 @@ export default function Scanner() {
     if (!config) return
     setRestored(config); setSelected(config.assets.map((a: any) => a.symbol))
     setTimeframe(config.timeframe); setThreshold(config.threshold)
+    if (config.strategy) setStrategyOptions(Object.fromEntries(SIGNAL_INDICATORS.map(([key]) => [key, Boolean(config.strategy[key])])))
   }
   async function loadCandidate() {
     setBusy(true); setError('')
@@ -82,10 +114,33 @@ export default function Scanner() {
   async function control(action: string) {
     setBusy(true); setError('')
     try {
-      await api.post(`/api/scanner/${action}`, action === 'start' ? { ...restored, assets: selected.map(symbol => restored.assets?.find((a: any) => a.symbol === symbol) || { symbol }), timeframe, threshold } : {})
+      const request = action === 'start' ? candidateMode ? {
+        ...restored, assets: selected.map(symbol => restored.assets?.find((a: any) => a.symbol === symbol) || { symbol }), timeframe, threshold,
+      } : {
+        ...restored,
+        assets: selected.map(symbol => restored.assets?.find((a: any) => a.symbol === symbol) || { symbol }),
+        timeframe, threshold, strategy_mode: 'manual',
+        strategy: { symbol: selected[0], timeframe, min_confluence: threshold, ...strategyOptions },
+      } : {}
+      await api.post(`/api/scanner/${action}`, request)
       await refresh()
     } catch (e) { setError(String(e)) } finally { setBusy(false) }
   }
+  async function enableNotifications() {
+    if (!('Notification' in window)) {
+      setError('This browser does not support desktop notifications.')
+      return
+    }
+    try {
+      const permission = await Notification.requestPermission()
+      if (permission === 'granted') setNotificationsEnabled(true)
+      else setError('Browser notification permission was not granted; scanner signals remain visible on this page.')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    }
+  }
+  const hasDirectionalIndicator = ['use_zscore', 'use_rsi', 'use_bb', 'use_vwap', 'use_stoch', 'use_lsl', 'use_smc']
+    .some(key => strategyOptions[key])
   if (!local) return <div className="p-6">Forward scanning requires the local app and your connected MT5 demo terminal.</div>
   return <div className="p-4 md:p-6 space-y-5 max-w-7xl mx-auto">
     <header><h1 className="text-2xl font-bold">Forward scanner</h1><p className="text-slate-300 mt-2">Continuously observe up to eight MT5 pairs and record hypothetical signals. Scanning never starts or approves broker trades.</p></header>
@@ -102,13 +157,24 @@ export default function Scanner() {
         <label>Timeframe<select className="block bg-slate-900 p-2 rounded" value={timeframe} disabled={active || busy || candidateMode} onChange={e => setTimeframe(e.target.value)}>{['M1','M5','M15','M30','H1','H4'].map(t => <option key={t}>{t}</option>)}</select></label>
         <label>Paper spread model<select className="block bg-slate-900 p-2 rounded" value={restored.spread_model || 'fixed_quote'} disabled={!canRunResearch || active || busy} onChange={e => setRestored((p: any) => ({ ...p, spread_model: e.target.value }))}><option value="fixed_quote">Fixed observed quote</option><option value="candle_proxy_v1">Historical candle proxy</option></select></label>
         <label>Minimum weighted score<input className="block bg-slate-900 p-2 rounded w-24" type="number" min="1" max="20" value={threshold} disabled={active || busy || candidateMode} onChange={e => setThreshold(Number(e.target.value))} /></label>
-        <button className={button} disabled={!canRunResearch || busy || active || !selected.length || !Number.isInteger(threshold) || threshold < 1 || threshold > 20} onClick={() => void control('start')}>Start paper scanner</button>
+        <label>Poll interval (seconds)<input className="block bg-slate-900 p-2 rounded w-28" type="number" min="15" max="300" step="5" value={restored.poll_seconds ?? 30} disabled={!canRunResearch || active || busy} onChange={e => setRestored((p: any) => ({ ...p, poll_seconds: Number(e.target.value) }))} /></label>
+        <label>Maximum spread / ATR<input className="block bg-slate-900 p-2 rounded w-28" type="number" min="0.01" max="1" step="0.01" value={restored.max_spread_atr ?? 0.2} disabled={!canRunResearch || active || busy} onChange={e => setRestored((p: any) => ({ ...p, max_spread_atr: Number(e.target.value) }))} /></label>
+        <label>Slippage / ATR<input className="block bg-slate-900 p-2 rounded w-28" type="number" min="0" max="0.5" step="0.01" value={restored.slippage_atr ?? 0.02} disabled={!canRunResearch || active || busy} onChange={e => setRestored((p: any) => ({ ...p, slippage_atr: Number(e.target.value) }))} /></label>
+        <label>Max holding bars<input className="block bg-slate-900 p-2 rounded w-24" type="number" min="1" max="100" value={restored.max_hold_bars ?? 12} disabled={!canRunResearch || active || busy} onChange={e => setRestored((p: any) => ({ ...p, max_hold_bars: Number(e.target.value) }))} /></label>
+        <button className={button} disabled={!canRunResearch || busy || active || !selected.length || !Number.isInteger(threshold) || threshold < 1 || threshold > 20 || (!candidateMode && !hasDirectionalIndicator)} onClick={() => void control('start')}>Start paper scanner</button>
         <button className={button} disabled={!canRunResearch || busy || !active} onClick={() => void control('stop')}>Stop scanner</button>
+        <button className={button} disabled={!canRunResearch || notificationsEnabled || !('Notification' in window)} onClick={() => void enableNotifications()}>{notificationsEnabled ? 'Browser alerts enabled' : 'Enable browser alerts'}</button>
       </div>
-      <p className="text-sm text-slate-400">{candidateMode ? 'Signal indicators and threshold follow the loaded research candidate. The scanner still applies its own conservative paper regime gate and cost assumptions.' : 'Manual mode uses a fixed indicator configuration.'} Score /100 is weighted points /20, capped at 100; it is not a probability. RANGE requires Hurst below 0.45 and drift below 3 ATR. Trend, wide spread, volatility spikes, uncertain regimes and stale/gapped data block new paper entries.</p>
+      <fieldset disabled={!canRunResearch || active || busy || candidateMode} className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        <legend className="text-sm font-medium mb-2">Indicators required by the signal strategy</legend>
+        {SIGNAL_INDICATORS.map(([key, label]) => <label key={key} className="rounded border border-slate-700 px-3 py-2 text-sm"><input type="checkbox" checked={Boolean(strategyOptions[key])} onChange={e => setStrategyOptions(old => ({ ...old, [key]: e.target.checked }))} /> <span className="ml-2">{label}</span></label>)}
+      </fieldset>
+      {!candidateMode && !hasDirectionalIndicator && <p className="text-sm text-amber-200">Choose at least one directional indicator. Volume and Hurst filters alone do not produce a BUY or SELL direction.</p>}
+      <p className="text-sm text-slate-400">{candidateMode ? 'Signal indicators and threshold follow the loaded research candidate. The scanner still applies its own conservative paper regime gate and cost assumptions.' : 'Manual mode uses the selected indicators and minimum score above.'} Score /100 is weighted points /20, capped at 100; it is not a probability. RANGE requires Hurst below 0.45 and drift below 3 ATR. Trend, wide spread, volatility spikes, uncertain regimes and stale/gapped data block new paper entries.</p>
       <p className="text-sm text-amber-200">News and macro coverage: unknown. Liquidity is a spread proxy, not order-book depth. Session groups use six-hour UTC buckets. These exploratory observations do not qualify a strategy for execution.</p>
       <p className="text-sm text-slate-400">Historical candle mode uses each recorded bar spread as an ask-price proxy, not an executable quote. Missing or unconfirmed zero spreads leave outcomes unresolved. Commission and financing remain unmodeled.</p>
       <p className="text-xs text-slate-400">Polling: {restored.poll_seconds ?? 30}s | Max spread/ATR: {restored.max_spread_atr ?? 0.2} | Slippage/ATR: {restored.slippage_atr ?? 0.02} | Max holding bars: {restored.max_hold_bars ?? 12}. Loading saved settings restores these limits too.</p>
+      <p className="text-xs text-slate-400">{notificationsEnabled ? 'Desktop alerts are enabled for new eligible BUY/SELL paper signals while this page is open.' : 'Enable browser alerts to be notified of new eligible BUY/SELL paper signals while this page is open.'} No signal is guaranteed, and alerts never place orders.</p>
       {state?.run && <p className="text-xs text-slate-400 break-words">Active/saved selection: {state.run.config.assets.map((a: any) => a.symbol).join(', ')} · {state.run.config.timeframe} · started {new Date(state.run.created * 1000).toLocaleString()}{state.run.error && ` · ${state.run.error}`}</p>}
     </section>
     {singlePairRun && <section className="bg-slate-800 rounded-xl p-4 space-y-2" aria-label="Latest single-pair paper signal">

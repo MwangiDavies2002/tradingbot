@@ -41,16 +41,16 @@ export default function Signals() {
   }, [loadSignals])
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-4 sm:p-6 space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Signal Feed</h1>
-          <p className="text-slate-400 text-sm">Real-time market analysis and strategy evaluations</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-white">Signal Feed</h1>
+          <p className="text-slate-400 text-xs sm:text-sm">Real-time market analysis and strategy evaluations</p>
         </div>
         <div className="flex items-center gap-3">
             <button 
                 onClick={() => setFiredOnly(!firedOnly)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                     firedOnly ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'bg-slate-800 text-slate-400 border border-slate-700'
                 }`}
             >
@@ -72,7 +72,7 @@ export default function Signals() {
       )}
 
       <div className="grid gap-4">
-        <section className="grid grid-cols-2 md:grid-cols-4 gap-3" aria-label="Regime and confluence summary">
+        <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3" aria-label="Regime and confluence summary">
           {['mean_reverting', 'trending', 'mixed'].map(regime => <div key={regime} className="bg-slate-800 border border-slate-700 rounded-xl p-4"><p className="text-xs text-slate-500 uppercase">{regime.replace('_', ' ')}</p><p className="text-2xl font-bold text-white">{regimeCounts[regime] || 0}</p><p className="text-xs text-slate-400">latest markets</p></div>)}
           <div className="bg-slate-800 border border-cyan-800 rounded-xl p-4"><p className="text-xs text-cyan-300 uppercase">High confluence</p><p className="text-2xl font-bold text-cyan-300">{scanner.filter(row => row.score >= 9).length}</p><p className="text-xs text-slate-400">score 9+; not a probability</p></div>
         </section>
@@ -112,7 +112,7 @@ export default function Signals() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 sm:gap-4 mb-4">
                 <Indicator 
                     label="Z-Score" 
                     value={s.indicators.z_score?.toFixed(2)} 
