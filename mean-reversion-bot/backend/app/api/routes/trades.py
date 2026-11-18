@@ -24,8 +24,9 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.models import Trade
+from app.database.models import Trade, User
 from app.database.session import get_db
+from app.api.security import get_current_user
 
 router = APIRouter()
 
@@ -43,12 +44,13 @@ async def list_trades(
     page:       int           = Query(1,     ge=1),
     page_size:  int           = Query(50,    ge=1, le=200),
     db:         AsyncSession  = Depends(get_db),
+    current_user: User        = Depends(get_current_user),
 ):
     """
     Paginated trade history with optional filters.
     Returns trades newest first.
     """
-    stmt = select(Trade).order_by(Trade.opened_at.desc())
+    stmt = select(Trade).where(Trade.user_id == current_user.id).order_by(Trade.opened_at.desc())
 
     if symbol:
         stmt = stmt.where(Trade.symbol == symbol)
@@ -89,12 +91,13 @@ async def trade_stats(
     date_from: Optional[datetime] = Query(None),
     date_to:   Optional[datetime] = Query(None),
     db:        AsyncSession       = Depends(get_db),
+    current_user: User            = Depends(get_current_user),
 ):
     """
     Aggregated performance statistics.
     Returns win rate, avg R:R, profit factor, total P&L.
     """
-    stmt = select(Trade).where(Trade.status == "closed")
+    stmt = select(Trade).where(Trade.user_id == current_user.id, Trade.status == "closed")
     if symbol:
         stmt = stmt.where(Trade.symbol == symbol)
     if date_from:
@@ -146,9 +149,13 @@ async def trade_stats(
 # ── GET /api/trades/{trade_id} ────────────────────────────────────────────────
 
 @router.get("/{trade_id}")
-async def get_trade(trade_id: str, db: AsyncSession = Depends(get_db)):
+async def get_trade(
+    trade_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """Single trade detail with full indicator snapshot and score breakdown."""
-    result = await db.execute(select(Trade).where(Trade.trade_id == trade_id))
+    result = await db.execute(select(Trade).where(Trade.user_id == current_user.id, Trade.trade_id == trade_id))
     trade  = result.scalar_one_or_none()
     if not trade:
         from fastapi import HTTPException
@@ -164,9 +171,10 @@ async def export_trades_csv(
     date_from: Optional[datetime] = Query(None),
     date_to:   Optional[datetime] = Query(None),
     db:        AsyncSession       = Depends(get_db),
+    current_user: User            = Depends(get_current_user),
 ):
     """Export all matching trades as a downloadable CSV file."""
-    stmt = select(Trade).order_by(Trade.opened_at.asc())
+    stmt = select(Trade).where(Trade.user_id == current_user.id).order_by(Trade.opened_at.asc())
     if symbol:
         stmt = stmt.where(Trade.symbol == symbol)
     if date_from:

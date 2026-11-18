@@ -41,6 +41,29 @@ class Base(DeclarativeBase):
     pass
 
 
+class User(Base):
+    """
+    Application user account.
+    Stores authentication details and Deriv API credentials.
+    """
+    __tablename__ = "users"
+
+    id              = Column(Integer, primary_key=True, autoincrement=True)
+    email           = Column(String(255), unique=True, nullable=False, index=True)
+    hashed_password = Column(String(255), nullable=False)
+    
+    # Deriv connection (stored per user)
+    deriv_api_key   = Column(String(255), nullable=True)
+    deriv_account_id = Column(String(64), nullable=True)
+    
+    is_active       = Column(Boolean, default=True)
+    created_at      = Column(DateTime, nullable=False, default=datetime.utcnow)
+    last_login      = Column(DateTime, nullable=True)
+
+    def __repr__(self) -> str:
+        return f"<User {self.email}>"
+
+
 class ResearchFamily(Base):
     __tablename__ = "research_families"
     family_id = Column(String(32), primary_key=True)
@@ -146,6 +169,7 @@ class Trade(Base):
     __tablename__ = "trades"
 
     id               = Column(Integer,  primary_key=True, autoincrement=True)
+    user_id          = Column(Integer,  ForeignKey("users.id"), nullable=True, index=True)
     trade_id         = Column(String(32),  unique=True, nullable=False, index=True)
     contract_id      = Column(BigInteger,  nullable=True,  index=True)
 
@@ -210,6 +234,7 @@ class Signal(Base):
     __tablename__ = "signals"
 
     id               = Column(Integer,  primary_key=True, autoincrement=True)
+    user_id          = Column(Integer,  ForeignKey("users.id"), nullable=True, index=True)
     symbol           = Column(String(32),  nullable=False, index=True)
     timeframe        = Column(String(8),   nullable=False)
     direction        = Column(String(8),   nullable=True)
@@ -251,6 +276,7 @@ class PaperTrade(Base):
     __tablename__ = "paper_trades"
 
     id = Column(String(36), primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     signal_id = Column(String(64), nullable=True, index=True)
     symbol = Column(String(64), nullable=False, index=True)
     timeframe = Column(String(8), nullable=False)
@@ -360,6 +386,7 @@ class EquitySnapshot(Base):
     __tablename__ = "equity_snapshots"
 
     id           = Column(Integer, primary_key=True, autoincrement=True)
+    user_id      = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     ts           = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
     balance      = Column(Float,    nullable=False)   # Account balance USD
     open_equity  = Column(Float,    nullable=True)    # Balance + unrealised P&L
@@ -441,6 +468,7 @@ class BacktestResult(Base):
     __tablename__ = "backtest_results"
 
     id              = Column(Integer, primary_key=True, autoincrement=True)
+    user_id         = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     run_id          = Column(String(32), unique=True, nullable=False, index=True)
     combination_id  = Column(String(64), ForeignKey("strategy_combinations.fingerprint"), nullable=True, index=True)
     symbol          = Column(String(32), nullable=False)

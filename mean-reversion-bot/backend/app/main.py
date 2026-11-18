@@ -212,8 +212,11 @@ def create_app() -> FastAPI:
 
     # ── Routers ───────────────────────────────────────────────────────────────
     # Import here to avoid circular imports at module level
-    from app.api.routes import bot_control, config, risk, signals, test, trades, news, strategies, paper_trades
+    from app.api.routes import bot_control, config, risk, signals, test, trades, news, strategies, paper_trades, users
+    from app.auth import router as auth_router
 
+    app.include_router(auth_router,        prefix="/api/auth",     tags=["Authentication"])
+    app.include_router(users.router,       prefix="/api/users",    tags=["Users"])
     app.include_router(trades.router,      prefix="/api/trades",   tags=["Trades"])
     app.include_router(signals.router,     prefix="/api/signals",  tags=["Signals"])
     app.include_router(paper_trades.router, prefix="/api/paper-trades", tags=["Paper Trading"])

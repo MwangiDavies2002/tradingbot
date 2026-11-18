@@ -21,9 +21,10 @@ from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.models import BotEvent, ConfigEntry, EquitySnapshot, Signal, ExecutionRecord, Trade
+from app.database.models import BotEvent, ConfigEntry, EquitySnapshot, Signal, ExecutionRecord, Trade, User
 from app.database.session import get_db
 from app.config import settings
+from app.api.security import get_current_user
 from app.execution.safety import account_scope, control_row
 from app.execution.broker_registry import broker_status, require_execution_broker
 
@@ -101,12 +102,18 @@ async def resolve_intent(trade_id: str, body: ResolveIntent, request: Request,
 
 
 @bot_control_router.get("/status")
-async def bot_status(db: AsyncSession = Depends(get_db)):
+async def bot_status(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """
     Current bot status: running state, circuit breaker, open trade count.
     Reads from the bot_events table for circuit breaker state and the
     app state for live metrics.
     """
+    # Note: Global bot scope might still apply if there's only one bot instance,
+    # but we should at least restrict events to the user if we want full isolation.
+    # For now, we keep the global status but plan for per-user bots.
     control = await control_row(db, scope())
     fresh = bool(control.heartbeat and
                  (datetime.utcnow() - control.heartbeat).total_seconds() < 30)
@@ -293,9 +300,10 @@ async def list_signals(
     min_score: Optional[int] = Query(None),
     limit:    int            = Query(100, ge=1, le=500),
     db:       AsyncSession   = Depends(get_db),
+    current_user: User       = Depends(get_current_user),
 ):
     """Recent signal evaluations with indicator values."""
-    stmt = select(Signal).order_by(desc(Signal.evaluated_at)).limit(limit)
+    stmt = select(Signal).where(Signal.user_id == current_user.id).order_by(desc(Signal.evaluated_at)).limit(limit)
     if symbol:
         stmt = stmt.where(Signal.symbol == symbol)
     if fired is not None:
@@ -356,10 +364,11 @@ async def live_signals():
 async def signal_scanner(
     limit: int = Query(100, ge=1, le=500),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Latest read-only signal state per symbol and timeframe."""
     result = await db.execute(
-        select(Signal).order_by(desc(Signal.evaluated_at)).limit(min(limit * 5, 500))
+        select(Signal).where(Signal.user_id == current_user.id).order_by(desc(Signal.evaluated_at)).limit(min(limit * 5, 500))
     )
     latest = {}
     now = datetime.utcnow()
@@ -456,10 +465,12 @@ async def risk_dashboard(db: AsyncSession = Depends(get_db)):
 async def equity_curve(
     limit: int = Query(200, ge=10, le=1000),
     db:    AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Equity curve data points for charting."""
     stmt = (
         select(EquitySnapshot)
+        .where(EquitySnapshot.user_id == current_user.id)
         .order_by(desc(EquitySnapshot.ts))
         .limit(limit)
     )

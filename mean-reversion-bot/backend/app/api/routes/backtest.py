@@ -17,7 +17,8 @@ from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_db
-from app.database.models import BacktestResult, Candle as DbCandle
+from app.database.models import BacktestResult, Candle as DbCandle, User
+from app.api.security import get_current_user
 from app.core.engine.signal_engine import SignalEngine, EngineConfig
 from app.backtesting.backtest_engine import BacktestEngine
 from app.core.lsl.lsl_detector import Candle as DetectorCandle
@@ -287,7 +288,12 @@ class BacktestReportResponse(BaseModel):
 
 
 @router.post("/run")
-async def run_backtest(req: BacktestRequest, request: Request, db: AsyncSession = Depends(get_db)):
+async def run_backtest(
+    req: BacktestRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Run a backtest for the selected symbols and strategy configuration."""
     if req.use_smt:
         raise HTTPException(422, "Python SMT requires comparison-market history, which is unavailable. Disable SMT or use TradingView with an explicit comparison symbol.")
@@ -345,6 +351,7 @@ async def run_backtest(req: BacktestRequest, request: Request, db: AsyncSession 
             run_id = str(uuid.uuid4())[:8]
             db_res = BacktestResult(
                 run_id=run_id,
+                user_id=current_user.id,
                 combination_id=req.model_dump().get("combination_id"), # If provided
                 symbol=symbol,
                 timeframe=req.timeframe,
@@ -450,9 +457,12 @@ async def import_backtest_csv(req: BacktestRequest, request: Request, db: AsyncS
 
 
 @router.get("/results")
-async def get_backtest_results(db: AsyncSession = Depends(get_db)):
+async def get_backtest_results(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Fetch recent backtest runs."""
-    stmt = select(BacktestResult).order_by(desc(BacktestResult.run_at)).limit(10)
+    stmt = select(BacktestResult).where(BacktestResult.user_id == current_user.id).order_by(desc(BacktestResult.run_at)).limit(10)
     res = await db.execute(stmt)
     items = res.scalars().all()
     return [

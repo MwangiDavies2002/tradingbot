@@ -178,6 +178,9 @@ class BotRunner:
         )
 
         # ── 4. Deriv Client ───────────────────────────────────────────────────
+        # In a multi-user system, we would iterate over users or start workers per user.
+        # For the primary worker, we still use the default token, but it's now prepared 
+        # to handle user-specific tokens if we pass them to DerivClient.
         logger.info("Connecting to Deriv API (demo=%s)...", settings.DERIV_DEMO)
         self.client = DerivClient(
             config=DerivConfig(
