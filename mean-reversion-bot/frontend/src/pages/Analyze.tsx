@@ -7,6 +7,11 @@ import { usePermissions } from '../auth/identity'
 const input = 'block w-full mt-1 rounded bg-slate-900 border border-slate-600 p-2 min-w-0'
 const button = 'px-4 py-2 rounded bg-cyan-700 disabled:opacity-40 disabled:cursor-not-allowed'
 const presets = ['1HZ75V', '1HZ100V', '1HZ50V', 'BOOM500', 'CRASH500', 'frxEURUSD', 'frxGBPUSD', 'frxUSDJPY']
+const TIMEFRAMES = ['M1','M2','M3','M4','M5','M6','M10','M12','M15','M20','M30','H1','H2','H3','H4','H6','H8','H12','D1','W1']
+const TIMEFRAME_SECONDS: Record<string, number> = Object.fromEntries(TIMEFRAMES.map(tf => [
+  tf, tf.startsWith('M') ? Number(tf.slice(1)) * 60 : tf.startsWith('H') ? Number(tf.slice(1)) * 3600 : tf === 'D1' ? 86400 : 604800,
+]))
+const ASSET_CLASSES = ['all','forex','index','metal','commodity','synthetic','future','equity','other','unknown']
 const STRATEGY_OPTIONS = [
   ['use_zscore','Z-Score'], ['use_rsi','RSI'], ['use_bb','Bollinger Bands'], ['use_vwap','VWAP'],
   ['use_stoch','Stochastic'], ['use_lsl','Liquidity Sweep'], ['use_smc','SMC Structure'],
@@ -17,10 +22,14 @@ const STRATEGY_OPTIONS = [
 ] as const
 const freshProfile = () => ({ commission_per_lot: null, financing_long: null, financing_short: null,
   spread_price: null, slippage_ticks: 1, market_impact_ticks_per_lot: 0, costs_confirmed: false, cost_source: '', specification_confirmed: false,
-  contract_size: 1, tick_size: .00001, volume_min: .01, volume_step: .01, volume_max: 100,
-  profit_currency: 'USD', account_currency: 'USD', annualization: 252, price_basis: 'bid',
-  session: { timezone: 'UTC', source: '', weekdays: [0,1,2,3,4], open_minute: 0, close_minute: 1440, holidays: [], early_closes: {}, special_hours: {}, confirmed: false },
-  rollover_timezone: 'UTC', rollover_minute: 0, rollover_weights: [1,1,3,1,1,0,0] })
+  slippage_confirmed: false, slippage_source: '', asset_class: 'unknown', broker_group: '',
+  contract_size: null, tick_size: null, point: null, digits: null, tick_value: null,
+  calculation_mode: null, order_mode: null, trade_mode: null,
+  volume_min: null, volume_step: null, volume_max: null,
+  profit_currency: '', account_currency: '', annualization: 252, price_basis: 'bid',
+  session: { timezone: 'UTC', source: '', weekdays: [], open_minute: 0, close_minute: 1440, weekly_hours: {}, holidays: [], early_closes: {}, special_hours: {}, confirmed: false },
+  rollover_timezone: 'UTC', rollover_minute: 0, rollover_weights: [1,1,1,1,1,1,1], rollover_confirmed: false, rollover_source: '',
+  specification_source: '', specification_fingerprint: '' })
 
 function MonteCarloSummary({ symbol, validation }: { symbol: string; validation: any }) {
   const result = validation.monte_carlo
@@ -42,7 +51,7 @@ function MonteCarloSummary({ symbol, validation }: { symbol: string; validation:
 export default function Analyze() {
   const location = useLocation()
   const scanLaunch = location.state as { source?: string; symbol?: string; symbols?: string[]; timeframe?: string; days?: number; scanDepth?: string } | null
-  let savedSelection: { source?: string; symbols?: string[]; timeframe?: string; days?: number } = {}
+  let savedSelection: { source?: string; symbols?: string[]; timeframe?: string; timeframes?: Record<string, string>; days?: number } = {}
   try { savedSelection = JSON.parse(sessionStorage.getItem('research-selection-v1') || '{}') } catch { /* Continue with an empty selection. */ }
   const selectionSource = scanLaunch?.source || savedSelection.source
   const selectedTimeframe = scanLaunch?.timeframe || savedSelection.timeframe
@@ -52,14 +61,21 @@ export default function Analyze() {
   const { canRunResearch } = usePermissions()
   const [source, setSource] = useState(() => ['mt5', 'deriv', 'import'].includes(selectionSource || '') ? selectionSource! : 'mt5')
   const [symbols, setSymbols] = useState<string[]>(() => carriedSymbols.slice(0, 8))
-  const [catalog, setCatalog] = useState<{ name: string; description: string }[]>([])
+  const [catalog, setCatalog] = useState<{ name: string; description: string; asset_class: string; broker_group: string; account_currency?: string; server?: string; eligible: boolean; reason: string | null; specification_fingerprint?: string; specification?: Record<string, any> }[]>([])
   const [search, setSearch] = useState('')
+  const [assetClass, setAssetClass] = useState('all')
   const [custom, setCustom] = useState('')
   const [profiles, setProfiles] = useState<Record<string, any>>(() => Object.fromEntries(carriedSymbols.slice(0, 8).map(symbol => [symbol, freshProfile()])))
   const [calendarDrafts, setCalendarDrafts] = useState<Record<string, { holiday: string; date: string; open: string; close: string }>>({})
   const [bars, setBars] = useState<Record<string, any[]>>({})
-  const [timeframe, setTimeframe] = useState(() => ['M1','M5','M15','M30','H1','H4'].includes(selectedTimeframe || '') ? selectedTimeframe! : 'M5')
-  const [days, setDays] = useState(() => [7,30,90].includes(selectedDays || 0) ? selectedDays! : 7)
+  const [timeframe, setTimeframe] = useState(() => TIMEFRAMES.includes(selectedTimeframe || '') ? selectedTimeframe! : 'M5')
+  const [assetTimeframes, setAssetTimeframes] = useState<Record<string, string>>(() =>
+    Object.fromEntries(carriedSymbols.map(symbol => {
+      const saved = savedSelection.timeframes?.[symbol]
+      const fallback = TIMEFRAMES.includes(selectedTimeframe || '') ? selectedTimeframe! : 'M5'
+      return [symbol, TIMEFRAMES.includes(saved || '') ? saved! : fallback]
+    })))
+  const [days, setDays] = useState(() => Number.isInteger(selectedDays) && selectedDays! >= 1 && selectedDays! <= 3650 ? selectedDays! : 7)
   const [windowSize, setWindowSize] = useState(60)
   const [balance, setBalance] = useState(10000)
   const [threshold, setThreshold] = useState(6)
@@ -73,12 +89,12 @@ export default function Analyze() {
   const [pair, setPair] = useState('')
   const [strategy, setStrategy] = useState<Record<string, boolean>>(() => Object.fromEntries(STRATEGY_OPTIONS.map(([key]) => [key, ['use_zscore','use_rsi','use_bb'].includes(key)])))
   useEffect(() => {
-    try { sessionStorage.setItem('research-selection-v1', JSON.stringify({ source, symbols, timeframe, days })) } catch { /* Selection remains available in this page. */ }
-  }, [source, symbols, timeframe, days])
+    try { sessionStorage.setItem('research-selection-v1', JSON.stringify({ source, symbols, timeframe, timeframes: assetTimeframes, days })) } catch { /* Selection remains available in this page. */ }
+  }, [source, symbols, timeframe, assetTimeframes, days])
   const refreshHistory = () => api.get('/api/analysis/runs').then((r: any) => setHistory(r))
   async function catalogLoad() {
     const data: any = await api.get('/api/mt5/symbols')
-    setCatalog(data.symbols.filter((s: any) => s.eligible).map((s: any) => ({ name: s.name, description: s.description || '' })))
+    setCatalog(data.symbols.map((s: any) => ({ ...s, description: s.description || '' })))
   }
   useEffect(() => {
     refreshHistory().catch(e => setError(String(e)))
@@ -97,7 +113,29 @@ export default function Analyze() {
   }, [job?.id, job?.status])
   function toggle(symbol: string) {
     setSymbols(old => old.includes(symbol) ? old.filter(s => s !== symbol) : old.length < 8 ? [...old, symbol] : old)
-    setProfiles(old => ({ ...old, [symbol]: old[symbol] || freshProfile() }))
+    const brokerAsset = catalog.find(asset => asset.name === symbol)
+    const spec = brokerAsset?.specification || {}
+    setProfiles(old => ({ ...old, [symbol]: old[symbol] || {
+      ...freshProfile(),
+      asset_class: brokerAsset?.asset_class || 'unknown',
+      broker_group: brokerAsset?.broker_group || '',
+      specification_fingerprint: brokerAsset?.specification_fingerprint || '',
+      contract_size: spec.trade_contract_size ?? null,
+      tick_size: spec.trade_tick_size ?? null,
+      point: spec.point ?? null,
+      digits: spec.digits ?? null,
+      tick_value: spec.trade_tick_value ?? null,
+      calculation_mode: spec.trade_calc_mode ?? null,
+      order_mode: spec.order_mode ?? null,
+      trade_mode: spec.trade_mode ?? null,
+      volume_min: spec.volume_min ?? null,
+      volume_max: spec.volume_max ?? null,
+      volume_step: spec.volume_step ?? null,
+      profit_currency: spec.currency_profit || '',
+      account_currency: catalog.find(asset=>asset.name===symbol)?.account_currency || '',
+      specification_source: brokerAsset ? `MT5 symbol_info (${brokerAsset.server || 'connected broker'})` : '',
+    } }))
+    setAssetTimeframes(old => ({ ...old, [symbol]: old[symbol] || timeframe }))
   }
   function edit(symbol: string, change: any) { setProfiles(old => ({...old, [symbol]: {...old[symbol], ...change}})) }
   function calendarDraft(symbol: string) { return calendarDrafts[symbol] || { holiday: '', date: '', open: '', close: '' } }
@@ -120,11 +158,21 @@ export default function Analyze() {
     setCalendarDraft(symbol, {date: '', open: '', close: ''})
   }
   async function run() {
-    const intervalSeconds = Number(timeframe.slice(1)) * (timeframe.startsWith('M') ? 60 : 3600)
-    const rangeSeconds = researchScope.opening_range_minutes * 60
-    if (researchScope.setup === 'opening_range_breakout' && (intervalSeconds > rangeSeconds || rangeSeconds % intervalSeconds !== 0)) {
-      setError(`Choose a timeframe that divides the ${researchScope.opening_range_minutes}-minute opening range evenly.`)
+    if (!Number.isInteger(days) || days < 1 || days > maxLookbackDays) {
+      setError(`Lookback must be between 1 and ${maxLookbackDays} days for the selected timeframes and 10,000-candle limit.`)
       return
+    }
+    const rangeSeconds = researchScope.opening_range_minutes * 60
+    if (researchScope.setup === 'opening_range_breakout') {
+      const incompatible = symbols.find(symbol => {
+        const selected = assetTimeframes[symbol] || timeframe
+        const intervalSeconds = TIMEFRAME_SECONDS[selected]
+        return intervalSeconds > rangeSeconds || rangeSeconds % intervalSeconds !== 0
+      })
+      if (incompatible) {
+        setError(`${incompatible}: choose a timeframe that divides the ${researchScope.opening_range_minutes}-minute opening range evenly.`)
+        return
+      }
     }
     const invalidAsset = symbols.find(symbol => {
       const profile = profiles[symbol]
@@ -144,6 +192,17 @@ export default function Analyze() {
       setError(`${missingCostSource}: add the broker cost schedule or other source before confirming costs.`)
       return
     }
+    const missingRollover = symbols.find(symbol => profiles[symbol]?.costs_confirmed
+      && (!profiles[symbol]?.rollover_confirmed || !profiles[symbol]?.rollover_source?.trim()))
+    if (missingRollover) {
+      setError(`${missingRollover}: verify its rollover timezone, time and weights, and provide the source.`)
+      return
+    }
+    const missingSlippage = symbols.find(symbol => profiles[symbol]?.slippage_confirmed && !profiles[symbol]?.slippage_source?.trim())
+    if (missingSlippage) {
+      setError(`${missingSlippage}: provide the source for its measured or scenario slippage.`)
+      return
+    }
     if ((researchScope.setup === 'strategy_signals' || researchScope.opening_range_indicator_confirmation)
         && !['use_zscore','use_rsi','use_bb','use_vwap','use_stoch','use_lsl','use_smc'].some(key => strategy[key])) {
       setError('Select at least one directional indicator. Volume and Hurst alone do not choose a direction.')
@@ -151,9 +210,13 @@ export default function Analyze() {
     }
     setBusy(true); setError(''); setMessage(''); setJob(null)
     try {
+      const firstTimeframe = symbols.length ? assetTimeframes[symbols[0]] || timeframe : timeframe
       const result = await api.post('/api/analysis/runs', { source, timeframe, days, rolling_window: windowSize,
-        initial_balance: balance, strategy: { min_confluence: threshold, ...strategy }, research_scope: researchScope,
-        assets: symbols.map(symbol => ({symbol, profile: profiles[symbol], ...(source === 'import' ? {bars: bars[symbol]} : {})})),
+        initial_balance: balance, strategy: { symbol: symbols[0], timeframe: firstTimeframe, min_confluence: threshold, ...strategy },
+        strategy_name: 'weighted_confluence', strategy_version: 'signal-engine-v1', research_scope: researchScope,
+        assets: symbols.map(symbol => ({symbol, timeframe: assetTimeframes[symbol] || timeframe,
+          asset_class: profiles[symbol]?.asset_class || 'unknown', broker_group: profiles[symbol]?.broker_group || '',
+          profile: profiles[symbol], ...(source === 'import' ? {bars: bars[symbol]} : {})})),
         exposures: Object.fromEntries(symbols.filter(s => exposures[s]).map(s => [s, exposures[s]])) })
       setJob(result); await refreshHistory()
     } catch (e) { setError(e instanceof Error ? e.message : String(e)) }
@@ -163,13 +226,19 @@ export default function Analyze() {
   const relations = report?.relationships
   const selectedPair = relations?.pairs.find((p: any) => `${p.a}|${p.b}` === pair) || relations?.pairs[0]
   const locked = busy || job?.status === 'running' || !canRunResearch
-  const runDisabled = locked
+  const runDisabled = locked || !symbols.length
   const useIndicators = researchScope.setup === 'strategy_signals' || researchScope.opening_range_indicator_confirmation
   const selectedStrategyNames = STRATEGY_OPTIONS.filter(([key]) => strategy[key]).map(([, label]) => label)
+  const maxLookbackDays = source === 'import' ? 3650 : Math.min(3650, ...symbols.map(symbol =>
+    Math.floor(10000 * TIMEFRAME_SECONDS[assetTimeframes[symbol] || timeframe] / 86400)))
+  useEffect(() => {
+    if (days > maxLookbackDays) setDays(maxLookbackDays)
+  }, [days, maxLookbackDays])
   const customSymbol = custom.trim()
   const validCustomSymbol = customSymbol.length <= 128 && Array.from(customSymbol).every(character => character >= ' ' && character !== '\u007f')
   const availableAssets = source === 'mt5'
-    ? catalog.filter(asset => `${asset.name} ${asset.description}`.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()))
+    ? catalog.filter(asset => (assetClass === 'all' || asset.asset_class === assetClass)
+      && `${asset.name} ${asset.description} ${asset.broker_group}`.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()))
     : [...new Set([...presets, ...symbols])].filter(symbol => symbol.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())).map(name => ({ name, description: '' }))
   const searchResults = search.trim() ? availableAssets.slice(0, 30) : []
   return <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto min-w-0">
@@ -177,8 +246,8 @@ export default function Analyze() {
     <section className="bg-slate-800 rounded-xl p-5 space-y-4">
       <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <label>Data source<select className={input} value={source} disabled={locked} onChange={e => {setSource(e.target.value);setSymbols([])}}><option value="mt5">Connected MT5 demo</option><option value="deriv">Deriv public history</option><option value="import">Imported candles</option></select></label>
-        <label>Timeframe<select className={input} value={timeframe} disabled={locked} onChange={e=>setTimeframe(e.target.value)}>{['M1','M5','M15','M30','H1','H4'].map(t=><option key={t}>{t}</option>)}</select></label>
-        <label>Lookback days<input className={input} type="number" min="1" max="90" value={days} disabled={locked} onChange={e=>setDays(+e.target.value)} /></label>
+        <label>Default timeframe · applies to all<select className={input} value={timeframe} disabled={locked} onChange={e=>{setTimeframe(e.target.value);setAssetTimeframes(Object.fromEntries(symbols.map(symbol=>[symbol,e.target.value])))}}>{TIMEFRAMES.map(t=><option key={t}>{t}</option>)}</select></label>
+        <label>Lookback days<input className={input} type="number" min="1" max={maxLookbackDays} value={days} disabled={locked} onChange={e=>setDays(+e.target.value)} /><small className="text-slate-400">Up to {maxLookbackDays} days at 10,000 candles per asset.</small></label>
         <label>Rolling window (bars)<input className={input} type="number" min="20" max="500" value={windowSize} disabled={locked} onChange={e=>setWindowSize(+e.target.value)} /></label>
         <label>Starting account balance<input className={input} type="number" min="1" value={balance} disabled={locked} onChange={e=>setBalance(+e.target.value)} /></label>
       </div>
@@ -186,16 +255,19 @@ export default function Analyze() {
       <section className="rounded-lg border border-slate-600 bg-slate-900 p-4 space-y-3" aria-label="Selected research assets">
         <div><h2 className="font-semibold">Assets selected</h2><p className="text-sm text-slate-400">Your first-page selection is already here. Search to change it or add markets to compare (up to 8).</p></div>
         <div className="min-h-12 rounded-lg border border-slate-700 bg-slate-950/50 p-2 flex flex-wrap gap-2 items-center">
-          {symbols.map(symbol=><span key={symbol} className="inline-flex items-center gap-2 rounded-md border border-cyan-700 bg-cyan-950/60 px-3 py-2 text-sm"><strong>{symbol}</strong><button type="button" aria-label={`Remove ${symbol}`} disabled={locked} onClick={()=>toggle(symbol)} className="text-slate-300 hover:text-red-300 disabled:opacity-40">×</button></span>)}
+          {symbols.map(symbol=><span key={symbol} className="inline-flex flex-wrap items-center gap-2 rounded-md border border-cyan-700 bg-cyan-950/60 px-3 py-2 text-sm"><strong>{symbol}</strong><span className="text-xs text-slate-400">{profiles[symbol]?.asset_class || 'unknown'}</span><select aria-label={`${symbol} timeframe`} className="rounded bg-slate-900 p-1" value={assetTimeframes[symbol] || timeframe} disabled={locked} onChange={e=>setAssetTimeframes(old=>({...old,[symbol]:e.target.value}))}>{TIMEFRAMES.map(t=><option key={t}>{t}</option>)}</select><button type="button" aria-label={`Remove ${symbol}`} disabled={locked} onClick={()=>toggle(symbol)} className="text-slate-300 hover:text-red-300 disabled:opacity-40">×</button></span>)}
           {!symbols.length&&<span className="text-sm text-slate-500">No asset selected yet</span>}
         </div>
-        <label className="block">Search and add or change an asset<input className={input} value={search} disabled={locked} placeholder={source==='mt5'?'Search broker symbols or descriptions, e.g. GER40':'Search assets, e.g. EURUSD, gold'} onChange={e=>setSearch(e.target.value)} /></label>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {source==='mt5'&&<label>Asset class filter<select className={input} value={assetClass} disabled={locked} onChange={e=>setAssetClass(e.target.value)}>{ASSET_CLASSES.map(value=><option key={value} value={value}>{value==='all'?'All classes':value[0].toUpperCase()+value.slice(1)}</option>)}</select></label>}
+          <label className="block">Search and add or change an asset<input className={input} value={search} disabled={locked} placeholder={source==='mt5'?'Search exact broker symbol, description or group':'Search assets, e.g. EURUSD, gold'} onChange={e=>setSearch(e.target.value)} /></label>
+        </div>
         {search.trim()&&<div className="max-h-48 overflow-y-auto rounded-lg border border-slate-700 divide-y divide-slate-700" role="listbox" aria-label="Asset search results">
-          {searchResults.map(({name,description})=><button type="button" role="option" aria-selected={symbols.includes(name)} key={name} disabled={locked||(!symbols.includes(name)&&symbols.length>=8)} onClick={()=>toggle(name)} className={`w-full px-3 py-2 text-left hover:bg-slate-800 disabled:opacity-40 ${symbols.includes(name)?'bg-cyan-950/60 text-cyan-200':''}`}><span className="font-medium">{name}</span>{description&&<span className="ml-2 text-sm text-slate-400">{description}</span>}<span className="float-right text-xs text-slate-400">{symbols.includes(name)?'Selected · click to remove':'Add'}</span></button>)}
+          {searchResults.map((asset:any)=><button type="button" role="option" aria-selected={symbols.includes(asset.name)} key={asset.name} disabled={locked||(!symbols.includes(asset.name)&&symbols.length>=8)} onClick={()=>toggle(asset.name)} className={`w-full px-3 py-2 text-left hover:bg-slate-800 disabled:opacity-40 ${symbols.includes(asset.name)?'bg-cyan-950/60 text-cyan-200':''}`}><span className="font-medium">{asset.name}</span>{asset.description&&<span className="ml-2 text-sm text-slate-400">{asset.description}</span>}{source==='mt5'&&<span className="ml-2 text-xs text-cyan-300">{asset.asset_class} · {asset.broker_group || 'broker group unavailable'}</span>}{source==='mt5'&&!asset.eligible&&<span className="ml-2 text-xs text-amber-300">research only: {asset.reason}</span>}<span className="float-right text-xs text-slate-400">{symbols.includes(asset.name)?'Selected · click to remove':'Add'}</span></button>)}
           {!searchResults.length&&<p className="p-3 text-sm text-slate-400">{source==='mt5'&&!catalog.length?'Connect your MT5 demo to search its instruments.':source==='mt5'?`No broker instrument matches “${search.trim()}”. Search symbol and description.`:`No preset matches “${search.trim()}”. Add the exact symbol below if needed.`}</p>}
         </div>}
         {source!=='mt5'&&search.trim()&&<div className="flex flex-wrap gap-2"><input aria-label="Exact asset symbol" maxLength={128} placeholder="Exact asset symbol" value={custom} onChange={e=>setCustom(e.target.value)} className="bg-slate-950 rounded p-2" /><button disabled={locked||symbols.length>=8||!validCustomSymbol} className={button} onClick={()=>{if(!symbols.includes(customSymbol))toggle(customSymbol);setCustom('')}}>Add exact symbol</button></div>}
-        <p className="text-xs text-slate-400">{symbols.length}/8 selected · each asset has independent capital; this is not a combined portfolio backtest. Maximum 10,000 candles per asset.</p>
+        <p className="text-xs text-slate-400">{symbols.length}/8 selected · each instrument has its own timeframe, specification, sessions and costs. Capital remains independent; this is not a combined portfolio backtest. Maximum 10,000 candles per instrument.</p>
       </section>
       <div className="rounded-lg border border-slate-600 bg-slate-900 p-4 space-y-4">
         <div><h2 className="font-semibold">Research scope</h2><p className="text-sm text-slate-400">Choose when entries may happen and what price movement to test. These settings affect every validation period.</p></div>
@@ -240,12 +312,14 @@ export default function Analyze() {
     </section>
     {symbols.map(symbol => { const p=profiles[symbol]; return <details key={symbol} className="bg-slate-800 rounded-xl p-4" open={symbols.length===1 || undefined}>
       <summary className="font-semibold cursor-pointer">{symbol}: costs, contract and trading calendar</summary>
-      <p className="text-sm text-slate-400 mt-3">Enter confirmed account-currency costs per lot. Commission is round trip. Financing is a positive charge or negative credit per rollover unit. Blank values block costed validation; confirmed zero is allowed. MT5 supplies contract sizes, lot limits and historical spreads.</p>
+      <p className="text-sm text-slate-400 mt-3">This instrument’s broker specification is captured separately. Enter its verified account-currency costs, rollover schedule and slippage model. Unknown or unsupported values remain unverified and block candidate eligibility.</p>
       <fieldset disabled={locked} className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
         {([['commission_per_lot','Round-trip commission / lot'],['financing_long','Long financing / lot'],['financing_short','Short financing / lot'],['spread_price','Full spread override (price units)'],['slippage_ticks','Base slippage per fill (ticks)'],['market_impact_ticks_per_lot','Extra impact ticks per lot per fill']] as const).map(([key,label])=>{const required=['commission_per_lot','financing_long','financing_short'].includes(key);const missing=required&&(p[key]==null||p[key]==='');return <label key={key}>{label}{required&&<span className="text-red-400 font-bold"> *</span>}<input className={`${input} ${missing?'border-red-500 focus:border-red-400':''}`} aria-invalid={missing} required={required} type="number" min={key==='financing_long'||key==='financing_short'?undefined:0} step="any" value={p[key]??''} onChange={e=>edit(symbol,{[key]:e.target.value===''?(key==='market_impact_ticks_per_lot'?0:null):+e.target.value})}/>{missing&&<small className="text-red-300">Required for costed validation. Use 0 only if verified.</small>}</label>})}
         <p className="sm:col-span-2 lg:col-span-3 text-xs text-slate-400">Each fill adds base slippage plus (impact ticks per lot × position size). Impact is a user-supplied scenario, not a value inferred from candle volume or order-book depth. Enter a broker-calibrated value or leave at zero and treat the result as having no size-based impact.</p>
+        <label>Slippage model source{p.slippage_confirmed&&<span className="text-red-400 font-bold"> *</span>}<input className={input} value={p.slippage_source} onChange={e=>edit(symbol,{slippage_source:e.target.value})}/></label>
+        <label><input type="checkbox" disabled={!p.slippage_source.trim()} checked={p.slippage_confirmed} onChange={e=>edit(symbol,{slippage_confirmed:e.target.checked})}/> I verified this measured or explicitly stressed slippage model</label>
         <label>Cost source / broker schedule{p.costs_confirmed&&<span className="text-red-400 font-bold"> *</span>}<input className={`${input} ${p.costs_confirmed&&!p.cost_source.trim()?'border-red-500':''}`} aria-invalid={p.costs_confirmed&&!p.cost_source.trim()} required={p.costs_confirmed} value={p.cost_source} onChange={e=>edit(symbol,{cost_source:e.target.value})}/>{p.costs_confirmed&&!p.cost_source.trim()&&<small className="text-red-300">Required when cost assumptions are confirmed.</small>}</label>
-        <label>Trading calendar<select className={input} value={p.session.weekdays.length===7?'365':'252'} onChange={e=>edit(symbol,{annualization:+e.target.value,session:{...p.session,weekdays:e.target.value==='365'?[0,1,2,3,4,5,6]:[0,1,2,3,4]}})}><option value="252">Monday-Friday / 252 days</option><option value="365">Every day / 365 days</option></select></label>
+        <label>Basic trading days<select className={input} value={p.session.weekdays.length===0?'unconfigured':p.session.weekdays.length===7?'365':'252'} onChange={e=>edit(symbol,{session:{...p.session,weekdays:e.target.value==='365'?[0,1,2,3,4,5,6]:e.target.value==='252'?[0,1,2,3,4]:[]}})}><option value="unconfigured">Unverified / not set</option><option value="252">Monday-Friday</option><option value="365">Every day</option></select><small>These basic hours do not represent daily breaks or holidays; use the detailed profile for those.</small></label>
         <label>Session timezone<input className={input} value={p.session.timezone} onChange={e=>edit(symbol,{session:{...p.session,timezone:e.target.value}})}/></label>
         <label>Session calendar source<input className={input} placeholder="Broker schedule, exchange calendar or document" value={p.session.source} onChange={e=>edit(symbol,{session:{...p.session,source:e.target.value}})}/></label>
         <label>Session open<input className={input} type="time" value={`${String(Math.floor(p.session.open_minute/60)).padStart(2,'0')}:${String(p.session.open_minute%60).padStart(2,'0')}`} onChange={e=>{const [h,m]=e.target.value.split(':').map(Number);edit(symbol,{session:{...p.session,open_minute:h*60+m}})}}/></label>
@@ -261,12 +335,15 @@ export default function Analyze() {
         </div>
         <label>Rollover timezone<input className={input} value={p.rollover_timezone} onChange={e=>edit(symbol,{rollover_timezone:e.target.value})}/></label>
         <label>Rollover minute of day<input className={input} type="number" min="0" max="1439" value={p.rollover_minute} onChange={e=>edit(symbol,{rollover_minute:+e.target.value})}/></label>
+        <label>Rollover schedule source<input className={input} value={p.rollover_source} onChange={e=>edit(symbol,{rollover_source:e.target.value})}/></label>
+        <label><input type="checkbox" disabled={!p.rollover_source.trim()} checked={p.rollover_confirmed} onChange={e=>edit(symbol,{rollover_confirmed:e.target.checked})}/> I verified rollover timezone, time and weekly weights</label>
         <label>Directional exposure (+ long / - short)<input className={input} type="number" value={exposures[symbol]??0} disabled={source==='mt5'} onChange={e=>setExposures({...exposures,[symbol]:+e.target.value})}/><small>MT5 uses the connected account's position snapshot.</small></label>
-        {source!=='mt5' && (['contract_size','tick_size','volume_min','volume_step','volume_max','profit_currency','account_currency'] as const).map(key=><label key={key}>{key.replace(/_/g,' ')}<input className={input} value={p[key]} onChange={e=>edit(symbol,{[key]:key.includes('currency')?e.target.value:+e.target.value})}/></label>)}
-        <label><input type="checkbox" checked={p.costs_confirmed} onChange={e=>edit(symbol,{costs_confirmed:e.target.checked})}/> I verified commission, financing, rollover settings and cost assumptions</label>
-        <label><input type="checkbox" disabled={!p.session.source.trim()} checked={p.session.confirmed} onChange={e=>edit(symbol,{session:{...p.session,confirmed:e.target.checked}})}/> I verified the session calendar, holidays and early closes {!p.session.source.trim()&&<small className="block text-amber-200">Enter a calendar source before confirming.</small>}</label>
-        {source!=='mt5' && <label><input type="checkbox" checked={p.specification_confirmed} onChange={e=>edit(symbol,{specification_confirmed:e.target.checked})}/> I verified the linear contract specification</label>}
-        <label>Import detailed contract/calendar profile (JSON)<input type="file" accept=".json" className="block max-w-full" onChange={async e=>{try{const f=e.target.files?.[0];if(f) edit(symbol,JSON.parse(await f.text()))}catch(err){setError(String(err))}}}/><small>Supports holiday dates, early closes, rollover weights and historical FX rates. See the automated research guide.</small></label>
+        {source!=='mt5' && (['contract_size','tick_size','point','digits','tick_value','volume_min','volume_step','volume_max','profit_currency','account_currency','calculation_mode','order_mode','trade_mode'] as const).map(key=><label key={key}>{key.replace(/_/g,' ')}<input className={input} value={p[key]??''} onChange={e=>edit(symbol,{[key]:e.target.value===''?null:key.includes('currency')?e.target.value:+e.target.value})}/></label>)}
+        {source!=='mt5' && <label>Instrument specification source<input className={input} value={p.specification_source} onChange={e=>edit(symbol,{specification_source:e.target.value})}/></label>}
+        <label><input type="checkbox" disabled={!p.rollover_confirmed||!p.rollover_source.trim()||!p.cost_source.trim()} checked={p.costs_confirmed} onChange={e=>edit(symbol,{costs_confirmed:e.target.checked})}/> I verified commission, financing, rollover settings and cost assumptions</label>
+        <label><input type="checkbox" disabled={!p.session.source.trim()||(!p.session.weekdays.length&&!Object.keys(p.session.weekly_hours||{}).length)} checked={p.session.confirmed} onChange={e=>edit(symbol,{session:{...p.session,confirmed:e.target.checked}})}/> I verified the session calendar, holidays and early closes {!p.session.source.trim()&&<small className="block text-amber-200">Enter a calendar source before confirming.</small>}</label>
+        {source!=='mt5' && <label><input type="checkbox" disabled={!p.specification_source.trim()} checked={p.specification_confirmed} onChange={e=>edit(symbol,{specification_confirmed:e.target.checked})}/> I verified the instrument contract specification</label>}
+        <label>Import detailed contract/calendar profile (JSON)<input type="file" accept=".json" className="block max-w-full" onChange={async e=>{try{const f=e.target.files?.[0];if(f) edit(symbol,JSON.parse(await f.text()))}catch(err){setError(String(err))}}}/><small>Supports weekly trading windows, holidays, early closes, rollover weights and historical FX rates. See the automated research guide.</small></label>
         {source==='import' && <label>Candles for {symbol} (CSV/Excel)<input type="file" accept=".csv,.xlsx" className="block max-w-full" onChange={async e=>{try {const f=e.target.files?.[0];if(!f)return;let csv_data=await f.text();if(f.name.endsWith('.xlsx')){const bytes=new Uint8Array(await f.arrayBuffer());let binary='';for(let i=0;i<bytes.length;i+=32768)binary+=String.fromCharCode(...bytes.subarray(i,i+32768));csv_data='data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,'+btoa(binary)}const data:any=await api.post('/api/analysis/parse',{csv_data});setBars(old=>({...old,[symbol]:data.bars}))}catch(err){setError(String(err))}}}/><small>{bars[symbol]?.length??0} candles loaded</small></label>}
       </fieldset>
     </details>})}
@@ -274,7 +351,7 @@ export default function Analyze() {
     {error && <p role="alert" className="text-red-300 break-words whitespace-pre-line">{error}</p>}{message && <p role="status" className="text-emerald-300">{message}</p>}
     {job && <section className="bg-slate-800 rounded-xl p-5 space-y-3" aria-label="Analysis progress"><h2 className="text-xl font-bold">{job.status}: {job.stage}</h2><progress aria-label="Research progress" className="w-full" max="1" value={job.progress}/><p className="text-sm text-slate-400">Saved run {job.id}. Progress persists when you leave this page. Cancellation stops at the next analysis checkpoint.</p>{job.status==='running' && <button className={button} disabled={!canRunResearch} onClick={async()=>{try{setJob(await api.post(`/api/analysis/runs/${job.id}/cancel`,{}))}catch(e){setError(String(e))}}}>Cancel analysis</button>}<button className="ml-2 underline" onClick={()=>downloadFile(`/api/analysis/runs/${job.id}/artifact`,`analysis-${job.id}.json`).catch(e=>setError(String(e)))}>Download report and source snapshot</button></section>}
     {report?.decision_summary&&<section className="bg-slate-800 rounded-xl p-5" aria-label="Research decision summary"><h2 className="text-xl font-bold">Run decision: {report.decision_summary.overall_decision==='candidate_available'?'candidate available':'no trade'}</h2><p className="text-sm text-slate-400">{report.decision_summary.demo_candidates} demo candidates · {report.decision_summary.no_trade} no-trade assets · {report.decision_summary.failed} failed</p></section>}
-    {report && Object.entries(report.assets||{}).map(([symbol, value])=>{const r:any=value;const scope=r.validation?.research_scope;const holdoutMeta=r.validation?.holdout?.metadata;const researchOnly=scope?.setup==='opening_range_breakout'||Boolean(scope?.sessions?.length);return <section key={symbol} className="bg-slate-800 rounded-xl p-5 space-y-3"><h2 className="text-xl font-bold">{symbol} research report</h2><p className={r.demo_candidate?'text-emerald-300':'text-amber-200'}>{r.demo_candidate?'Validated demo candidate':researchOnly&&r.validation?'Research complete · research-only scope':'No trade: more evidence needed'} · {r.status}</p>{r.error&&<p role="alert" className="text-red-300">{r.error}</p>}{scope&&<p className="text-sm text-cyan-200">Tested: {scope.setup==='opening_range_breakout'?`Opening range breakout · ${scope.opening_range_session.replace('_',' ')} · first ${scope.opening_range_minutes} minutes${scope.opening_range_volume_filter?` · volume ≥ ${scope.opening_range_volume_multiple}× prior 20-bar average`:''}`: `Selected strategy signals · ${scope.sessions.length?scope.sessions.join(', '):'all broker session hours'}`}</p>}{holdoutMeta?.opening_range_volume&&<p className="text-sm text-slate-300">Holdout breakout volume: {holdoutMeta.opening_range_volume.volume_confirmed} confirmed · {holdoutMeta.opening_range_volume.volume_rejected} rejected · {holdoutMeta.opening_range_volume.volume_unavailable} unavailable.</p>}{holdoutMeta?.market_impact_model&&<p className="text-sm text-slate-400">Holdout size impact: {holdoutMeta.market_impact_model.configured_ticks_per_lot} ticks per lot per fill. This is the configured user-supplied scenario; it is not measured market depth.</p>}{holdoutMeta?.intrabar_ambiguity&&<p className="text-sm text-slate-400">Holdout candles touching both stop and target: {holdoutMeta.intrabar_ambiguity.same_bar_stop_and_target}. The simulator resolves these stop first.</p>}{r.no_trade_reasons?.length>0&&<ul className="list-disc pl-5 text-amber-200">{r.no_trade_reasons.map((reason:string)=><li key={reason}>{reason}</li>)}</ul>}{r.quality&&<p>Data coverage: {(r.quality.coverage*100).toFixed(1)}% · {r.quality.missing_bars} missing bars in {r.quality.missing_ranges?.length??0} ranges · {r.quality.outside_session_or_grid} outside the supplied calendar · longest flat close run {r.quality.stale_close_run_bars} bars · spread median/max {r.quality.median_spread??'N/A'} / {r.quality.max_spread??'N/A'} · calendar {r.quality.session_confirmed?'confirmed':'unconfirmed'} ({r.quality.calendar_timezone}; {r.quality.holiday_dates} holidays, {r.quality.early_close_dates} early closes, {r.quality.special_hours_dates} special dates)</p>}{r.market_behavior?.status==='ok'&&<p>Behavior: {r.market_behavior.regime} · annualized volatility {(r.market_behavior.annualized_volatility*100).toFixed(2)}% · lag-1 return correlation {r.market_behavior.lag1_return_autocorrelation.toFixed(3)} · trend z-score {r.market_behavior.trend_zscore.toFixed(2)}</p>}
+    {report && Object.entries(report.assets||{}).map(([symbol, value])=>{const r:any=value;const scope=r.validation?.research_scope;const holdoutMeta=r.validation?.holdout?.metadata;const researchOnly=scope?.setup==='opening_range_breakout';return <section key={symbol} className="bg-slate-800 rounded-xl p-5 space-y-3"><h2 className="text-xl font-bold">{symbol} · {r.timeframe || 'timeframe unavailable'} · {r.asset_class || 'class unknown'} research report</h2><p className={r.demo_candidate?'text-emerald-300':'text-amber-200'}>{r.demo_candidate?'Validated demo candidate':researchOnly&&r.validation?'Research complete · research-only scope':'No trade: more evidence needed'} · {r.status}</p>{r.error&&<p role="alert" className="text-red-300">{r.error}</p>}{scope&&<p className="text-sm text-cyan-200">Tested: {scope.setup==='opening_range_breakout'?`Opening range breakout · ${scope.opening_range_session.replace('_',' ')} · first ${scope.opening_range_minutes} minutes${scope.opening_range_volume_filter?` · volume ≥ ${scope.opening_range_volume_multiple}× prior 20-bar average`:''}`: `Selected strategy signals · ${scope.sessions.length?scope.sessions.join(', '):'all broker session hours'}`}</p>}{scope?.sessions?.length>0&&scope.setup==='strategy_signals'&&<p className="text-sm text-slate-300">The loaded demo candidate enforces these same entry windows.</p>}{holdoutMeta?.opening_range_volume&&<p className="text-sm text-slate-300">Holdout breakout volume: {holdoutMeta.opening_range_volume.volume_confirmed} confirmed · {holdoutMeta.opening_range_volume.volume_rejected} rejected · {holdoutMeta.opening_range_volume.volume_unavailable} unavailable.</p>}{holdoutMeta?.market_impact_model&&<p className="text-sm text-slate-400">Holdout size impact: {holdoutMeta.market_impact_model.configured_ticks_per_lot} ticks per fill. This is the configured user-supplied scenario; it is not measured market depth.</p>}{holdoutMeta?.intrabar_ambiguity&&<p className="text-sm text-slate-400">Holdout candles touching both stop and target: {holdoutMeta.intrabar_ambiguity.same_bar_stop_and_target}. The simulator resolves these stop first.</p>}{r.no_trade_reasons?.length>0&&<ul className="list-disc pl-5 text-amber-200">{r.no_trade_reasons.map((reason:string)=><li key={reason}>{reason}</li>)}</ul>}{r.quality&&<p>Data coverage: {r.quality.coverage===null?'unverified':`${(r.quality.coverage*100).toFixed(1)}%`} · {r.quality.missing_bars} missing bars in {r.quality.missing_ranges?.length??0} ranges · {r.quality.outside_session_or_grid} outside the supplied calendar · longest flat close run {r.quality.stale_close_run_bars} bars · spread median/max {r.quality.median_spread??'N/A'} / {r.quality.max_spread??'N/A'} · calendar {r.quality.session_confirmed?'confirmed':'unconfirmed'} ({r.quality.calendar_timezone}; {r.quality.holiday_dates} holidays, {r.quality.early_close_dates} early closes, {r.quality.special_hours_dates} special dates)</p>}{r.market_behavior?.status==='ok'&&<p>Behavior: {r.market_behavior.regime} · annualized volatility {(r.market_behavior.annualized_volatility*100).toFixed(2)}% · lag-1 return correlation {r.market_behavior.lag1_return_autocorrelation.toFixed(3)} · trend z-score {r.market_behavior.trend_zscore.toFixed(2)}</p>}
       {r.validation&&<><div className="grid grid-cols-2 md:grid-cols-4 gap-3">{Object.entries({ 'Holdout P&L':r.validation.holdout.total_pnl,'Holdout trades':r.validation.holdout.total_trades,'Profit factor':r.validation.holdout.profit_factor,'Max drawdown (%)':r.validation.holdout.max_drawdown_pct*100,'Sharpe':r.validation.holdout.sharpe_ratio,'Sortino':r.validation.holdout.sortino_ratio,'Expectancy':r.validation.holdout.expectancy,'Win rate (%)':r.validation.holdout.win_rate*100 }).map(([k,v])=><div key={k} className="bg-slate-900 rounded p-3"><div className="text-sm text-slate-400">{k}</div><strong>{Number(v).toFixed(2)}</strong></div>)}</div><ul>{Object.entries(r.validation.checks).map(([k,v])=><li key={k} className={v?'text-emerald-300':'text-amber-300'}>{v?'Pass':'Not met'}: {k.replace(/_/g,' ')}</li>)}</ul><p className="text-sm text-slate-400">{r.validation.note}</p><details><summary>Walk-forward folds and stress results</summary><p className="text-sm text-slate-400">Sensitivity: {r.validation.sensitivity?.positive_pnl_cases ?? 0}/{r.validation.sensitivity?.tested ?? 0} cases positive; worst P&amp;L {r.validation.sensitivity?.worst_case_pnl?.toFixed(2) ?? 'N/A'}.</p><pre className="overflow-auto max-h-80 text-xs">{JSON.stringify({folds:r.validation.folds,cost_stress:r.validation.holdout_cost_stress,sensitivity:r.validation.sensitivity,monte_carlo:r.validation.monte_carlo},null,2)}</pre></details></>}
       {r.validation?.monte_carlo && <MonteCarloSummary symbol={symbol} validation={r.validation} />}
       {r.demo_candidate&&<button className={button} disabled={!canRunResearch || job.status==='running'} onClick={async()=>{try {await api.post(`/api/analysis/runs/${job.id}/candidate`,{symbol});setMessage(`${symbol} candidate loaded. Review MT5 Demo & Journal and explicitly start when ready.`)}catch(e){setError(String(e))}}}>Load validated candidate into MT5</button>}

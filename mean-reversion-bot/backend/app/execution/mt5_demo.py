@@ -15,14 +15,19 @@ import time
 from dataclasses import asdict
 from contextlib import contextmanager
 from datetime import datetime, timezone
-from datetime import timedelta
 from pathlib import Path
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-SYMBOL = "Volatility 75 (1s) Index"
+from app.quant.research_sessions import in_window, market_is_open
+from app.quant.instruments import (classify_instrument, specification_fingerprint,
+                                   specification_issues, specification_payload,
+                                   configuration_fingerprint, timeframe_seconds)
+from app.quant.strategy_identity import EXECUTION_STRATEGY_NAME, EXECUTION_STRATEGY_VERSION
+
 MAGIC = 751006
+LEGACY_UNQUALIFIED_JOURNAL_SYMBOL = "Volatility 75 (1s) Index"
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 
 
@@ -102,8 +107,10 @@ def compare_forward_performance(candidate, deals, orders=(), minimum_sample=20):
 
 class DemoConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    symbol: str = Field(SYMBOL, min_length=1, max_length=128, pattern=r"^[^\x00-\x1f\x7f]+$")
-    timeframe: Literal["M1", "M5", "M15", "M30", "H1", "H4"] = "M5"
+    symbol: str = Field("", max_length=128, pattern=r"^[^\x00-\x1f\x7f]*$")
+    timeframe: Literal["M1", "M2", "M3", "M4", "M5", "M6", "M10", "M12", "M15",
+               "M20", "M30", "H1", "H2", "H3", "H4", "H6", "H8", "H12",
+               "D1", "W1"] = "M5"
     min_confluence: int = Field(6, ge=1, le=20)
     risk_pct: float = Field(0.005, gt=0, le=0.01)
     daily_loss_pct: float = Field(0.03, gt=0, le=0.05)
@@ -127,7 +134,7 @@ class DemoConfig(BaseModel):
 
     @model_validator(mode="after")
     def validate_selection(self):
-        if self.symbol != self.symbol.strip():
+        if self.symbol and self.symbol != self.symbol.strip():
             raise ValueError('Use the exact broker symbol without surrounding whitespace')
         from app.core.engine.signal_engine import EngineConfig
         EngineConfig(**self.model_dump(exclude={'symbol', 'timeframe', 'daily_loss_pct'}))
@@ -135,6 +142,71 @@ class DemoConfig(BaseModel):
                     self.use_stoch, self.use_lsl, self.use_smc)):
             raise ValueError("Select at least one directional indicator; volume and Hurst alone cannot determine a direction")
         return self
+
+
+def research_session_allowed(candidate, bar_timestamp, interval):
+    candidate = candidate or {}
+    sessions = candidate.get('research_scope', {}).get('sessions', [])
+    if sessions and not (
+            any(in_window(bar_timestamp, session) for session in sessions)
+            and any(in_window(bar_timestamp + interval, session) for session in sessions)):
+        return False
+    calendar = (candidate.get('configuration') or {}).get('session_calendar')
+    if calendar:
+        from app.quant.schemas import Session
+        verified_calendar = Session.model_validate(calendar)
+        return (verified_calendar.confirmed
+                and market_is_open(bar_timestamp, verified_calendar)
+                and market_is_open(bar_timestamp + interval, verified_calendar))
+    return not candidate.get('configuration')
+
+
+def candidate_configuration_matches(candidate):
+    configuration = (candidate or {}).get('configuration')
+    strategy = (candidate or {}).get('strategy')
+    snapshot = (candidate or {}).get('snapshot') or {}
+    if not isinstance(configuration, dict) or not isinstance(strategy, dict):
+        return False
+    try:
+        if configuration_fingerprint(configuration) != candidate.get('configuration_fingerprint'):
+            return False
+        instrument = configuration['instrument']
+        strategy_spec = configuration['strategy']
+        risk = configuration['risk']
+        session_calendar = configuration['session_calendar']
+        profile = candidate['instrument_profile']
+        cost_fields = ('commission_per_lot', 'financing_long', 'financing_short',
+                       'rollover_timezone', 'rollover_minute', 'rollover_weights',
+                       'spread_price', 'slippage_ticks', 'market_impact_ticks_per_lot',
+                       'price_basis', 'fx_rates', 'fx_max_age_seconds', 'costs_confirmed',
+                       'cost_source', 'rollover_confirmed', 'rollover_source',
+                       'slippage_confirmed', 'slippage_source')
+        parameters = {key: value for key, value in strategy.items()
+                      if key not in {'symbol', 'timeframe', 'risk_pct', 'daily_loss_pct'}}
+        return (instrument['symbol'] == strategy['symbol'] == snapshot.get('symbol')
+                and instrument['broker_server'] == snapshot.get('server')
+                and instrument['asset_class'] == profile['asset_class'] == snapshot.get('asset_class')
+                and instrument['broker_group'] == profile['broker_group'] == snapshot.get('broker_group')
+                and profile['account_currency'] == snapshot.get('currency')
+                and configuration['timeframe'] == strategy['timeframe']
+                and strategy_spec['name'] == EXECUTION_STRATEGY_NAME
+                and strategy_spec['version'] == EXECUTION_STRATEGY_VERSION
+                and strategy_spec['parameters'] == parameters
+                and profile['specification_confirmed'] is True
+                and profile['costs_confirmed'] is True
+                and profile['slippage_confirmed'] is True
+                and configuration['profile_fingerprint'] == configuration_fingerprint(profile)
+                and configuration['cost_model_fingerprint'] == configuration_fingerprint(
+                    {key: profile[key] for key in cost_fields})
+                and profile['specification_fingerprint'] == configuration['specification_fingerprint']
+                and profile['session'] == session_calendar
+                and session_calendar['confirmed'] is True
+                and bool(session_calendar['source'].strip())
+                and risk == {'risk_pct': strategy['risk_pct'],
+                             'daily_loss_pct': strategy['daily_loss_pct']}
+                and configuration['specification_fingerprint'] == snapshot.get('specification_fingerprint'))
+    except (KeyError, TypeError, ValueError):
+        return False
 
 
 class MT5DemoRunner:
@@ -149,7 +221,7 @@ class MT5DemoRunner:
         self.last_sync = 0.0
         self.process_lock = None
         self.config = DemoConfig()
-        self.state = {"running": False, "connected": False, "symbol": SYMBOL,
+        self.state = {"running": False, "connected": False, "symbol": "",
                       "mode": "demo", "message": "Connect MT5 after logging into a demo account"}
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.db() as db:
@@ -220,10 +292,20 @@ class MT5DemoRunner:
         return None
 
     def _symbol_info(self, symbol):
-        info = self.mt5.symbol_info(symbol)
+        if not symbol:
+            raise ValueError('Select an exact broker instrument first')
+        info = self._market_info(symbol)
         problem = self._symbol_problem(info)
-        if problem or info.name != symbol:
+        if problem:
             raise ValueError(f'{symbol}: {problem or "Exact broker symbol required"}')
+        return info
+
+    def _market_info(self, symbol):
+        if not symbol:
+            raise ValueError('Select an exact broker instrument first')
+        info = self.mt5.symbol_info(symbol)
+        if not info or info.name != symbol:
+            raise ValueError(f'{symbol}: exact broker symbol unavailable')
         if not self.mt5.symbol_select(symbol, True):
             raise ValueError(f'{symbol}: cannot select this symbol in Market Watch')
         return info
@@ -234,9 +316,15 @@ class MT5DemoRunner:
             rows = self.mt5.symbols_get()
             if rows is None:
                 raise ValueError('MT5 symbol catalog unavailable; reconnect and retry')
-            return {'account': account.login, 'server': account.server, 'symbols': [
+            return {'account': account.login, 'server': account.server, 'account_currency': account.currency, 'symbols': [
                 {'name': info.name, 'description': info.description,
-                 'eligible': self._symbol_problem(info) is None, 'reason': self._symbol_problem(info)}
+                 'asset_class': classify_instrument(info, self.mt5),
+                 'broker_group': getattr(info, 'path', '') or '',
+                 'account_currency': account.currency,
+                 'eligible': self._symbol_problem(info) is None, 'reason': self._symbol_problem(info),
+                 'specification_fingerprint': specification_fingerprint(info),
+                 'specification_issues': specification_issues(info),
+                 'specification': specification_payload(info)}
                 for info in sorted(rows, key=lambda row: row.name)]}
 
     def _exposure(self):
@@ -334,6 +422,7 @@ class MT5DemoRunner:
                         and snapshot.get('server') == self.state.get('server')
                         and snapshot.get('account') == self.state.get('account')
                         and evidence.get('strategy') == self.config.model_dump()
+                        and candidate_configuration_matches(evidence)
                         and 0 <= age <= 7 * 86400)}
 
     def preflight(self):
@@ -341,18 +430,28 @@ class MT5DemoRunner:
         with self.lock:
             now = time.time()
             checks = []
-            def add(code, stage, ok, message):
-                checks.append({'code': code, 'stage': stage, 'ok': bool(ok), 'message': message})
+            def add(code, stage, ok, message, success_message=None):
+                checks.append({'code': code, 'stage': stage, 'ok': bool(ok),
+                               'message': success_message if ok and success_message else message})
 
             evidence = self._research_candidate()
+            add('instrument_selected', 'start', bool(self.config.symbol),
+                'Select an exact broker instrument',
+                'Exact broker instrument selected')
             add('candidate_loaded', 'start', evidence is not None,
-                'Load a passing single-pair candidate from Analyze selected assets')
+                'Load a passing instrument-specific candidate from research',
+                'Validated research candidate loaded')
             if evidence:
                 age = now - evidence.get('validated_at', 0)
                 add('candidate_fresh', 'start', 0 <= age <= 7 * 86400,
-                    'Research candidate is older than seven days; rerun Analyze')
+                    'Research candidate is older than seven days; rerun Analyze',
+                    'Research candidate is within seven days')
                 add('strategy_match', 'start', evidence.get('strategy') == self.config.model_dump(),
-                    'Saved MT5 strategy differs from the research candidate')
+                    'Saved MT5 strategy differs from the research candidate',
+                    'Saved strategy matches the research candidate')
+                add('candidate_identity', 'start', candidate_configuration_matches(evidence),
+                    'Candidate instrument, timeframe, strategy or risk identity is inconsistent',
+                    'Candidate research configuration identity matches')
 
             account = terminal = scope = None
             try:
@@ -360,24 +459,28 @@ class MT5DemoRunner:
             except ValueError as exc:
                 add('demo_connected', 'start', False, str(exc))
             else:
-                add('demo_connected', 'start', True, 'Connected MT5 demo account')
+                add('demo_connected', 'start', True, 'Connect MT5 demo before selecting a broker symbol',
+                    'Connected MT5 demo account')
                 snapshot = (evidence or {}).get('snapshot') or {}
                 if evidence:
                     add('account_match', 'start', account.server == snapshot.get('server')
                         and account.login == snapshot.get('account'),
-                        'Connected demo account/server differs from the research candidate')
+                        'Connected demo account/server differs from the research candidate',
+                        'Connected demo account/server matches the research candidate')
                 allowed = bool(terminal.trade_allowed and not terminal.tradeapi_disabled
                                and account.trade_allowed and account.trade_expert)
                 add('trading_permissions', 'start', allowed,
-                    'Enable Algo Trading and external Python trading in MT5')
+                    'Enable Algo Trading and external Python trading in MT5',
+                    'MT5 algorithmic trading permissions are enabled')
 
             info = None
-            if account is not None:
+            if account is not None and self.config.symbol:
                 info = self.mt5.symbol_info(self.config.symbol)
                 problem = self._symbol_problem(info)
                 exact = bool(info and info.name == self.config.symbol)
                 add('broker_symbol', 'start', problem is None and exact,
-                    f'{self.config.symbol}: {problem or "Exact broker symbol unavailable"}')
+                    f'{self.config.symbol}: {problem or "Exact broker symbol unavailable"}',
+                    f'{self.config.symbol}: exact broker symbol available')
                 if evidence and info and problem is None and exact:
                     snapshot = evidence.get('snapshot') or {}
                     contract = all(snapshot.get(key) is not None and getattr(info, attr, None) == snapshot[key]
@@ -387,7 +490,15 @@ class MT5DemoRunner:
                                                      ('volume_step', 'volume_step'),
                                                      ('volume_max', 'volume_max')))
                     add('contract_match', 'start', contract,
-                        'Broker contract changed; rerun Analyze for this pair')
+                        'Broker contract changed; rerun Analyze for this pair',
+                        'Broker contract matches the research candidate')
+                    fingerprint_match = (snapshot.get('specification_fingerprint')
+                                         == specification_fingerprint(info))
+                    add('specification_match', 'start', fingerprint_match,
+                        'Broker instrument specifications changed; rerun research',
+                        'Full broker specification matches the candidate')
+            elif account is not None:
+                add('broker_symbol', 'start', False, 'Select an exact broker instrument')
 
             if account is not None:
                 try:
@@ -395,30 +506,42 @@ class MT5DemoRunner:
                 except ValueError as exc:
                     add('exposure_query', 'start', False, str(exc))
                 else:
-                    add('exposure_query', 'start', True, 'Broker exposure query available')
+                    add('exposure_query', 'start', True, 'Cannot verify broker exposure',
+                        'Broker exposure query available')
                     add('no_exposure', 'market', not positions and not orders,
-                        'Existing position or pending order blocks a new demo entry')
+                        'Existing position or pending order blocks a new demo entry',
+                        'No relevant positions or pending orders')
                 day = datetime.now(timezone.utc).date().isoformat()
                 with self.db() as db:
                     halted = db.execute("SELECT 1 FROM settings WHERE key=?",
                                         (f'day:{scope}:{day}:halted',)).fetchone() is not None
                 add('daily_limit', 'market', not halted,
-                    'Daily equity loss limit is latched; entries are paused today')
+                    'Daily equity loss limit is latched; entries are paused today',
+                    'Daily equity loss guard is clear')
 
             if account is not None and info is not None:
+                session_calendar = ((evidence or {}).get('configuration') or {}).get('session_calendar')
+                if session_calendar:
+                    from app.quant.schemas import Session
+                    calendar_open = market_is_open(int(now), Session.model_validate(session_calendar))
+                    add('instrument_session', 'market', calendar_open,
+                        'Instrument broker calendar is closed or unverified',
+                        'Instrument broker calendar is open')
                 tick = self.mt5.symbol_info_tick(self.config.symbol)
                 valid_quote = bool(tick and all(math.isfinite(v) and v > 0 for v in
                     (tick.bid, tick.ask, tick.time)) and tick.ask >= tick.bid
                     and abs(now - tick.time) <= 30)
                 add('fresh_quote', 'market', valid_quote,
-                    'No fresh bid/ask quote for this pair; wait for an open market')
+                    'No fresh bid/ask quote for this pair; wait for an open market',
+                    'Fresh bid/ask quote available')
                 rates = self.mt5.copy_rates_from_pos(self.config.symbol,
                     getattr(self.mt5, f'TIMEFRAME_{self.config.timeframe}'), 1, 100)
-                interval = int(self.config.timeframe[1:]) * (60 if self.config.timeframe[0] == 'M' else 3600)
+                interval = timeframe_seconds(self.config.timeframe)
                 latest = int(rates[-1]['time']) if rates is not None and len(rates) >= 100 else None
                 fresh_bars = latest is not None and 0 <= now - latest <= interval * 2 + 30
                 add('fresh_candles', 'market', fresh_bars,
-                    'At least 100 recent closed candles are needed; open the pair chart or wait for an open market')
+                    'At least 100 recent closed candles are needed; open the pair chart or wait for an open market',
+                    'Recent closed candles available')
 
             start_blockers = [c['message'] for c in checks if c['stage'] == 'start' and not c['ok']]
             market_blockers = [c['message'] for c in checks if c['stage'] == 'market' and not c['ok']]
@@ -443,7 +566,11 @@ class MT5DemoRunner:
             if account.login != snapshot['account'] or account.server != snapshot['server']:
                 raise ValueError('Research belongs to a different demo account/server')
             config = DemoConfig(**evidence['strategy'])
+            if not candidate_configuration_matches(evidence):
+                raise ValueError('Research candidate configuration identity is incomplete or inconsistent')
             info = self._symbol_info(config.symbol)
+            if specification_fingerprint(info) != snapshot.get('specification_fingerprint'):
+                raise ValueError('Broker instrument specifications changed; rerun research')
             current = {'contract_size': info.trade_contract_size, 'tick_size': info.trade_tick_size,
                        'volume_min': info.volume_min, 'volume_step': info.volume_step, 'volume_max': info.volume_max}
             if any(current[key] != snapshot[key] for key in current):
@@ -465,25 +592,35 @@ class MT5DemoRunner:
                 raise ValueError('Connect MT5 demo before loading historical candles, or import a CSV')
             self._account()
             symbol = symbol or self.config.symbol
+            if not symbol:
+                raise ValueError('Select an exact broker instrument before loading history')
             self._symbol_info(symbol)
-            if timeframe not in ('M1', 'M5', 'M15', 'M30', 'H1', 'H4') or not 1 <= days <= 90:
-                raise ValueError('Choose M1/M5/M15/M30/H1/H4 and 1–90 days')
-            interval = int(timeframe[1:]) * (60 if timeframe.startswith('M') else 3600)
-            end_epoch = int(time.time() // interval) * interval
+            if not 1 <= days <= 90:
+                raise ValueError('Choose a supported MT5 timeframe and 1–90 days')
+            try:
+                timeframe_seconds(timeframe)
+                mt5_timeframe = getattr(self.mt5, f'TIMEFRAME_{timeframe}')
+            except (ValueError, AttributeError) as exc:
+                raise ValueError(f'{timeframe}: timeframe is not supported by this MT5 terminal') from exc
+            current_bar = self.mt5.copy_rates_from_pos(symbol, mt5_timeframe, 0, 1)
+            if current_bar is None or len(current_bar) != 1:
+                raise ValueError(f'{symbol} {timeframe}: cannot determine the current broker candle boundary')
+            end_epoch = int(current_bar[0]['time'])
             end = datetime.fromtimestamp(end_epoch - 1, tz=timezone.utc)
-            start = end - timedelta(days=days)
-            rates = self.mt5.copy_rates_range(symbol, getattr(self.mt5, f'TIMEFRAME_{timeframe}'), start, end)
+            start = datetime.fromtimestamp(end_epoch - days * 86400, tz=timezone.utc)
+            rates = self.mt5.copy_rates_range(symbol, mt5_timeframe, start, end)
             # Session-based instruments do not trade 24/7. Do not infer missing
             # candles from wall-clock time; comprehensive gap auditing is separate.
             if rates is None or len(rates) < 100:
                 available = 0 if rates is None else len(rates)
                 raise ValueError(f'{symbol}: MT5 returned {available} candles; at least 100 are required. Open its chart and load more history or increase the requested days')
             return [dict(timestamp=int(r['time']), open=float(r['open']), high=float(r['high']),
-                         low=float(r['low']), close=float(r['close']), volume=float(r['tick_volume'])) for r in rates]
+                         low=float(r['low']), close=float(r['close']), volume=float(r['tick_volume']))
+                    for r in rates if int(r['time']) < end_epoch]
 
     def start(self, expected_symbol):
         with self.lock:
-            if expected_symbol != self.config.symbol:
+            if not expected_symbol or expected_symbol != self.config.symbol:
                 raise ValueError('Selected pair differs from the saved strategy. Reload and save before starting.')
             if self.state["running"]:
                 return self.status()
@@ -494,7 +631,9 @@ class MT5DemoRunner:
             account, terminal, _ = self._account()
             info = self._symbol_info(self.config.symbol)
             evidence = self._research_candidate()
-            if not evidence or evidence.get('strategy') != self.config.model_dump() or time.time() - evidence.get('validated_at', 0) > 7 * 86400:
+            if (not evidence or evidence.get('strategy') != self.config.model_dump()
+                    or not candidate_configuration_matches(evidence)
+                    or time.time() - evidence.get('validated_at', 0) > 7 * 86400):
                 raise ValueError('Run Analyze selected assets and load a passing research candidate before starting demo entries')
             snapshot = evidence['snapshot']
             if account.login != snapshot['account'] or account.server != snapshot['server']:
@@ -503,6 +642,8 @@ class MT5DemoRunner:
                    [('trade_contract_size','contract_size'), ('trade_tick_size','tick_size'),
                     ('volume_min','volume_min'), ('volume_max','volume_max'), ('volume_step','volume_step')]):
                 raise ValueError('Broker contract changed; rerun research')
+            if specification_fingerprint(info) != snapshot.get('specification_fingerprint'):
+                raise ValueError('Broker instrument specifications changed; rerun research')
             if not (terminal.trade_allowed and not terminal.tradeapi_disabled
                     and account.trade_allowed and account.trade_expert):
                 raise ValueError("Enable Algo Trading and allow external Python trading in MT5 Options > Expert Advisors")
@@ -613,31 +754,42 @@ class MT5DemoRunner:
         candles = [Candle(timestamp=int(r["time"]), open=float(r["open"]), high=float(r["high"]),
                           low=float(r["low"]), close=float(r["close"]), volume=float(r["tick_volume"])) for r in rates]
         bar = candles[-1].timestamp
-        interval = int(self.config.timeframe[1:]) * (60 if self.config.timeframe.startswith('M') else 3600)
+        interval = timeframe_seconds(self.config.timeframe)
         if time.time() - bar > interval * 2 + 30 or bar > time.time():
             self.state['message'] = 'Waiting for current closed candles; history is stale'
             return
-        # Preserve V75's legacy key so upgrading cannot replay its last candle.
-        symbol_key = '' if self.config.symbol == SYMBOL else f'{self.config.symbol}:'
+        # Preserve the old runner's unqualified candle key during migration.
+        symbol_key = '' if self.config.symbol == LEGACY_UNQUALIFIED_JOURNAL_SYMBOL else f'{self.config.symbol}:'
         bar_key = f"bar:{self.account_key}:{symbol_key}{self.config.timeframe}:{bar}"
         with self.db() as db:
             if db.execute("SELECT 1 FROM journal WHERE event_key=?", (bar_key,)).fetchone():
                 return
         self.engine.sizer.update_balance(account.balance)
         decision = self.engine.evaluate(candles, symbol=self.config.symbol, timeframe=self.config.timeframe)
+        session_allowed = research_session_allowed(self._research_candidate(), bar, interval)
+        reason = decision.reason if session_allowed else 'outside_research_session'
         payload = {"bar": bar, "symbol": self.config.symbol, "direction": decision.direction,
-                   "score": decision.confluence_score, "reason": decision.reason,
-                   "should_trade": decision.should_trade, "strategy": self.config.model_dump(),
+                   "score": decision.confluence_score, "reason": reason,
+                   "should_trade": decision.should_trade and session_allowed, "strategy": self.config.model_dump(),
                    "breakdown": asdict(decision.confluence.breakdown) if decision.confluence else {}}
         if not self.record("signal", payload, bar_key):
             return
-        self.state.update(last_signal=payload, message=decision.reason)
-        if decision.should_trade and not self.stop_event.is_set():
+        self.state.update(last_signal=payload, message=reason)
+        if decision.should_trade and session_allowed and not self.stop_event.is_set():
             self._send(decision, account, bar_key)
 
     def _send(self, decision, account, bar_key):
-        # Recheck immediately before preparing any broker request.
+        evidence = self._research_candidate()
+        age = time.time() - evidence.get('validated_at', 0) if evidence else None
+        if (not evidence or not 0 <= age <= 7 * 86400
+                or evidence.get('strategy') != self.config.model_dump()
+                or not candidate_configuration_matches(evidence)):
+            raise ValueError('A current matching research candidate is required before preparing an order')
+
+        snapshot = evidence.get('snapshot') or {}
         current, _, _ = self._account()
+        if current.login != snapshot.get('account') or current.server != snapshot.get('server'):
+            raise ValueError('Research candidate belongs to a different account/server')
         if not self._daily_guard(current):
             return
         positions, orders = self._exposure()
@@ -645,6 +797,8 @@ class MT5DemoRunner:
             return
         symbol = self.config.symbol
         info = self._symbol_info(symbol)
+        if specification_fingerprint(info) != snapshot.get('specification_fingerprint'):
+            raise ValueError('Broker instrument specifications changed; rerun research')
         tick = self.mt5.symbol_info_tick(symbol)
         if not tick or abs(time.time() - tick.time) > 30:
             raise ValueError(f"No fresh {symbol} quote; no order submitted")
@@ -669,17 +823,65 @@ class MT5DemoRunner:
         side = self.mt5.ORDER_TYPE_BUY if buy else self.mt5.ORDER_TYPE_SELL
         if sl <= 0 or tp <= 0:
             raise ValueError('Protective prices must be positive')
-        reference_loss = self.mt5.order_calc_profit(side, symbol, info.volume_min, price, sl)
-        unit_loss = reference_loss / info.volume_min if reference_loss is not None else None
-        if unit_loss is None or not math.isfinite(unit_loss) or unit_loss >= 0:
-            raise ValueError("MT5 could not calculate risk in account currency")
+        profile = evidence['instrument_profile']
+        commission = profile['commission_per_lot']
+        financing = profile['financing_long' if buy else 'financing_short']
+        slippage_ticks = profile['slippage_ticks']
+        impact_ticks_per_lot = profile['market_impact_ticks_per_lot']
+        if (not all(math.isfinite(value) for value in
+                    (commission, financing, slippage_ticks, impact_ticks_per_lot))
+                or commission < 0 or slippage_ticks < 0 or impact_ticks_per_lot < 0):
+            raise ValueError('Candidate execution costs are invalid')
+        if financing > 0:
+            raise ValueError('Positive financing cannot be bounded without a maximum holding period; no order submitted')
         budget = min(current.balance, current.equity) * self.config.risk_pct
         if not math.isfinite(budget) or budget <= 0:
             raise ValueError('Invalid account risk budget')
-        volume = round(math.floor(min(budget / abs(unit_loss), info.volume_max) / info.volume_step) * info.volume_step, 8)
+
+        def estimated_risk(volume):
+            adverse_slippage = (slippage_ticks + impact_ticks_per_lot * volume) * step
+            sign = 1 if buy else -1
+            adverse_entry = price + sign * adverse_slippage
+            adverse_stop = sl - sign * adverse_slippage
+            if adverse_entry <= 0 or adverse_stop <= 0:
+                raise ValueError('Candidate slippage makes the order price invalid')
+            pnl = self.mt5.order_calc_profit(side, symbol, volume, adverse_entry, adverse_stop)
+            if pnl is None or not math.isfinite(pnl) or pnl >= 0:
+                raise ValueError('MT5 could not calculate stop risk in account currency')
+            return abs(pnl) + commission * volume
+
+        min_steps = math.ceil(info.volume_min / info.volume_step - 1e-12)
+        max_steps = math.floor(info.volume_max / info.volume_step + 1e-12)
+        if min_steps > max_steps:
+            raise ValueError('Broker volume limits have no valid increment')
+        low, high = min_steps - 1, max_steps
+        while low < high:
+            middle = (low + high + 1) // 2
+            candidate_volume = round(middle * info.volume_step, 8)
+            if estimated_risk(candidate_volume) <= budget:
+                low = middle
+            else:
+                high = middle - 1
+        volume = round(low * info.volume_step, 8)
         if volume < info.volume_min:
             self.state["message"] = "Skipped: minimum broker lot exceeds the configured risk budget"
             self.record("skipped", {"reason": self.state["message"]})
+            return
+        if estimated_risk(volume) > budget:
+            raise ValueError('Calculated order risk exceeds the configured budget; no order submitted')
+        try:
+            margin_free = float(current.margin_free)
+        except (AttributeError, TypeError, ValueError) as exc:
+            raise ValueError('MT5 did not provide available free margin; no order submitted') from exc
+        if not math.isfinite(margin_free) or margin_free < 0:
+            raise ValueError('MT5 returned invalid available free margin; no order submitted')
+        margin_required = self.mt5.order_calc_margin(side, symbol, volume, price)
+        if margin_required is None or not math.isfinite(margin_required) or margin_required < 0:
+            raise ValueError('MT5 could not calculate required margin; no order submitted')
+        if margin_required > margin_free:
+            self.state["message"] = "Skipped: broker margin requirement exceeds available free margin"
+            self.record("skipped", {"reason": self.state["message"],
+                                    "required_margin": margin_required, "free_margin": margin_free})
             return
         if not info.filling_mode & 3 and info.trade_exemode == 2:
             raise ValueError(f'{symbol}: no supported market filling policy')

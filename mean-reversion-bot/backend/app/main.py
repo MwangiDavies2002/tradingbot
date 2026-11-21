@@ -213,7 +213,7 @@ def create_app() -> FastAPI:
     # ── Routers ───────────────────────────────────────────────────────────────
     # Import here to avoid circular imports at module level
     from app.api.routes import bot_control, config, risk, signals, test, trades, news, strategies, paper_trades, users
-    from app.auth import router as auth_router
+    from app.auth.router import router as auth_router
 
     app.include_router(auth_router,        prefix="/api/auth",     tags=["Authentication"])
     app.include_router(users.router,       prefix="/api/users",    tags=["Users"])

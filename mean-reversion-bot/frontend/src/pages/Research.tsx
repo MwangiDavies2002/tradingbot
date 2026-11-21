@@ -2,12 +2,10 @@ import { useState } from 'react'
 import { api } from '../api/client'
 import { usePermissions } from '../auth/identity'
 
-const SYMBOLS = ['R_75', '1HZ75V', '1HZ100V', '1HZ50V', 'BOOM500', 'CRASH500', 'UK100', 'NAS100', 'SP500', 'GER40', 'FRA40', 'XAUUSD']
-
 export default function Research() {
   const { canRunResearch } = usePermissions()
   const [csv, setCsv] = useState('')
-  const [symbol, setSymbol] = useState('R_75')
+  const [symbol, setSymbol] = useState('')
   const [timeframe, setTimeframe] = useState('M5')
   const [balance, setBalance] = useState(1000)
   const [threshold, setThreshold] = useState(6)
@@ -40,7 +38,7 @@ export default function Research() {
     <section className="bg-slate-800 rounded-xl p-5 space-y-4">
       <p className="text-sm text-amber-200">Multiplier simulation only. OHLC data cannot reproduce tick execution or MT5 CFD costs. A passing report does not enable live trading.</p>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-        <label>Instrument<select className={input} value={symbol} onChange={e => setSymbol(e.target.value)}>{SYMBOLS.map(option => <option key={option} value={option}>{option}</option>)}</select></label>
+        <label>Exact instrument symbol<input className={input} value={symbol} onChange={e => setSymbol(e.target.value.trim())} placeholder="Enter the symbol matching the CSV data" /></label>
         <label>Timeframe<select className={input} value={timeframe} onChange={e => setTimeframe(e.target.value)}><option>M1</option><option>M5</option><option>M15</option><option>H1</option></select></label>
         <label>Starting balance (USD)<input type="number" min="1" className={input} value={balance} onChange={e => setBalance(Number(e.target.value))} /></label>
         <label>Confluence threshold<input type="number" min="1" max="20" className={input} value={threshold} onChange={e => setThreshold(Number(e.target.value))} /></label>

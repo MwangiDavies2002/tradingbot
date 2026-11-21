@@ -25,6 +25,10 @@ class ContractBacktest(BacktestEngine):
         self.fx_times = sorted(profile.fx_rates)
         if any(v is None for v in (profile.commission_per_lot, profile.financing_long, profile.financing_short)):
             raise ValueError('Enter commission and both financing rates before costed validation')
+        required = ('contract_size', 'tick_size', 'volume_min', 'volume_step',
+                    'volume_max', 'profit_currency', 'account_currency')
+        if any(getattr(profile, field) is None for field in required):
+            raise ValueError('Instrument contract, volume and currency specifications are incomplete')
 
     def conversion(self, timestamp):
         if self.profile.profit_currency == self.profile.account_currency:

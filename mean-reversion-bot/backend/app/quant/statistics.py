@@ -1,7 +1,9 @@
 """Session audits and cross-asset statistics with no price filling."""
 from itertools import combinations
+from datetime import datetime, time, timedelta
 import math
 import warnings
+from zoneinfo import ZoneInfo
 
 import numpy as np
 from statsmodels.tsa.stattools import adfuller, coint
@@ -13,12 +15,44 @@ def is_session(ts, session):
     return market_is_open(ts, session)
 
 
+def _expected_timestamps(start, end, interval, session, bars):
+    zone = ZoneInfo(session.timezone)
+    first = datetime.fromtimestamp(bars[0].timestamp, zone)
+    local_start = datetime.fromtimestamp(start, zone).date()
+    local_end = datetime.fromtimestamp(end - 1, zone).date()
+    expected = set()
+    if interval == 7 * 86400:
+        day = local_start + timedelta(days=(first.weekday() - local_start.weekday()) % 7)
+        while day <= local_end:
+            timestamp = int(datetime.combine(
+                day, time(first.hour, first.minute, first.second), zone).timestamp())
+            if start <= timestamp < end and is_session(timestamp, session):
+                expected.add(timestamp)
+            day += timedelta(days=7)
+        return expected
+
+    phase = (first.hour * 3600 + first.minute * 60 + first.second) % interval
+    day = local_start
+    while day <= local_end:
+        midnight = datetime.combine(day, time(), zone)
+        offset = phase
+        while offset < 86400:
+            timestamp = int((midnight + timedelta(seconds=offset)).timestamp())
+            if start <= timestamp < end and is_session(timestamp, session):
+                expected.add(timestamp)
+            offset += interval
+        day += timedelta(days=1)
+    return expected
+
+
 def audit(bars, interval, session, start, end):
     validate_candles(bars)
     actual = {b.timestamp for b in bars}
-    expected = {t for t in range(start, end, interval) if is_session(t, session)}
+    calendar_verified = session.confirmed
+    expected = (_expected_timestamps(start, end, interval, session, bars)
+                if calendar_verified and bars else set())
     missing = sorted(expected - actual)
-    unexpected = sorted(actual - expected)
+    unexpected = sorted(actual - expected) if calendar_verified else []
     missing_ranges = []
     for timestamp in missing:
         if not missing_ranges or timestamp != missing_ranges[-1]['end'] + interval:
@@ -38,7 +72,7 @@ def audit(bars, interval, session, start, end):
     return {'bars': len(bars), 'expected_bars': len(expected), 'missing_bars': len(missing),
             'missing_examples': missing[:30], 'missing_ranges': missing_ranges[:30],
             'outside_session_or_grid': len(unexpected),
-            'coverage': len(actual & expected) / len(expected) if expected else 0,
+            'coverage': len(actual & expected) / len(expected) if expected else None,
             'stale_close_run_bars': longest_flat_run, 'stale_close_warning': longest_flat_run >= 3,
             'spread_observations': len(spreads), 'median_spread': median_spread,
             'max_spread': max(spreads) if spreads else None, 'spread_outlier_bars': spread_outliers,
@@ -46,8 +80,9 @@ def audit(bars, interval, session, start, end):
             'calendar_timezone': session.timezone, 'holiday_dates': len(session.holidays),
             'early_close_dates': len(session.early_closes), 'special_hours_dates': len(session.special_hours),
             'start': start, 'end_exclusive': end,
-            'passed': bool(expected) and not missing and not unexpected and session.confirmed,
-            'note': 'No candles are filled or invented. Missing counts use the supplied session, holidays, early closes and date-specific special hours. Flat closes and spread outliers are reported as warnings, not silently repaired.'}
+            'passed': calendar_verified and bool(expected) and not missing and not unexpected,
+            'note': ('No candles are filled or invented. Missing counts use the supplied session, holidays, early closes and date-specific special hours. Flat closes and spread outliers are reported as warnings, not silently repaired.'
+                     if calendar_verified else 'Instrument calendar is unverified; completeness and coverage are not inferred from a generic schedule.')}
 
 
 def returns(bars, interval):
@@ -70,7 +105,8 @@ def market_behavior(bars, interval, annualization=252):
     autocorrelation = float(np.corrcoef(log_returns[:-1], log_returns[1:])[0, 1])
     slope = float(np.polyfit(np.arange(len(values)), np.log(values), 1)[0])
     trend_zscore = slope * len(values) ** .5 / deviation
-    annualized_volatility = deviation * (annualization * 86400 / interval) ** .5
+    bars_per_year = 52 if interval == 7 * 86400 else annualization * 86400 / interval
+    annualized_volatility = deviation * bars_per_year ** .5
     if autocorrelation <= -.1 and abs(trend_zscore) < 2:
         regime = 'mean_reverting'
     elif abs(trend_zscore) >= 2:

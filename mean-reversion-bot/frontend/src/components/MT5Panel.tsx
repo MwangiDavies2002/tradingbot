@@ -17,9 +17,10 @@ export default function MT5Panel({ selection, onLoad, onSymbolChange }: Props) {
   const [risk, setRisk] = useState(0.5)
   const [lossLimit, setLossLimit] = useState(3)
   const [symbol, setSymbol] = useState('')
-  const [symbols, setSymbols] = useState<{ name: string; description: string; eligible: boolean; reason: string | null }[]>([])
+  const [symbols, setSymbols] = useState<{ name: string; description: string; asset_class: string; broker_group: string; eligible: boolean; reason: string | null }[]>([])
   const [catalogRevision, setCatalogRevision] = useState(0)
   const [symbolSearch, setSymbolSearch] = useState('')
+  const [assetClass, setAssetClass] = useState('all')
   const refresh = async () => {
     const [state, rows, paper, readiness] = await Promise.all([api.get('/api/mt5/status'), api.get('/api/mt5/journal'),
       api.get('/api/scanner/analytics').catch(() => null),
@@ -132,11 +133,14 @@ export default function MT5Panel({ selection, onLoad, onSymbolChange }: Props) {
     <p className="text-sm text-cyan-200" role="status">{status?.message || 'Loading local MT5 service…'}</p>
     {error && <p className="text-sm text-red-300" role="alert">{error}</p>}
     <div className="space-y-3">
-      <label className="block text-sm">Find broker pair<input value={symbolSearch} onChange={e => setSymbolSearch(e.target.value)} className="block mt-1 w-full max-w-sm bg-slate-900 p-2 rounded" placeholder="Search the connected MT5 account" /></label>
+      <div className="flex flex-wrap gap-3">
+        <label className="block text-sm">Asset class<select value={assetClass} onChange={e=>setAssetClass(e.target.value)} className="block mt-1 bg-slate-900 p-2 rounded"><option value="all">All classes</option>{['forex','index','metal','commodity','synthetic','future','equity','unknown'].map(value=><option key={value} value={value}>{value}</option>)}</select></label>
+        <label className="block text-sm">Find broker instrument<input value={symbolSearch} onChange={e => setSymbolSearch(e.target.value)} className="block mt-1 w-full max-w-sm bg-slate-900 p-2 rounded" placeholder="Search symbol, description or broker group" /></label>
+      </div>
       <label className="block text-sm">MT5 broker pair<select aria-label="MT5 broker pair" value={symbol} disabled={!canOperate || busy || status?.running || !status?.connected} onChange={e => setSymbol(e.target.value)} className="block mt-1 w-full max-w-lg bg-slate-900 p-2 rounded">
         <option value="">Select an exact broker symbol</option>
         {symbol && !symbols.some(row => row.name === symbol) && <option value={symbol} disabled>{symbol} (not available in the connected catalog)</option>}
-        {symbols.filter(row => row.name === symbol || `${row.name} ${row.description}`.toLowerCase().includes(symbolSearch.toLowerCase())).map(row => <option key={row.name} value={row.name} disabled={!row.eligible}>{row.name}{row.eligible ? '' : ` — ${row.reason}`}</option>)}
+        {symbols.filter(row => row.name === symbol || (assetClass === 'all' || row.asset_class === assetClass) && `${row.name} ${row.description} ${row.broker_group}`.toLowerCase().includes(symbolSearch.toLowerCase())).map(row => <option key={row.name} value={row.name} disabled={!row.eligible}>{row.name} · {row.asset_class}{row.eligible ? '' : ` — ${row.reason}`}</option>)}
       </select></label>
       <p className="text-xs text-slate-400">Trade one exact broker pair at a time. Chart symbols and research asset codes are not automatically mapped to MT5. Stop entries, choose the broker pair, save, then start. Existing bot positions on earlier pairs block new entries until resolved.</p>
       {dirty && <p className="text-amber-300 text-sm">Save these changes before starting.</p>}

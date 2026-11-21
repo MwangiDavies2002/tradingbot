@@ -69,7 +69,12 @@ def symbols(runner=Depends(get_runner)):
 
 @router.put("/strategy")
 def strategy(config: DemoConfig, runner=Depends(get_runner)):
-    return runner.configure(config)
+    if not config.symbol:
+        raise HTTPException(422, 'Select an exact broker instrument')
+    try:
+        return runner.configure(config)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
 
 
 @router.post("/connect")

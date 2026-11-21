@@ -153,7 +153,10 @@ export default function Settings() {
                         <div className="text-lg font-mono text-white">{user.deriv_account_id}</div>
                     </div>
                     <button 
-                        onClick={() => setDerivKey('') || setUser(prev => prev ? {...prev, deriv_connected: false} : null)}
+                        onClick={() => {
+                            setDerivKey('')
+                            setUser(prev => prev ? {...prev, deriv_connected: false} : null)
+                        }}
                         className="text-xs text-red-400 hover:text-red-300 font-bold"
                     >
                         Disconnect

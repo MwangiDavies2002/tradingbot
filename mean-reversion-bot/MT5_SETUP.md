@@ -3,6 +3,29 @@
 For the complete operator workflow, start with [USER_MANUAL.md](USER_MANUAL.md).
 This document contains the deeper MT5 setup and execution details.
 
+The research workflow separates **instrument** (the exact broker symbol),
+**strategy** (the implemented signal engine and version), and **configuration**
+(timeframe, parameters, sessions, costs and risk). MT5 symbols are loaded from
+the connected terminal; names and suffixes are never guessed or substituted.
+Research can compare up to eight instruments independently, each with its own
+timeframe and profile. A saved candidate pins the broker/server, symbol,
+timeframe, strategy identity, broker-specification fingerprint, cost model,
+calendar and risk settings. Germany 40 and Deriv synthetic symbols below are
+examples, not defaults.
+
+MT5 exposes contract and trading fields but does not provide complete
+commission schedules or historical exchange calendars. Enter these per
+instrument from broker documentation/measurements and supply their sources.
+Unknown specifications, calendars, costs or slippage remain unverified and
+cannot produce an execution candidate. Timeframe choices are terminal
+timeframes; a symbol must also have sufficient history for the selected
+timeframe. Calendar-month research is not supported.
+
+The current execution worker handles one selected instrument at a time.
+Concurrent multi-instrument execution and a shared portfolio-level risk
+coordinator are future work; the independent research reports are not a
+combined portfolio simulation.
+
 The previous runner (`python -m app.bot`) sends Deriv WebSocket contracts.
 Those contracts are not MT5 positions. Its dashboard start endpoint only
 writes an event; it does not spawn a trading process.
@@ -86,11 +109,42 @@ does not run on Vercel. Use one backend process with one worker, no reload.
    history, increase MT5's **Max bars in chart**, open/scroll the chart, or
    increase the requested days. At least 100 candles are required. Session closures
    and weekends are allowed; this minimum does not certify complete history.
+   Analyze supports up to 3,650 lookback days, subject to a per-timeframe
+   10,000-candle cap. For example, weekly research needs at least 700 days to
+   supply 100 bars; the terminal must have that history. Calendar-month research
+   is intentionally unavailable rather than approximated as a fixed 30-day bar.
 6. Open **Analyze selected assets**, choose **Connected MT5 demo**, and select
    only that exact broker pair. Confirm its contract, session calendar and costs,
    run the analysis, then load a passing candidate into **MT5 Demo & Journal**.
    Strategy Lab's combined backtest or an imported CSV alone cannot authorize
    demo entries.
+   The Analyze profile supports recurring `session.weekly_hours` windows using
+   local weekdays (Monday `0` through Sunday `6`) and minutes after midnight.
+   Example only: Deriv's published Germany 40 schedule is Sunday 23:00–Friday
+   22:00 GMT with a 22:00–23:00 daily break. Do not reuse this calendar for
+   another symbol. For the observed New York DST schedule, encode
+   Sunday 18:00–24:00, Monday–Thursday 00:00–17:00 and 18:00–24:00, and Friday
+   00:00–17:00 in `America/New_York`; verify holidays and special sessions before
+   marking the calendar confirmed. Weekly windows prevent normal daily breaks
+   and DST shifts from being mislabeled as missing candles. In a profile JSON,
+   `weekly_hours` overrides the legacy single open/close pair:
+
+   ```json
+   {
+     "session": {
+       "timezone": "America/New_York",
+       "source": "Deriv Germany 40 trading specifications",
+       "weekly_hours": {
+         "6": [{"open_minute": 1080, "close_minute": 1440}],
+         "0": [{"open_minute": 0, "close_minute": 1020}, {"open_minute": 1080, "close_minute": 1440}],
+         "1": [{"open_minute": 0, "close_minute": 1020}, {"open_minute": 1080, "close_minute": 1440}],
+         "2": [{"open_minute": 0, "close_minute": 1020}, {"open_minute": 1080, "close_minute": 1440}],
+         "3": [{"open_minute": 0, "close_minute": 1020}, {"open_minute": 1080, "close_minute": 1440}],
+         "4": [{"open_minute": 0, "close_minute": 1020}]
+       }
+     }
+   }
+   ```
 7. Review the candidate's pair, account, timeframe, threshold and risk settings.
    Read **Demo readiness** for setup and current market blockers. It only reads
    account, symbol, exposure, quotes and candles; it never sends an order.
@@ -104,7 +158,9 @@ does not run on Vercel. Use one backend process with one worker, no reload.
 
 The worker polls every two seconds and evaluates each completed candle once.
 It enters only when the saved conditions qualify, including the engine's
-direction and regime filters. Daily monitoring does not guarantee daily trades.
+direction and regime filters. If the validated research candidate selected named
+entry sessions, the demo worker enforces the same session on both the signal bar
+and next entry bar. Daily monitoring does not guarantee daily trades.
 Backtests share the indicator engine, but the existing backtest simulator uses
 its original sizing/fill model. Its P&L is not an exact MT5 CFD simulation;
 demo fills include broker spread, lot constraints and execution costs.
@@ -161,9 +217,12 @@ in TradingView separately.
 - Candles, signals, quotes, account-currency risk sizing and orders all use the
   saved exact symbol. Journal recovery includes bot deals across previous pairs.
 - Default risk budget: 0.5% of the lower of balance/equity, capped at 1%.
-  Lots are rounded down using MT5's profit calculation in account currency.
-  A minimum lot exceeding the budget is skipped. Costs/slippage/gaps can
-  make realized loss exceed the planned stop risk.
+  Lots are rounded down using MT5's profit calculator, with the loaded
+  candidate's round-trip commission and adverse entry/exit slippage included.
+  A minimum lot exceeding the budget is skipped. Required margin is checked
+  against MT5's free-margin value before the broker order check. Positive
+  financing is blocked until a maximum holding period is defined; gaps and
+  actual fills can still exceed the planned stop risk.
 - ATR stop loss and 2:1 target are sent to the broker with the entry.
 - Default daily equity loss limit: 3%, capped at 5%. Baseline is equity
   at the first poll each UTC day, not an inferred midnight balance.

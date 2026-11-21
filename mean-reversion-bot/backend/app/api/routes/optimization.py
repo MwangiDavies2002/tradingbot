@@ -16,7 +16,7 @@ router = APIRouter()
 
 class CombinationRegisterRequest(BaseModel):
     strategy_name: str = "MeanReversion"
-    instrument: str = "GER40"
+    instrument: str = Field(min_length=1, max_length=128)
     timeframe: str = "M5"
     config: dict # EngineConfig as dict
 
