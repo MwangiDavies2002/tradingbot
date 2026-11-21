@@ -80,7 +80,7 @@ def main():
             if period is None:
                 output[symbol]["timeframes"][timeframe] = {"status": "unsupported"}
                 continue
-            bars_raw = mt5.copy_rates_from_pos(symbol, period, 0, 3000)
+            bars_raw = mt5.copy_rates_from_pos(symbol, period, 0, 300)
             if bars_raw is None or len(bars_raw) < 300:
                 output[symbol]["timeframes"][timeframe] = {
                     "status": "insufficient_history",
