@@ -15,6 +15,14 @@ async def get_current_user(
     db: AsyncSession = Depends(get_db),
     token: str = Depends(reusable_oauth2)
 ) -> User:
+    role = authenticate(f"Bearer {token}")
+    if role:
+        result = await db.execute(select(User).where(User.is_active == True).limit(1))
+        user = result.scalar_one_or_none()
+        if not user:
+            user = User(id=1, email="admin@local", hashed_password="", is_active=True)
+        return user
+
     try:
         payload = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
@@ -40,9 +48,35 @@ async def get_current_user(
         raise HTTPException(status_code=400, detail="Inactive user")
     return user
 
+import hashlib
+import hmac
+from fastapi.responses import JSONResponse
+
+
 def authenticate(header: str) -> str | None:
-    """Compatibility shim kept for older code paths that still expect auth checks."""
-    return "admin"
+    scheme, _, token = header.partition(" ")
+    if scheme.lower() != "bearer" or len(token) < 8:
+        return None
+    digest = hashlib.sha256(token.encode()).hexdigest()
+    for role in ("admin", "operator", "viewer"):
+        role_name = role.upper()
+        key_hash = getattr(settings, f"API_{role_name}_KEY_HASH", "")
+        pass_hash = getattr(settings, f"API_{role_name}_PASSWORD_HASH", "")
+        if (len(key_hash) == 64 and hmac.compare_digest(digest, key_hash)) or \
+           (len(pass_hash) == 64 and hmac.compare_digest(digest, pass_hash)):
+            return role
+    return None
+
+
+def any_key_configured() -> bool:
+    for role in ("admin", "operator", "viewer"):
+        role_name = role.upper()
+        expected = (getattr(settings, f"API_{role_name}_PASSWORD_HASH", "") or
+                    getattr(settings, f"API_{role_name}_KEY_HASH", ""))
+        if len(expected) == 64:
+            return True
+    return False
+
 
 async def protect_api(request: Request, call_next):
     # Public paths
@@ -52,8 +86,31 @@ async def protect_api(request: Request, call_next):
        request.method == "OPTIONS":
         return await call_next(request)
 
-    # For other paths, we rely on Depends(get_current_user) in the routes.
-    # But we can also do a quick check here if we want global protection.
-    # For now, let's just let it through and handle it in routers for better control.
-    request.state.role = "user"
+    auth_header = request.headers.get("authorization", "")
+    role = authenticate(auth_header)
+
+    if not role:
+        if auth_header.lower().startswith("bearer "):
+            token = auth_header.split(" ", 1)[1]
+            try:
+                payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+                if payload.get("sub"):
+                    role = "user"
+            except JWTError:
+                pass
+
+    if not role:
+        return JSONResponse({"detail": "A valid password is required"}, 401,
+                            headers={"WWW-Authenticate": "Bearer"})
+
+    request.state.role = role
+
+    if request.method not in {"GET", "HEAD"}:
+        admin_only = (request.url.path.startswith("/api/config") or
+                      request.url.path.endswith("/circuit-breaker/reset") or
+                      request.url.path.endswith("/resolve"))
+        if role == "viewer" or (admin_only and role != "admin"):
+            return JSONResponse({"detail": "Insufficient permissions"}, 403)
+
     return await call_next(request)
+

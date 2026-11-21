@@ -10,4 +10,5 @@ os.environ.update({
     "SECRET_KEY": "test-signing-key-not-for-production", "ENVIRONMENT": "development", "DEBUG": "false",
     "NEWS_AUTO_SYNC": "false", "SENTRY_DSN": "", "TELEGRAM_BOT_TOKEN": "",
     "API_ADMIN_KEY_HASH": "", "API_OPERATOR_KEY_HASH": "", "API_VIEWER_KEY_HASH": "",
+    "API_ADMIN_PASSWORD_HASH": "", "API_OPERATOR_PASSWORD_HASH": "", "API_VIEWER_PASSWORD_HASH": "",
 })

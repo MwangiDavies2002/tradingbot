@@ -303,7 +303,7 @@ async def list_signals(
     current_user: User       = Depends(get_current_user),
 ):
     """Recent signal evaluations with indicator values."""
-    stmt = select(Signal).where(Signal.user_id == current_user.id).order_by(desc(Signal.evaluated_at)).limit(limit)
+    stmt = select(Signal).where((Signal.user_id == current_user.id) | (Signal.user_id.is_(None))).order_by(desc(Signal.evaluated_at)).limit(limit)
     if symbol:
         stmt = stmt.where(Signal.symbol == symbol)
     if fired is not None:

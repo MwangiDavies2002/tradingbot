@@ -349,9 +349,10 @@ async def run_backtest(
             report = await asyncio.to_thread(bt_engine.run, candles, symbol=symbol, timeframe=req.timeframe)
 
             run_id = str(uuid.uuid4())[:8]
+            user_id = current_user.id if isinstance(getattr(current_user, "id", None), int) else None
             db_res = BacktestResult(
                 run_id=run_id,
-                user_id=current_user.id,
+                user_id=user_id,
                 combination_id=req.model_dump().get("combination_id"), # If provided
                 symbol=symbol,
                 timeframe=req.timeframe,
@@ -368,12 +369,12 @@ async def run_backtest(
                 total_pnl_pct=report.total_pnl_pct,
                 
                 # Intelligence (Phase 4)
-                expectancy_r=report.expectancy_r,
-                expectancy_r_lb=report.expectancy_r_lb,
-                mae_avg=report.mae_avg,
-                mfe_avg=report.mfe_avg,
-                exit_efficiency=report.exit_efficiency,
-                market_analysis_json=report.market_analysis,
+                expectancy_r=getattr(report, "expectancy_r", None),
+                expectancy_r_lb=getattr(report, "expectancy_r_lb", None),
+                mae_avg=getattr(report, "mae_avg", None),
+                mfe_avg=getattr(report, "mfe_avg", None),
+                exit_efficiency=getattr(report, "exit_efficiency", None),
+                market_analysis_json=getattr(report, "market_analysis", None),
                 feedback_json=getattr(report, "feedback", []),
 
                 params_json={**req.model_dump(exclude={"csv_data"}),
