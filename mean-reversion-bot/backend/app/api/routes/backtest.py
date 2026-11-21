@@ -349,7 +349,9 @@ async def run_backtest(
             report = await asyncio.to_thread(bt_engine.run, candles, symbol=symbol, timeframe=req.timeframe)
 
             run_id = str(uuid.uuid4())[:8]
-            user_id = current_user.id if isinstance(getattr(current_user, "id", None), int) else None
+            user_id = getattr(current_user, "id", None)
+            if hasattr(current_user, "dependency") or not isinstance(user_id, int):
+                user_id = getattr(getattr(request, "state", None), "user_id", None)
             db_res = BacktestResult(
                 run_id=run_id,
                 user_id=user_id,

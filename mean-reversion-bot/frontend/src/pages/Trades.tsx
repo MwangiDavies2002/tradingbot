@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { TrendingUp, TrendingDown, RefreshCw, Filter, ExternalLink } from 'lucide-react'
+import { RefreshCw } from 'lucide-react'
 import { fetchTrades, type Trade } from '../api/client'
 import { format } from 'date-fns'
 
@@ -44,7 +44,8 @@ export default function Trades() {
   }, [page, statusFilter])
 
   useEffect(() => {
-    loadTrades()
+    const timer = window.setTimeout(() => void loadTrades(), 0)
+    return () => window.clearTimeout(timer)
   }, [loadTrades])
 
   return (

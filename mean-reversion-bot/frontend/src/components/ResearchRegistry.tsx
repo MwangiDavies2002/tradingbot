@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api/client'
 import { usePermissions } from '../auth/identity'
 
@@ -33,22 +33,27 @@ export default function ResearchRegistry({ operation, input, disabled, onReport,
   const control = 'block w-full mt-1 rounded bg-slate-950 border border-slate-600 p-2 text-sm'
   const selected = families.find(f => f.family_id === familyId)
 
-  async function loadRuns(page = 0) {
+  const loadRuns = useCallback(async (page = 0) => {
     const query = new URLSearchParams({ q: search, limit: '25', offset: String(page) })
     if (status) query.set('status', status)
     const result = await api.get(`/api/research-registry/runs?${query}`) as { runs: Run[] }
     setRuns(result.runs); setOffset(page)
-  }
-  async function loadFamilies() {
+  }, [search, status])
+  const loadFamilies = useCallback(async () => {
     const result = await api.get('/api/research-registry/families?limit=100') as { families: Family[] }
     setFamilies(result.families)
-  }
-  async function act(action: () => Promise<void>) {
+  }, [])
+  const act = useCallback(async (action: () => Promise<void>) => {
     setBusy(true); onBusyChange(true); setError(''); setMessage('')
     try { await action() } catch (e) { setError(e instanceof Error ? e.message : String(e)) }
     finally { setBusy(false); onBusyChange(false) }
-  }
-  useEffect(() => { void act(async () => { await loadFamilies(); await loadRuns() }) }, [])
+  }, [onBusyChange])
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void act(async () => { await loadFamilies(); await loadRuns() })
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [act, loadFamilies, loadRuns])
 
   async function declare() {
     const keys = trialKeys.split(',').map(s => s.trim()).filter(Boolean)

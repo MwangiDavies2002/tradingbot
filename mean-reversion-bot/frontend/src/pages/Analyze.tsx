@@ -110,7 +110,7 @@ export default function Analyze() {
       } catch (e) { if (active) setError(String(e)) }
     }, 1500)
     return () => { active = false; clearInterval(timer) }
-  }, [job?.id, job?.status])
+  }, [job])
   function toggle(symbol: string) {
     setSymbols(old => old.includes(symbol) ? old.filter(s => s !== symbol) : old.length < 8 ? [...old, symbol] : old)
     const brokerAsset = catalog.find(asset => asset.name === symbol)
@@ -227,13 +227,9 @@ export default function Analyze() {
   const selectedPair = relations?.pairs.find((p: any) => `${p.a}|${p.b}` === pair) || relations?.pairs[0]
   const locked = busy || job?.status === 'running' || !canRunResearch
   const runDisabled = locked || !symbols.length
-  const useIndicators = researchScope.setup === 'strategy_signals' || researchScope.opening_range_indicator_confirmation
   const selectedStrategyNames = STRATEGY_OPTIONS.filter(([key]) => strategy[key]).map(([, label]) => label)
   const maxLookbackDays = source === 'import' ? 3650 : Math.min(3650, ...symbols.map(symbol =>
     Math.floor(10000 * TIMEFRAME_SECONDS[assetTimeframes[symbol] || timeframe] / 86400)))
-  useEffect(() => {
-    if (days > maxLookbackDays) setDays(maxLookbackDays)
-  }, [days, maxLookbackDays])
   const customSymbol = custom.trim()
   const validCustomSymbol = customSymbol.length <= 128 && Array.from(customSymbol).every(character => character >= ' ' && character !== '\u007f')
   const availableAssets = source === 'mt5'

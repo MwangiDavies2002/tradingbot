@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Play, FlaskConical, Check, X, Info, 
+  Play, FlaskConical, Check, X,
   TrendingUp, BarChart3, History, Layers
 } from 'lucide-react';
 import { api } from '../api/client';
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, 
+  XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, AreaChart, Area
 } from 'recharts';
 
@@ -29,16 +29,12 @@ export default function Backtest() {
     use_stoch: true, use_lsl: true, use_smc: true, use_volume: true, use_hurst: true
   });
   const [selectedSymbols, setSelectedSymbols] = useState<string[]>(['R_75']);
-  const [timeframe, setTimeframe] = useState('M5');
+  const [timeframe] = useState('M5');
   const [days, setDays] = useState(7);
   const [minConfluence, setMinConfluence] = useState(6);
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<any[]>([]);
   const [recentRuns, setRecentRuns] = useState<any[]>([]);
-
-  useEffect(() => {
-    fetchRecentRuns();
-  }, []);
 
   const fetchRecentRuns = async () => {
     try {
@@ -48,6 +44,11 @@ export default function Backtest() {
       console.error('Failed to fetch recent runs', err);
     }
   };
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => void fetchRecentRuns(), 0)
+    return () => window.clearTimeout(timer)
+  }, []);
 
   const toggleStrategy = (id: string) => {
     setSelectedStrategies(prev => ({ ...prev, [id]: !prev[id] }));

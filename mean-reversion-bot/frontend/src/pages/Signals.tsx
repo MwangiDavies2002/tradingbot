@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Activity, RefreshCw, Zap, TrendingUp, TrendingDown, Info } from 'lucide-react'
+import { Activity, RefreshCw, Zap, TrendingUp, TrendingDown } from 'lucide-react'
 import { fetchScanner, fetchSignals, type ScannerRow, type Signal } from '../api/client'
 import { format } from 'date-fns'
 
@@ -35,9 +35,12 @@ export default function Signals() {
   }, [firedOnly])
 
   useEffect(() => {
-    loadSignals()
-    const timer = setInterval(loadSignals, 30000) // Auto-refresh every 30s
-    return () => clearInterval(timer)
+    const initial = window.setTimeout(() => void loadSignals(), 0)
+    const timer = setInterval(() => void loadSignals(), 30000)
+    return () => {
+      window.clearTimeout(initial)
+      clearInterval(timer)
+    }
   }, [loadSignals])
 
   return (

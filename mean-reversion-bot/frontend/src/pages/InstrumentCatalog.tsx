@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api/client'
 import { usePermissions } from '../auth/identity'
 import examples from '../data/institutional-examples.json'
@@ -20,17 +20,20 @@ export default function InstrumentCatalog() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
-  async function act(action: () => Promise<void>) {
+  const act = useCallback(async (action: () => Promise<void>) => {
     setBusy(true); setError(''); setMessage('')
     try { await action() } catch (e) { setError(e instanceof Error ? e.message : String(e)) }
     finally { setBusy(false) }
-  }
-  async function load(page = 0) {
+  }, [])
+  const load = useCallback(async (page = 0) => {
     const query = new URLSearchParams({ q: search, limit: '25', offset: String(page) })
     const data = await api.get(`/api/instruments/revisions?${query}`) as { revisions: Revision[] }
     setRows(data.revisions); setOffset(page)
-  }
-  useEffect(() => { void act(() => load()) }, [])
+  }, [search])
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void act(() => load()) }, 0)
+    return () => window.clearTimeout(timer)
+  }, [act, load])
   async function select(row: Revision) {
     const data = await api.get(`/api/instruments/revisions/${row.spec_hash}`) as Revision & { spec: object }
     setSelected(row); setSpec(JSON.stringify(data.spec, null, 2)); setReport(null)

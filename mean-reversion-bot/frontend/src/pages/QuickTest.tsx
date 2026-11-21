@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { ArrowLeft, ArrowRight, Check, LoaderCircle, Play, RotateCcw } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
@@ -90,19 +90,20 @@ export default function QuickTest() {
     if (searchTerm) return (item.name + ' ' + item.description).toLocaleLowerCase().includes(searchTerm)
     return assetGroup === 'All groups' || item.group === assetGroup
   })
-  function selectFirstMatchingAsset(listed: Asset[]) {
+  const selectFirstMatchingAsset = useCallback((listed: Asset[]) => {
     const term = assetSearch.trim().toLocaleLowerCase()
     const match = listed.find(item => term
       ? (item.name + ' ' + item.description).toLocaleLowerCase().includes(term)
       : assetGroup === 'All groups' || item.group === assetGroup)
     if (match) setSymbol(match.name)
-  }
+  }, [assetSearch, assetGroup])
 
   useEffect(() => {
     if (broker !== 'mt5') return
     let active = true
-    setBrokerLoading(true); setBrokerMessage('')
-    api.get('/api/mt5/status').then(async (status: any) => {
+    const timer = window.setTimeout(() => {
+      setBrokerLoading(true); setBrokerMessage('')
+      api.get('/api/mt5/status').then(async (status: any) => {
       if (!active) return
       if (!status.connected) {
         setBrokerConnected(false); setMt5Assets([])
@@ -119,9 +120,10 @@ export default function QuickTest() {
       }
     }).catch(err => {
       if (active) { setBrokerConnected(false); setBrokerMessage(err instanceof Error ? err.message : 'Could not load the MT5 instrument list.') }
-    }).finally(() => { if (active) setBrokerLoading(false) })
-    return () => { active = false }
-  }, [broker])
+      }).finally(() => { if (active) setBrokerLoading(false) })
+    }, 0)
+    return () => { active = false; window.clearTimeout(timer) }
+  }, [broker, selectFirstMatchingAsset])
 
   async function connectMt5() {
     setBrokerLoading(true); setBrokerMessage('')

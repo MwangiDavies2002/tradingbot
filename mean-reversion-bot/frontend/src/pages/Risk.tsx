@@ -1,12 +1,11 @@
 import { useEffect, useState, useCallback } from 'react'
 import { 
-  Shield, AlertTriangle, Activity, 
-  ArrowUpRight, ArrowDownRight, Info,
+  Shield, Activity,
   RefreshCw, RotateCcw
 } from 'lucide-react'
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, 
-  Tooltip, ResponsiveContainer, YAxisProps
+  Tooltip, ResponsiveContainer
 } from 'recharts'
 import { fetchRisk, resetCircuitBreaker, type RiskDashboard } from '../api/client'
 import { format } from 'date-fns'
@@ -14,7 +13,6 @@ import { format } from 'date-fns'
 export default function Risk() {
   const [data, setData] = useState<RiskDashboard | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [resetting, setResetting] = useState(false)
 
   const loadRisk = useCallback(async () => {
@@ -22,16 +20,16 @@ export default function Risk() {
     try {
       const res = await fetchRisk()
       setData(res)
-      setError(null)
     } catch (err: any) {
-      setError(err.message)
+      console.error('Failed to load risk data', err)
     } finally {
       setLoading(false)
     }
   }, [])
 
   useEffect(() => {
-    loadRisk()
+    const timer = window.setTimeout(() => void loadRisk(), 0)
+    return () => window.clearTimeout(timer)
   }, [loadRisk])
 
   const handleResetCB = async () => {

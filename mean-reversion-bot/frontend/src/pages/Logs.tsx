@@ -1,9 +1,8 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { FileText, RefreshCw, Terminal, Download, Trash2 } from 'lucide-react'
+import { FileText, Terminal, Trash2 } from 'lucide-react'
 
 // System logs are often best served via WebSocket or a dedicated log endpoint
 // For now, we'll implement a placeholder that could be wired to a real log tailer
-const BASE = (import.meta as any).env?.VITE_API_URL ?? ''
 
 interface LogEntry {
   ts: string

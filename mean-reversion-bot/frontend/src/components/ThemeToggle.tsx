@@ -1,12 +1,6 @@
 import { useState } from 'react'
 import { Moon, Sun } from 'lucide-react'
-
-const STORAGE_KEY = 'mr-bot-theme'
-export function initializeTheme() {
-  let theme = 'dark'
-  try { theme = localStorage.getItem(STORAGE_KEY) === 'light' ? 'light' : 'dark' } catch { /* Storage may be unavailable. */ }
-  document.documentElement.dataset.theme = theme
-}
+import { STORAGE_KEY } from '../theme'
 
 export default function ThemeToggle() {
   const [theme, setTheme] = useState(() => document.documentElement.dataset.theme || 'dark')

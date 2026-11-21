@@ -9,12 +9,18 @@ from app.config import settings
 from app.database.session import get_db
 from app.database.models import User
 
-reusable_oauth2 = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+reusable_oauth2 = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
 
 async def get_current_user(
     db: AsyncSession = Depends(get_db),
-    token: str = Depends(reusable_oauth2)
+    token: str | None = Depends(reusable_oauth2)
 ) -> User:
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="A valid password is required",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     role = authenticate(f"Bearer {token}")
     if role:
         result = await db.execute(select(User).where(User.is_active == True).limit(1))

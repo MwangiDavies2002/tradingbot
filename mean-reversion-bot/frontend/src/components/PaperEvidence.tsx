@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '../api/client'
 
 type Source = 'manual' | 'scanner'
@@ -20,7 +20,7 @@ export default function PaperEvidence() {
   const requestId = useRef(0)
   const local = ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname)
 
-  async function load(cursor?: string) {
+  const load = useCallback(async (cursor?: string) => {
     const id = ++requestId.current
     setBusy(true); setError('')
     try {
@@ -29,12 +29,17 @@ export default function PaperEvidence() {
     } catch (err) {
       if (id === requestId.current) { setPage(null); setError(String(err)) }
     } finally { if (id === requestId.current) setBusy(false) }
-  }
-  useEffect(() => {
-    setPage(null)
-    if (local) void load()
-    return () => { requestId.current += 1 }
   }, [source])
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setPage(null)
+      if (local) void load()
+    }, 0)
+    return () => {
+      window.clearTimeout(timer)
+      requestId.current += 1
+    }
+  }, [source, local, load])
 
   return <section aria-label="Unified paper evidence" className="bg-slate-800 rounded-xl p-5 space-y-4">
     <h2 className="font-semibold">Unified paper evidence</h2>

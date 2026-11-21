@@ -31,7 +31,6 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
   }
 
   const chartHeight = showVolume ? height * 0.7 : height;
-  const volumeHeight = height * 0.3;
   const padding = 40;
   const chartWidth = width - padding * 2;
   const candleWidth = Math.max(2, Math.min(8, chartWidth / candles.length));

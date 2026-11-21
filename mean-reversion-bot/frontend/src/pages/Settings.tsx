@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Settings as SettingsIcon, Save, RefreshCw, AlertCircle, Link as LinkIcon, CheckCircle2 } from 'lucide-react'
+import { RefreshCw, AlertCircle, Link as LinkIcon, CheckCircle2 } from 'lucide-react'
 import { authHeaders } from '../api/client'
 
 // Mocking some config fetch since I don't have a specific client function for all config
@@ -59,7 +59,8 @@ export default function Settings() {
   }, [])
 
   useEffect(() => {
-    loadData()
+    const timer = window.setTimeout(() => void loadData(), 0)
+    return () => window.clearTimeout(timer)
   }, [loadData])
 
   const handleConnectDeriv = async () => {

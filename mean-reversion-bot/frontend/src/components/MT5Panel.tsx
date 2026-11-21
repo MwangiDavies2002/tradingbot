@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { api, downloadFile } from '../api/client'
 import { usePermissions } from '../auth/identity'
 
@@ -21,13 +21,13 @@ export default function MT5Panel({ selection, onLoad, onSymbolChange }: Props) {
   const [catalogRevision, setCatalogRevision] = useState(0)
   const [symbolSearch, setSymbolSearch] = useState('')
   const [assetClass, setAssetClass] = useState('all')
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     const [state, rows, paper, readiness] = await Promise.all([api.get('/api/mt5/status'), api.get('/api/mt5/journal'),
       api.get('/api/scanner/analytics').catch(() => null),
       api.get('/api/mt5/preflight').catch(e => ({ error: e instanceof Error ? e.message : String(e) }))])
     setStatus(state); setJournal(rows as any[]); setPaperEvidence(paper); setPreflight(readiness)
     return state as any
-  }
+  }, [])
   useEffect(() => {
     if (!local) return
     let active = true
@@ -37,26 +37,33 @@ export default function MT5Panel({ selection, onLoad, onSymbolChange }: Props) {
     poll()
     const timer = setInterval(poll, 5000)
     return () => { active = false; clearInterval(timer) }
-  }, [])
+  }, [local, refresh])
   useEffect(() => {
-    if (status?.config?.symbol) setSymbol(previous => previous || status.config.symbol)
+    const timer = window.setTimeout(() => {
+      if (status?.config?.symbol) setSymbol(previous => previous || status.config.symbol)
+    }, 0)
+    return () => window.clearTimeout(timer)
   }, [status?.config?.symbol])
   useEffect(() => { onSymbolChange?.(symbol) }, [symbol, onSymbolChange])
   useEffect(() => {
     let active = true
-    setSymbols([])
+    const timer = window.setTimeout(() => setSymbols([]), 0)
     if (status?.connected) {
       api.get('/api/mt5/symbols').then((data: any) => {
         if (active) setSymbols(Array.isArray(data.symbols) ? data.symbols : [])
       }).catch(e => { if (active) setError(String(e)) })
     }
-    return () => { active = false }
+    return () => { active = false; window.clearTimeout(timer) }
   }, [status?.connected, status?.account, status?.server, catalogRevision])
   useEffect(() => {
-    if (!selection && status?.config) {
-      setRisk(status.config.risk_pct * 100); setLossLimit(status.config.daily_loss_pct * 100)
-    }
-  }, [!!selection, status?.config?.risk_pct, status?.config?.daily_loss_pct])
+    const timer = window.setTimeout(() => {
+      if (!selection && status?.config) {
+        setRisk(status.config.risk_pct * 100)
+        setLossLimit(status.config.daily_loss_pct * 100)
+      }
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [selection, status?.config])
   const action = async (name: string) => {
     setBusy(true); setError('')
     try {

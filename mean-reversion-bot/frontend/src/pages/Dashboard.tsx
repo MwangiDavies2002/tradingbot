@@ -9,7 +9,7 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
@@ -41,8 +41,6 @@ interface DashState {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const pnlColor  = (v: number) => v >= 0 ? 'text-emerald-400' : 'text-red-400'
-const dirColor  = (d: string) => d === 'buy' ? 'text-emerald-400' : 'text-red-400'
 const dirBg     = (d: string) => d === 'buy' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'
 const scoreColor = (s: number) => s >= 9 ? 'text-yellow-400' : s >= 6 ? 'text-emerald-400' : 'text-slate-400'
 const cbColor   = (state: string) => ({

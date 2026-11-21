@@ -47,20 +47,6 @@ const TOOLS = [
   { to: '/logs',     label: 'Logs',      icon: FileText        },
 ]
 
-function Placeholder({ title }: { title: string }) {
-  return (
-    <div className="p-6">
-      <h1 className="text-xl font-bold text-white mb-2">{title}</h1>
-      <p className="text-slate-400 text-sm">
-        This page is ready to implement. Wire it to the API using the client in
-        <code className="ml-1 bg-slate-700 px-1.5 py-0.5 rounded text-cyan-400 text-xs">
-          src/api/client.ts
-        </code>
-      </p>
-    </div>
-  )
-}
-
 export default function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     try { return localStorage.getItem('sidebar-collapsed') === 'true' } catch { return false }

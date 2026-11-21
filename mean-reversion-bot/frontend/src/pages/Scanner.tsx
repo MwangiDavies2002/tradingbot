@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, downloadFile } from '../api/client'
 import { usePermissions } from '../auth/identity'
 
@@ -45,7 +45,7 @@ export default function Scanner() {
   const paperSignal = singlePairRun && (state?.latest || []).find((row: any) =>
     row.run_id === singlePairRun.id && row.symbol === singlePair &&
     row.timeframe === singlePairRun.config.timeframe && (!singleScope || row.scope === singleScope))
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     const [s, l, a] = await Promise.all([api.get('/api/scanner'), api.get('/api/scanner/ledger'), api.get('/api/scanner/analytics')])
     const scannerStatus = s as any
     const latest = scannerStatus.latest || []
@@ -65,14 +65,14 @@ export default function Scanner() {
       })
     }
     setState(scannerStatus); setLedger(l); setAnalytics(a)
-  }
+  }, [notificationsEnabled])
   useEffect(() => {
     if (!local) return
     let mounted = true
     const poll = () => { if (mounted) refresh().catch(e => setError(String(e))) }
     poll(); const timer = setInterval(poll, 5000)
     return () => { mounted = false; clearInterval(timer) }
-  }, [notificationsEnabled])
+  }, [local, notificationsEnabled, refresh])
   async function catalog() {
     setBusy(true); setError('')
     try { const data: any = await api.get('/api/mt5/symbols'); setSymbols(data.symbols || []) }
